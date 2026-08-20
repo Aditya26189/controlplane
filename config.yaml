@@ -1,0 +1,86 @@
+# ControlPlane cascade-economics experiment
+# Every knob lives here. Nothing in src/ hardcodes these values.
+
+seed: 1729
+
+model:
+  name: "Qwen/Qwen2.5-7B-Instruct"
+  quantization: "nf4"          # nf4 | none
+  dtype: "bfloat16"            # compute dtype for quantized layers
+  device_map: "auto"
+  # Fractional depths through the transformer stack. Resolved to absolute
+  # indices at load time against model.config.num_hidden_layers, so the same
+  # config transfers across model sizes.
+  # Predictive power saturates mid-stack; this brackets that region.
+  layer_fractions: [0.29, 0.39, 0.50, 0.61, 0.71, 0.82, 0.93]
+
+data:
+  dataset: "mandarjoshi/trivia_qa"
+  config: "rc.nocontext"       # no-context: forces parametric recall
+  split: "validation"
+  n_examples: 3000
+  train_frac: 0.6
+  val_frac: 0.2
+  test_frac: 0.2
+  dedup_questions: true
+
+prompt:
+  system: "You are a helpful assistant. Answer the question concisely."
+  add_generation_prompt: true
+
+generation:
+  max_new_tokens: 32           # TriviaQA answers are short spans
+  do_sample: false             # greedy — labels must be deterministic
+  batch_size: 8                # T4 with NF4 7B; lower to 4 if OOM
+  sort_by_length: true         # cuts padding waste; order is restored after
+
+labeling:
+  min_alias_len_for_substring: 3   # shorter aliases need whole-token match
+  record_strict_em: true           # secondary column for the labelling audit
+  base_rate_min: 0.25              # extraction aborts outside this band
+  base_rate_max: 0.85
+
+probe:
+  type: "logistic_regression"
+  standardize: true            # fit on train only
+  class_weight: "balanced"
+  max_iter: 2000
+  C_grid: [0.001, 0.01, 0.1, 1.0]
+  positive_class: "incorrect"  # polarity: 1 == the answer is wrong
+
+economics:
+  target_flag_rate: 0.05       # threshold picked on val to hit this
+  judge_accuracy: 1.0          # cancels out of lift; kept explicit
+  n_responses: 1000000         # for the worked table
+  reference_error_rate: 0.03   # illustrative only; lift is independent of it
+
+evaluation:
+  bootstrap_samples: 1000
+  ci: 0.95
+  min_auroc_to_proceed: 0.55   # below this, stop and report — do not tune
+
+latency:
+  probe_timing_repeats: 1000
+
+abstention:
+  patterns:
+    - "i don't know"
+    - "i do not know"
+    - "i'm not sure"
+    - "i am not sure"
+    - "i cannot"
+    - "unable to"
+    - "no information"
+  min_rate_to_report: 0.02     # below this, mark underpowered
+
+negative_control:              # Stage 6, optional
+  enabled: false
+  dataset: "gsm8k"
+  config: "main"
+  n_examples: 1000
+
+paths:
+  results_dir: "results"
+  activations: "results/activations.npz"
+  labels: "results/labels.parquet"
+  splits: "results/splits.parquet"

@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Regenerable and large — see CONTRIBUTING.md "What is and isn't committed".
+# results/*.json, results/*.png and results/RESULTS.md ARE committed: they are
+# the evidence. Everything below is either large or trivially regenerable.
+results/activations.npz
+results/*.parquet
+results/probe.joblib
+results/*.npz
+
+# Caches for models and datasets
+.cache/
+hf_home/
