@@ -430,3 +430,148 @@ def test_limitations_names_the_ceiling():
     assert "ceiling" in text.lower() or "bounded by this benchmark" in text.lower()
     assert "2.58" in text
     assert "AUROC" in text, "must name AUROC as the transferable quantity"
+
+
+# --- the test-scoring audit trail (DECISIONS.md 016) ---------------------- #
+
+
+def test_scoring_log_appends_never_replaces(tmp_path):
+    """A disappointing scoring cannot be erased by re-running until one improves."""
+    from src.evaluate import append_test_scoring
+
+    path = tmp_path / "test_scoring_log.json"
+
+    first = append_test_scoring(path, {"auroc": 0.8545, "selected_C": 0.001})
+    assert first["n_scorings"] == 1
+    path.write_text(json.dumps(first), encoding="utf-8")
+
+    second = append_test_scoring(path, {"auroc": 0.9, "selected_C": 1e-05})
+    assert second["n_scorings"] == 2
+    assert second["scorings"][0]["auroc"] == 0.8545, "history must survive"
+    assert second["scorings"][1]["auroc"] == 0.9
+
+
+def test_scoring_log_refuses_to_overwrite_a_corrupt_file(tmp_path):
+    """Losing the history silently would defeat the point of keeping it."""
+    from src.evaluate import append_test_scoring
+
+    path = tmp_path / "test_scoring_log.json"
+    path.write_text("{not json", encoding="utf-8")
+    with pytest.raises(ValueError):
+        append_test_scoring(path, {"auroc": 0.9})
+
+
+def test_report_discloses_repeat_scorings():
+    """RESULTS.md must say so, rather than leaving it to the log file."""
+    from src.config import load_config
+    from src.report import render_results_md
+
+    config = load_config(REPO_ROOT / "config.yaml")
+    artifacts = _minimal_artifacts()
+    artifacts["test_scoring_log"] = {
+        "n_scorings": 2,
+        "scorings": [
+            {"selected_layer": 23, "selected_C": 0.001, "auroc": 0.8545,
+             "flag_rate": 0.0617, "recall": 0.1416, "lift": 2.297,
+             "config_hash": "cbac792afcf74bc3"},
+            {"selected_layer": 20, "selected_C": 1e-05, "auroc": 0.87,
+             "flag_rate": 0.06, "recall": 0.16, "lift": 2.4,
+             "config_hash": "c429ce5e92da9a22"},
+        ],
+    }
+    text = render_results_md(artifacts, config)
+    assert "has been scored 2 times" in text
+    assert "cbac792afcf74bc3" in text, "the earlier scoring must remain visible"
+    assert "0.8545" in text
+    assert "scored exactly once" not in text
+
+
+def test_report_warns_when_the_winner_is_at_a_grid_boundary():
+    from src.config import load_config
+    from src.report import render_results_md
+
+    config = load_config(REPO_ROOT / "config.yaml")
+    artifacts = _minimal_artifacts()
+    artifacts["probe_sweep"]["winner_at_grid_boundary"] = True
+    text = render_results_md(artifacts, config)
+    assert "edge of the grid" in text
+    assert "boundary is not an optimum" in text.lower()
+
+
+def _minimal_artifacts():
+    """Smallest artifact set render_results_md will accept."""
+    return {
+        "data_stats": {"data": {
+            "dataset": "d", "dataset_config": "c", "split": "validation",
+            "rows_loaded": 17944, "duplicates_dropped": 7983,
+            "empty_or_aliasless_dropped": 0, "n_final": 3000,
+            "split_sizes": {"train": 1800, "val": 600, "test": 600},
+        }},
+        "extract_meta": {
+            "model": {"name": "m", "quantization": "nf4", "dtype": "bfloat16",
+                      "num_hidden_layers": 28, "hidden_size": 3584},
+            "equivalence_check": {
+                "max_relative_l2": 0.0156, "relative_tolerance": 0.10,
+                "min_cosine_observed": 0.99988, "min_cosine": 0.999,
+                "n_prompts": 4, "right_padding_control": None,
+            },
+            "extraction": {"n_examples": 3000, "total_seconds": 8304.0,
+                           "examples_per_second": 0.36, "batch_size": 8},
+            "base_rates": {"accuracy_lenient": 0.594, "accuracy_strict_em": 0.106,
+                           "base_rate_incorrect": 0.406,
+                           "lenient_minus_strict_accuracy": 0.488},
+        },
+        "probe_sweep": {
+            "sweep": [{"layer": 23, "C": 0.001, "val_auroc": 0.8377}],
+            "best": {"layer": 23, "C": 0.001},
+            "C_grid": [1e-06, 1e-05, 0.0001, 0.001, 0.01, 0.1, 1.0],
+        },
+        "probe_test": {
+            "provenance": {"seed": 1729, "config_hash": "h", "git_commit": "c",
+                           "dirty": False, "timestamp_utc": "t", "python": "3.12",
+                           "libraries": {"torch": "2.10", "transformers": "5.0"},
+                           "device": {"device_name": "Tesla T4"}},
+            "test": {"n": 600, "auroc": 0.8545, "flag_rate": 0.0617,
+                     "recall": 0.1416, "precision": 0.8919, "base_rate": 0.3883,
+                     "tp": 33, "fp": 4, "fn": 200, "tn": 363,
+                     "n_flagged": 37, "n_incorrect": 233, "lift": 2.297},
+            "bootstrap": {"auroc": {"ci_low": 0.82, "ci_high": 0.89},
+                          "flag_rate": {"ci_low": 0.04, "ci_high": 0.08},
+                          "recall": {"ci_low": 0.10, "ci_high": 0.19},
+                          "precision": {"ci_low": 0.7, "ci_high": 1.0},
+                          "lift": {"ci_low": 2.02, "ci_high": 2.65},
+                          "ci": 0.95, "n_samples": 1000},
+            "probe": {"layer": 23, "C": 0.001, "threshold": 2.794,
+                      "target_flag_rate": 0.05, "val_flag_rate": 0.05,
+                      "val_auroc": 0.8377},
+            "auroc_floor": {"below_floor": False, "floor": 0.55},
+            "abstention": {"underpowered": True, "abstention_rate": 0.0,
+                           "n_abstained": 0, "n": 600, "min_rate_to_report": 0.02},
+            "roc": {"fpr": [0, 1], "tpr": [0, 1], "operating_point": None},
+        },
+        "economics": {"economics": {
+            "n_responses": 1000000, "reference_error_rate": 0.03,
+            "judge_accuracy": 1.0, "measured_flag_rate": 0.0617,
+            "measured_recall": 0.1416, "lift": 2.297,
+            "policies": [
+                {"policy": "judge_everything", "label": "Judge everything",
+                 "judge_calls": 1e6, "coverage": 1.0, "errors_caught": 30000.0,
+                 "relative_cost": 16.2},
+                {"policy": "random_sample", "label": "Random 6.2% sample",
+                 "judge_calls": 61700.0, "coverage": 0.0617,
+                 "errors_caught": 1851.0, "relative_cost": 1.0},
+                {"policy": "probe_triggered", "label": "Probe-triggered",
+                 "judge_calls": 61700.0, "coverage": 1.0,
+                 "errors_caught": 4249.0, "relative_cost": 1.0},
+            ],
+            "invariance": {"error_rates_tested": [0.03], "judge_accuracies_tested": [1.0],
+                           "lifts": [{"lift": 2.297}], "all_equal": True, "spread": 0.0},
+        }},
+        "latency": {"latency": {
+            "comparison": {"probe_median_us": 258.5, "probe_p95_us": 334.3,
+                           "generation_median_ms": 2518.4, "prefill_median_ms": 353.2,
+                           "probe_over_generation": 1.03e-4, "probe_over_prefill": 7.3e-4},
+            "device": {"device_name": "Tesla T4"}, "versions": {"torch": "2.10"},
+            "quantization": "nf4",
+        }},
+    }

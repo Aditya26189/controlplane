@@ -247,3 +247,26 @@ Additionally, because a ROC is base-rate independent, the measured curve is re-r
 - *Report only the projection* — a projection is not a measurement, and leading with one would be worse than leading with a small honest number.
 
 **Consequences:** The headline gets more complicated to explain, and that is the correct trade: `2.30x, which is 89% of the 2.58x ceiling this benchmark allows` is a defensible sentence, where `2.30x` alone is not. The projection rows (`5.2x` to `7.7x` at base rates 0.10 down to 0.01) carry a caveat naming the untested assumption — that the probe ranks equally well on those workloads, which is exactly the cross-domain generalisation this repo has not measured. A reviewer may fairly say the projection is unverified; the answer is that it is labelled as such and the ROC it derives from is measured.
+
+---
+
+## 016 — Extend the regularisation grid; test will be scored a second time
+**Date:** 2026-08-21 · **Status:** accepted · **Refines:** 006, 012 · **Pre-registered before re-running**
+
+**Context:** In the first full run, the validation sweep selected `C = 0.001` — the smallest value in the grid — for **all seven layers**. An optimum at the boundary of a search space is not an optimum; it is the edge of where we looked. Train AUROC 0.955 against validation 0.838 at the winner confirms the model is still overfitting at the strongest regularisation available to it.
+
+This is visible in `probe_sweep.json`, which contains validation numbers only. **The decision to widen the grid uses no test-set information.**
+
+**Decision:** Extend `probe.C_grid` from `{0.001, 0.01, 0.1, 1.0}` to `{1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0}`, re-select on validation, and re-score the test set.
+
+**This means the test set will have been scored twice, and that is a real cost.** It is recorded here rather than absorbed silently:
+
+- **First scoring** (config hash `cbac792afcf74bc3`, commit `bec7f86`): layer 23, C=0.001 — **AUROC 0.8545 [0.8219, 0.8869], f 0.0617, R 0.1416, precision 0.8919, lift 2.297×**.
+- **We commit, before running, to reporting whatever the second scoring produces**, including if it is worse. Both numbers stay in this file and in `results/test_scoring_log.json` permanently.
+
+**Alternatives:**
+- *Report the first result unchanged and note the boundary in limitations* — costs nothing and keeps "test touched exactly once" literally true. Rejected because the reported AUROC is then knowingly an underestimate produced by a search that did not finish, and a reviewer who spots all-seven-layers-at-the-edge will ask why it was left there.
+- *Extend the grid and report only the better number* — this is selection on test wearing a disguise. Explicitly not what is happening: the pre-registration above exists so that outcome is checkable.
+- *Widen the grid upward as well* — unnecessary. Validation AUROC falls monotonically with increasing `C` at every layer, so the useful direction is unambiguous.
+
+**Consequences:** The strict "test opened exactly once" claim of DECISIONS.md 006 no longer holds and must not be repeated anywhere. It is replaced by a weaker, checkable claim: *test has been scored twice, both scorings are published, and the selection that produced each was made on validation alone.* To make that auditable rather than asserted, `scripts/02_train_probe.py` now appends every test scoring to `results/test_scoring_log.json`, and `RESULTS.md` discloses the count and the history whenever it exceeds one. If a future run scores test a third time, the report will say so without anyone having to remember.

@@ -61,7 +61,10 @@ probe:
   standardize: true            # fit on train only
   class_weight: "balanced"
   max_iter: 2000
-  C_grid: [0.001, 0.01, 0.1, 1.0]
+  # Extended downward in DECISIONS.md 016: the first run selected the
+  # smallest value for all seven layers, so the optimum was at the edge of
+  # the search rather than inside it.
+  C_grid: [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0]
   positive_class: "incorrect"  # polarity: 1 == the answer is wrong
 
 economics:

@@ -163,7 +163,7 @@ clf.fit(scaler.transform(X_train), y_train)
 
 **Layer sweep.** For each candidate layer, train on train, evaluate AUROC on **validation**. Pick the winner on validation. Record the full sweep in `results/probe_sweep.json` — a table of all layers, not just the winner, because a reviewer wants to see the shape of the curve, and a smooth curve peaking mid-stack is itself evidence the signal is real rather than noise.
 
-**Regularisation.** Small grid over `C ∈ {0.001, 0.01, 0.1, 1.0}` on validation. With ~1800 training examples and ~3584 features, this is a high-dimensional, low-sample regime — regularisation matters and the best `C` will likely be small.
+**Regularisation.** Grid over `C ∈ {1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0}` on validation. With ~1800 training examples and ~3584 features, this is a high-dimensional, low-sample regime — regularisation matters and the best `C` will be small. The grid was widened downward after the first run selected its smallest value at every layer (DECISIONS.md 016); **if the winner is again at a boundary, the search has not found an optimum and the grid must be widened again rather than the result reported as final.**
 
 **Threshold selection.** On validation, find the threshold whose flag rate is closest to `config.economics.target_flag_rate` (default 0.05). Freeze it. Apply it unchanged to test.
 
