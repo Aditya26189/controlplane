@@ -612,6 +612,52 @@ def _git(*args: str) -> Optional[str]:
     return out.stdout.strip()
 
 
+def working_tree_changes(results_dir: str = "results") -> Optional[list[str]]:
+    """Paths that differ from HEAD, ignoring the results directory.
+
+    ``dirty`` is meant to answer "did the CODE that ran match the commit
+    recorded beside these numbers?". A naive ``git status --porcelain`` cannot
+    answer that here, because the pipeline writes its own artifacts into
+    ``results/`` -- a committed path -- so stage 01 dirties the tree and every
+    later stage records ``dirty: true`` regardless of the code. Observed exactly
+    that on the first full run: ``data_stats.json`` recorded ``false`` and every
+    subsequent artifact ``true``.
+
+    Excluding the results directory restores the flag's meaning.
+
+    Args:
+        results_dir: Directory to exclude, from ``config.paths.results_dir``.
+
+    Returns:
+        Changed paths outside the results directory, or None if git is absent.
+    """
+    status = _git("status", "--porcelain")
+    if status is None:
+        return None
+    excluded = results_dir.replace("\\", "/").rstrip("/")
+    changed: list[str] = []
+    for line in status.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Split on whitespace rather than slicing a fixed offset. Porcelain
+        # status codes are two characters, but an unstaged change renders as
+        # " M path" and _git() strips the whole output -- which removes that
+        # leading space from the *first* line only, so a fixed offset silently
+        # eats a character of the first path and no others.
+        parts = stripped.split(None, 1)
+        if len(parts) < 2:
+            continue
+        path = parts[1].strip().strip('"')
+        if " -> " in path:  # rename: report the destination
+            path = path.split(" -> ", 1)[1].strip().strip('"')
+        path = path.replace("\\", "/").rstrip("/")
+        if path == excluded or path.startswith(excluded + "/"):
+            continue
+        changed.append(path)
+    return changed
+
+
 def library_versions() -> dict[str, Optional[str]]:
     """Collect versions of libraries whose behaviour could move a measured number.
 
@@ -675,9 +721,11 @@ def provenance(config: Optional[Config] = None) -> dict[str, Any]:
     the *code* that produced the artifact, never the commit that contains it
     (CONTRIBUTING.md, "The provenance ordering problem").
 
-    ``dirty`` comes from ``git status --porcelain``. An artifact generated from a
-    dirty tree records a commit hash that does not describe the code that ran, so
-    the flag has to travel with the hash rather than be checked once by hand.
+    ``dirty`` comes from ``git status --porcelain`` with the results directory
+    excluded -- see :func:`working_tree_changes` for why that exclusion is what
+    makes the flag mean anything. An artifact generated from a dirty tree records
+    a commit hash that does not describe the code that ran, so the flag has to
+    travel with the hash rather than be checked once by hand.
 
     Args:
         config: If given, its hash, seed, and resolved values are embedded too.
@@ -685,12 +733,15 @@ def provenance(config: Optional[Config] = None) -> dict[str, Any]:
     Returns:
         A JSON-serialisable provenance mapping.
     """
-    status = _git("status", "--porcelain")
+    results_dir = config.paths.results_dir if config is not None else "results"
+    changed = working_tree_changes(results_dir)
     block: dict[str, Any] = {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git_commit": _git("rev-parse", "HEAD"),
         "git_branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
-        "dirty": None if status is None else bool(status.strip()),
+        "dirty": None if changed is None else bool(changed),
+        "dirty_paths": None if changed is None else sorted(changed)[:20],
+        "dirty_excludes": results_dir,
         "python": sys.version.split()[0],
         "libraries": library_versions(),
         "device": device_info(),

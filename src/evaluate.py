@@ -84,6 +84,14 @@ def evaluate_at_threshold(
         "recall": recall,
         "precision": precision,
         "lift": lift(recall, flag_rate) if (recall is not None and flag_rate) else None,
+        # The largest lift attainable at this split's base rate. Resampled with
+        # everything else so the interval on lift and the interval on its own
+        # ceiling come from the same resamples -- otherwise the lift CI appears
+        # to exceed the ceiling, which is impossible within any single resample
+        # (lift / ceiling == precision <= 1). See DECISIONS.md 015.
+        "ceiling": (
+            1.0 / float(np.mean(labels)) if n and float(np.mean(labels)) > 0 else None
+        ),
         "n_flagged": int(n_flagged),
         "n_incorrect": int(n_positive),
         "threshold": float(threshold),
@@ -95,7 +103,14 @@ def evaluate_at_threshold(
 # Bootstrap
 # --------------------------------------------------------------------------- #
 
-BOOTSTRAP_METRICS = ("auroc", "flag_rate", "recall", "precision", "lift")
+BOOTSTRAP_METRICS = (
+    "auroc",
+    "flag_rate",
+    "recall",
+    "precision",
+    "lift",
+    "ceiling",
+)
 
 
 def bootstrap_metrics(
@@ -112,6 +127,12 @@ def bootstrap_metrics(
     resample -- jointly, because recall and flag rate are correlated and lift is
     their ratio, so bootstrapping them independently would understate the
     interval on the number that matters.
+
+    The ceiling ``1/base_rate`` is resampled too. A resample that happens to draw
+    fewer incorrect answers has a higher ceiling, so the interval on lift can
+    reach above the ceiling computed from the *point* base rate. That is not a
+    contradiction: within every individual resample ``lift / ceiling`` equals
+    precision and is therefore at most 1.
 
     Resamples where a metric is undefined (a single label class, no positives,
     nothing flagged) are dropped for that metric and counted, rather than
