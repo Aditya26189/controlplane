@@ -64,6 +64,54 @@ def time_probe_call(
     }
 
 
+def time_raw_dot_product(
+    probe: Any, activation: np.ndarray, repeats: int
+) -> dict[str, float]:
+    """Time the probe's arithmetic alone: standardise, dot, add bias.
+
+    Reported *beside* the sklearn number, never instead of it. The sklearn call
+    spends most of its time in input validation and array copying, so quoting
+    only that overstates what the probe costs; quoting only this understates
+    what deploying it costs. Both are true and they answer different questions,
+    so both are recorded and the conservative one stays the headline.
+
+    Args:
+        probe: A fitted probe carrying a scaler and a linear classifier.
+        activation: A single ``(hidden,)`` activation vector.
+        repeats: Number of timed repetitions.
+
+    Returns:
+        Median and p95 in microseconds, or an empty dict if the probe is not a
+        plain linear model over a standard scaler.
+    """
+    scaler = getattr(probe, "scaler", None)
+    classifier = getattr(probe, "classifier", None)
+    if scaler is None or not hasattr(classifier, "coef_"):
+        return {}
+
+    vector = np.asarray(activation, dtype=np.float64).ravel()
+    mean = np.asarray(getattr(scaler, "mean_", 0.0), dtype=np.float64)
+    scale = np.asarray(getattr(scaler, "scale_", 1.0), dtype=np.float64)
+    weights = np.asarray(classifier.coef_, dtype=np.float64).ravel()
+    bias = float(np.asarray(classifier.intercept_).ravel()[0])
+
+    for _ in range(min(50, repeats)):
+        ((vector - mean) / scale) @ weights + bias
+
+    samples = np.empty(repeats, dtype=np.float64)
+    for i in range(repeats):
+        start = time.perf_counter()
+        ((vector - mean) / scale) @ weights + bias
+        samples[i] = time.perf_counter() - start
+
+    micros = samples * 1e6
+    return {
+        "median_us": float(np.median(micros)),
+        "p95_us": float(np.quantile(micros, 0.95)),
+        "repeats": int(repeats),
+    }
+
+
 def compare_costs(
     probe_timing: dict[str, float],
     median_generate_seconds: float,
@@ -109,7 +157,10 @@ def compare_costs(
         "note": (
             "The probe adds no additional forward pass. The activation is a "
             "by-product of the prefill that generation already performs, so the "
-            "marginal cost is the scale-and-dot-product timed here."
+            "marginal cost is the scale-and-dot-product timed here. The headline "
+            "figure is the full scikit-learn call including its input "
+            "validation, which is the conservative number; the raw arithmetic is "
+            "reported alongside it."
         ),
     }
 
@@ -137,9 +188,17 @@ def measure(
         A JSON-serialisable latency block.
     """
     timing = time_probe_call(probe, activation, config.latency.probe_timing_repeats)
+    raw = time_raw_dot_product(
+        probe, activation, config.latency.probe_timing_repeats
+    )
     comparison = compare_costs(
         timing, median_generate_seconds, median_prefill_seconds
     )
+    if raw:
+        comparison["raw_dot_product_median_us"] = raw["median_us"]
+        comparison["sklearn_overhead_factor"] = (
+            timing["median_us"] / raw["median_us"] if raw["median_us"] else None
+        )
     LOGGER.info(
         "probe %.1f us median (p95 %.1f) vs generation %.1f ms -> ratio %.2e",
         timing["median_us"],
@@ -158,6 +217,7 @@ def measure(
         versions["torch"] = None
     return {
         "probe_timing": timing,
+        "raw_dot_product_timing": raw,
         "comparison": comparison,
         "device": device_info(),
         "versions": versions,

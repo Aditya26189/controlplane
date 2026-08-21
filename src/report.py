@@ -66,6 +66,11 @@ def pct_number(value: Optional[float]) -> str:
     return f"{value * 100:g}"
 
 
+def fmt_ratio(value: Optional[float]) -> str:
+    """Format a ratio in scientific notation, or ``n/a`` when undefined."""
+    return "n/a" if value is None else f"{value:.2e}"
+
+
 def fmt_count(value: Optional[float]) -> str:
     """Format a count with thousands separators."""
     return "n/a" if value is None else f"{round(value):,}"
@@ -113,7 +118,40 @@ def load_artifacts(config: Config) -> dict[str, Any]:
         path = config.results_path(filename)
         if path.is_file():
             artifacts[key] = read_json_artifact(path)
+
+    consistency = config_hash_consistency(artifacts)
+    if not consistency["consistent"]:
+        LOGGER.warning(
+            "artifacts were produced under %d different config hashes: %s. The "
+            "report will say so; re-run the whole pipeline if the stages are "
+            "meant to describe one experiment.",
+            len(consistency["distinct"]),
+            consistency["per_artifact"],
+        )
     return artifacts
+
+
+def config_hash_consistency(artifacts: dict[str, Any]) -> dict[str, Any]:
+    """Check that every stage's artifact came from the same config.
+
+    Stages run as separate processes and each loads the config itself, so
+    nothing stops someone re-running stage 02 with an edited config against
+    stage 01's activations. The report would then quote one hash beside numbers
+    produced under two, which is exactly the traceability claim CLAUDE.md
+    invariant 7 makes. This does not raise -- re-running a later stage with a
+    changed probe grid is a legitimate workflow -- but the mismatch is surfaced
+    in RESULTS.md rather than left to be noticed.
+    """
+    per_artifact = {
+        name: artifact.get("provenance", {}).get("config_hash")
+        for name, artifact in artifacts.items()
+    }
+    distinct = sorted({h for h in per_artifact.values() if h})
+    return {
+        "per_artifact": per_artifact,
+        "distinct": distinct,
+        "consistent": len(distinct) <= 1,
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -295,7 +333,8 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
     abstention = probe_test["abstention"]
     comparison = latency["comparison"]
 
-    strict_gap = abs(base_rates["lenient_minus_strict_accuracy"])
+    strict_gap_raw = base_rates.get("lenient_minus_strict_accuracy")
+    strict_gap = None if strict_gap_raw is None else abs(strict_gap_raw)
     lines: list[str] = []
     add = lines.append
 
@@ -322,6 +361,18 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
     add(f"| Timestamp (UTC) | {provenance['timestamp_utc']} |")
     add(f"| torch / transformers | {provenance['libraries']['torch']} / {provenance['libraries']['transformers']} |")
     add("")
+    consistency = config_hash_consistency(artifacts)
+    if not consistency["consistent"]:
+        add(
+            "> **Config hashes differ across stages.** These numbers were not all "
+            "produced from one configuration: "
+            + ", ".join(
+                f"`{name}` = `{value}`"
+                for name, value in consistency["per_artifact"].items()
+            )
+            + ". Re-run the whole pipeline before quoting anything here."
+        )
+        add("")
     add(
         f"Left-padding equivalence check: max deviation "
         f"**{equivalence['max_deviation']:.3e}** across "
@@ -356,7 +407,14 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
         "(CLAUDE.md invariant 3)."
     )
     add("")
-    if strict_gap > 0.10:
+    if strict_gap is None:
+        add(
+            "Strict exact match was not recorded for this run "
+            "(`labeling.record_strict_em` is off), so the labelling audit "
+            "SPEC.md §2 asks for is unavailable. Turn it on and re-run before "
+            "quoting the base rate."
+        )
+    elif strict_gap > 0.10:
         add(
             f"**Labelling note.** Lenient and strict matching disagree by "
             f"{fmt(strict_gap)} in accuracy, more than the ~10 point threshold "
@@ -491,12 +549,17 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
     add("")
     add("| Measurement | Value |")
     add("|---|---|")
-    add(f"| Probe score, median | {fmt(comparison['probe_median_us'], 1)} µs |")
+    add(f"| Probe score, median (full scikit-learn call) | {fmt(comparison['probe_median_us'], 1)} µs |")
     add(f"| Probe score, p95 | {fmt(comparison['probe_p95_us'], 1)} µs |")
+    if comparison.get("raw_dot_product_median_us") is not None:
+        add(
+            f"| — of which arithmetic (standardise + dot + bias) | "
+            f"{fmt(comparison['raw_dot_product_median_us'], 1)} µs |"
+        )
     add(f"| Generation, median per response | {fmt(comparison['generation_median_ms'], 1)} ms |")
     add(f"| Prefill, median per response | {fmt(comparison['prefill_median_ms'], 1)} ms |")
-    add(f"| Probe / generation | {comparison['probe_over_generation']:.2e} |")
-    add(f"| Probe / prefill | {comparison['probe_over_prefill']:.2e} |")
+    add(f"| Probe / generation | {fmt_ratio(comparison['probe_over_generation'])} |")
+    add(f"| Probe / prefill | {fmt_ratio(comparison['probe_over_prefill'])} |")
     add(f"| Device | {latency['device']['device_name']} |")
     add(f"| torch | {latency['versions']['torch']} |")
     add(f"| Quantisation | {latency['quantization']} |")
@@ -506,6 +569,14 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
         "by-product of the prefill that generation already performs, so its "
         "marginal cost is the scale-and-dot-product timed above and nothing else."
     )
+    if comparison.get("sklearn_overhead_factor"):
+        add("")
+        add(
+            f"The headline figure is the whole scikit-learn call. Most of it is "
+            f"input validation and array copying, not arithmetic: the dot product "
+            f"itself is {fmt(comparison['sklearn_overhead_factor'], 1)}x faster. "
+            "The slower, deployable number is quoted as the headline on purpose."
+        )
     add("")
     add(
         f"Extraction throughput for reference: {extraction['n_examples']:,} "
@@ -566,11 +637,14 @@ def render_negative_control(
     """Render the GSM8K section, framed as a reproduction (SPEC.md §10)."""
     if "negative_control" not in artifacts:
         return (
-            "Not run. The published result reports that probe generalisation "
-            "falters on mathematical reasoning (DECISIONS.md 008). Running GSM8K "
-            "through the identical pipeline is Stage 6 in `TASKS.md`; enable it "
-            "with `negative_control.enabled: true` in `config.yaml`. Until it is "
-            "run, cross-domain generalisation is untested here and is listed as a "
+            "Not run — **and not implemented in this build**. The published result "
+            "reports that probe generalisation falters on mathematical reasoning "
+            "(DECISIONS.md 008), and reproducing that on GSM8K is Stage 6 of "
+            "`TASKS.md`: an optional stage that requires a completed main run "
+            "first. The `negative_control` block in `config.yaml` reserves the "
+            "settings for it, but no code reads them yet, so setting "
+            "`enabled: true` does nothing today. Until Stage 6 is built and run, "
+            "cross-domain generalisation is untested here and is listed as a "
             "limitation below."
         )
     control = artifacts["negative_control"]["negative_control"]
@@ -607,7 +681,8 @@ def limitations(artifacts: dict[str, Any], config: Config) -> list[str]:
     probe_test = artifacts["probe_test"]
     data = artifacts["data_stats"]["data"]
     base_rates = extract["base_rates"]
-    gap = abs(base_rates["lenient_minus_strict_accuracy"])
+    raw_gap = base_rates.get("lenient_minus_strict_accuracy")
+    gap = None if raw_gap is None else abs(raw_gap)
 
     items = [
         f"**One model, one dataset.** `{extract['model']['name']}` on "
@@ -631,12 +706,18 @@ def limitations(artifacts: dict[str, Any], config: Config) -> list[str]:
         "**Judge accuracy is assumed to cancel.** It does cancel from the ratio, "
         "but a real judge misses errors the probe correctly flagged, so the "
         "absolute errors-caught counts in the three-policy table are upper bounds.",
-        f"**Single seed.** Everything reported is at seed {config.seed}. No seed "
+        f"**Single seed.** Everything reported is at seed "
+        f"{probe_test['provenance'].get('seed', config.seed)}. No seed "
         "sweep was run, so the intervals reflect test-set sampling only, not "
         "variation in the split or in probe fitting.",
-        f"**Labelling is automatic.** Normalised alias matching is a proxy for "
-        f"correctness, not human judgment. Lenient and strict matching differ by "
-        f"{fmt(gap)} in accuracy here.",
+        "**Labelling is automatic.** Normalised alias matching is a proxy for "
+        "correctness, not human judgment. "
+        + (
+            "Strict exact match was not recorded, so the size of that proxy's "
+            "effect is unmeasured for this run."
+            if gap is None
+            else f"Lenient and strict matching differ by {fmt(gap)} in accuracy here."
+        ),
         f"**Test set is small.** {probe_test['test']['n']:,} examples, which is "
         "why every headline number carries a bootstrap interval rather than a "
         "point estimate alone.",
@@ -682,13 +763,21 @@ def readme_values(artifacts: dict[str, Any], config: Config) -> dict[str, str]:
     comparison = latency["comparison"]
     policies = {row["policy"]: row for row in economics["policies"]}
 
+    strict_accuracy = probe_test.get("strict_em", {}).get("test_accuracy_strict")
+    strict_test_base_rate = (
+        None if strict_accuracy is None else 1.0 - strict_accuracy
+    )
+
     values = {
         "model_name": model_info["name"],
         "quantization": model_info["quantization"],
         "dataset": f"{data['dataset']} {data['dataset_config']}",
         "n_test": f"{test['n']:,}",
-        "base_rate": fmt(base_rates["base_rate_incorrect"]),
-        "strict_em_base_rate": fmt(base_rates["base_rate_incorrect_strict_em"]),
+        # Test-set rates, not whole-dataset ones: the table row above them reads
+        # "n = {{n_test}} held-out questions", so a dataset-wide rate there would
+        # be describing a different set of examples than the row claims.
+        "base_rate": fmt(test["base_rate"]),
+        "strict_em_base_rate": fmt(strict_test_base_rate),
         "layer": str(probe["layer"]),
         "n_layers": str(model_info["num_hidden_layers"]),
         "hidden_size": f"{model_info['hidden_size']:,}",
