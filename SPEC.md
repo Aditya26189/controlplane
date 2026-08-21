@@ -130,7 +130,13 @@ completions = tokenizer.batch_decode(gen[:, prompt_len:], skip_special_tokens=Tr
 - every requested layer index is within range
 - `acts[layer].shape == (batch, model.config.hidden_size)`
 - the activation tensor contains no NaN or Inf
-- **left-padding correctness check:** for one batch, run each sequence individually with no padding and confirm the layer-`L` last-token activation matches the batched version to within `1e-2`. Attention masking makes this exact in principle and near-exact in fp16. If it doesn't match, padding is wrong. Run this check once at startup on a batch of 4 and fail hard if it doesn't pass.
+- **left-padding correctness check:** for one batch, run each sequence individually with no padding and confirm the layer-`L` last-token activation matches the batched version. Attention masking makes this exact in principle, but **not** in practice: batched and unbatched forwards use different GEMM shapes and therefore different reduction orders, so in bfloat16 they disagree by one or two units in the last place. On a 7B that is an *absolute* deviation of 0.125–3.0 in the late layers, from rounding alone.
+
+  The criteria are therefore **scale-invariant**, not absolute: per-row relative L2 error (`||batched − unbatched|| / ||unbatched||`) and per-row cosine similarity, with limits in `config.yaml` under `equivalence_check`. Reading the wrong position changes the vector; rounding does not.
+
+  Run it once at startup on a batch of 4 that **spans the prompt-length distribution** (shortest, longest, and a spread between), and fail hard if it doesn't pass.
+
+  **Positive control.** Immediately repeat the same comparison with the tokenizer deliberately right-padded, and require that it *fails*. Without this, a scale-relative limit is indistinguishable from a limit that was loosened until the check passed. With it, every run records that the check still rejects the fault it exists for, on that model and that hardware. If the control ever passes, stop — the limits are worthless as written.
 
 **Layers to extract.** Predictive power saturates in the middle of the stack. Default for a 28-layer model: `[8, 11, 14, 17, 20, 23, 26]`. Express in config as fractional depths so the same config works across model sizes.
 

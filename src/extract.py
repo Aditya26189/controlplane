@@ -103,28 +103,34 @@ def last_token_activations(
 # --------------------------------------------------------------------------- #
 
 
-def batched_unbatched_deviation(
+def compare_batched_unbatched(
     model: Any,
     tokenizer: Any,
     prompts: Sequence[str],
     layers: Sequence[int],
-) -> tuple[float, dict[int, float]]:
-    """Max absolute deviation between batched and unbatched last-token states.
+) -> dict[str, Any]:
+    """Measure how far batched last-token activations sit from unbatched ones.
 
-    Computes only; it deliberately does not assert the padding side, so a test
-    can point it at a right-padded tokenizer and confirm the deviation really
-    does blow up. :func:`check_left_padding_equivalence` is the asserting
-    wrapper used in the pipeline.
+    Reports three quantities per layer and asserts nothing -- the caller decides
+    what passes, and a test can point this at a right-padded tokenizer to prove
+    the criteria discriminate.
+
+    Scale matters here. Absolute deviation is not interpretable on its own:
+    residual-stream activations reach magnitudes in the hundreds by the late
+    layers, where a single bfloat16 rounding step is ~1.0. The two useful
+    quantities are therefore the per-row **relative** L2 error and the per-row
+    **cosine similarity**, both invariant to activation magnitude and to dtype.
+    Reading the wrong position changes the vector; rounding does not.
 
     Args:
         model: A loaded causal LM.
-        tokenizer: Its tokenizer.
-        prompts: Prompts of differing lengths -- equal lengths would make the
-            comparison vacuous, since there would be no padding to get wrong.
+        tokenizer: Its tokenizer, in whatever padding mode is being measured.
+        prompts: Prompts of differing lengths, so the batch actually pads.
         layers: Absolute layer indices to compare.
 
     Returns:
-        ``(max deviation over all layers, per-layer max deviation)``.
+        Per-layer and overall ``max_abs``, ``max_relative_l2`` and
+        ``min_cosine``, plus the padding side the measurement was taken under.
     """
     import torch
 
@@ -140,14 +146,50 @@ def batched_unbatched_deviation(
         one = tokenizer(prompt, return_tensors="pt").to(model.device)
         with torch.no_grad():
             single_out = model(**one, output_hidden_states=True, use_cache=False)
-        for layer, vector in last_token_activations(single_out, layers, n_layers).items():
+        for layer, vector in last_token_activations(
+            single_out, layers, n_layers
+        ).items():
             singles[layer].append(vector[0])
 
-    per_layer: dict[int, float] = {}
+    per_layer: dict[str, dict[str, float]] = {}
     for layer in layers:
-        stacked = np.stack(singles[layer], axis=0)
-        per_layer[layer] = float(np.max(np.abs(batched[layer] - stacked)))
-    return max(per_layer.values()), per_layer
+        reference = np.stack(singles[layer], axis=0).astype(np.float64)
+        actual = batched[layer].astype(np.float64)
+        difference = actual - reference
+
+        reference_norm = np.linalg.norm(reference, axis=1)
+        actual_norm = np.linalg.norm(actual, axis=1)
+
+        relative = np.linalg.norm(difference, axis=1) / np.maximum(
+            reference_norm, 1e-12
+        )
+        cosine = np.sum(actual * reference, axis=1) / np.maximum(
+            actual_norm * reference_norm, 1e-12
+        )
+        per_layer[str(layer)] = {
+            "max_abs": float(np.max(np.abs(difference))),
+            "max_relative_l2": float(np.max(relative)),
+            "min_cosine": float(np.min(cosine)),
+            "reference_norm_median": float(np.median(reference_norm)),
+        }
+
+    return {
+        "padding_side": getattr(tokenizer, "padding_side", None),
+        "per_layer": per_layer,
+        "max_abs": max(v["max_abs"] for v in per_layer.values()),
+        "max_relative_l2": max(v["max_relative_l2"] for v in per_layer.values()),
+        "min_cosine": min(v["min_cosine"] for v in per_layer.values()),
+    }
+
+
+def equivalence_passes(
+    report: dict[str, Any], relative_tolerance: float, min_cosine: float
+) -> bool:
+    """Does a comparison report meet both scale-invariant criteria?"""
+    return (
+        report["max_relative_l2"] <= relative_tolerance
+        and report["min_cosine"] >= min_cosine
+    )
 
 
 def check_left_padding_equivalence(
@@ -155,31 +197,47 @@ def check_left_padding_equivalence(
     tokenizer: Any,
     prompts: Sequence[str],
     layers: Sequence[int],
-    tolerance: float = 1e-2,
+    relative_tolerance: float = 0.02,
+    min_cosine: float = 0.999,
+    positive_control: bool = True,
 ) -> dict[str, Any]:
-    """Verify batched activations equal unbatched ones, and fail hard if not.
+    """Verify the batch is read at the true final prompt token; fail hard if not.
 
-    The single highest-value check in the repo. Attention masking makes the two
-    identical in principle and near-identical in half precision, so a deviation
-    beyond tolerance means the batch is being read at the wrong position --
-    almost always right padding, in which case every activation in the run is a
-    pad token's and the resulting AUROC of ~0.5 reads as a negative finding
-    rather than as a bug.
+    The single highest-value check in the repo. With right padding, position -1
+    is a pad token, every activation in the run is meaningless, nothing raises,
+    and the resulting AUROC of ~0.5 reads as a negative finding rather than a
+    bug (CLAUDE.md invariant 4).
+
+    Two criteria, both scale-invariant: per-row relative L2 error and per-row
+    cosine similarity. An absolute tolerance was tried first and rejected -- see
+    DECISIONS.md 014. In bfloat16 with NF4 weights, batched and unbatched
+    forwards use different GEMM shapes and therefore different reduction orders,
+    so they disagree by one or two units in the last place. On a 7B that is an
+    absolute deviation of 0.125 to 3.0 in the late layers, from rounding alone,
+    which an absolute 1e-2 tolerance rejects as though it were a padding fault.
+
+    When ``positive_control`` is set, the same comparison is repeated with the
+    tokenizer deliberately right-padded, and it must **fail**. That turns the
+    check from "these thresholds passed" into "these thresholds still reject the
+    fault they exist for, on this model and this hardware" -- which is what makes
+    a scale-relative tolerance defensible rather than merely convenient.
 
     Args:
         model: A loaded causal LM.
         tokenizer: Its left-padded tokenizer.
-        prompts: A small batch of ragged-length prompts (4 is the configured
-            default in TASKS.md).
+        prompts: A small batch of ragged-length prompts.
         layers: Absolute layer indices to check.
-        tolerance: Maximum permitted absolute deviation.
+        relative_tolerance: Max permitted per-row relative L2 error.
+        min_cosine: Min permitted per-row cosine similarity.
+        positive_control: Also verify that right padding is rejected.
 
     Returns:
-        A dict with the max deviation, the per-layer deviations and the
-        tolerance, for the run's metadata artifact.
+        Both reports and the thresholds, for the run's metadata artifact.
 
     Raises:
-        EquivalenceCheckError: if any layer exceeds the tolerance.
+        EquivalenceCheckError: if left padding fails the criteria, or if the
+            positive control passes them, meaning the criteria cannot
+            discriminate a real fault.
     """
     assert_left_padding(tokenizer)
     lengths = {len(tokenizer(p)["input_ids"]) for p in prompts}
@@ -189,30 +247,67 @@ def check_left_padding_equivalence(
             "equal lengths there is no padding and the check proves nothing"
         )
 
-    max_deviation, per_layer = batched_unbatched_deviation(
-        model, tokenizer, prompts, layers
-    )
+    left = compare_batched_unbatched(model, tokenizer, prompts, layers)
     LOGGER.info(
-        "left-padding equivalence: max deviation %.3e across layers %s (tolerance %.1e)",
-        max_deviation,
-        list(layers),
-        tolerance,
+        "left-padding equivalence: relative L2 %.3e, cosine %.9f, absolute %.3e "
+        "(limits: relative <= %.1e, cosine >= %.6f)",
+        left["max_relative_l2"],
+        left["min_cosine"],
+        left["max_abs"],
+        relative_tolerance,
+        min_cosine,
     )
-    if max_deviation > tolerance:
+    if not equivalence_passes(left, relative_tolerance, min_cosine):
         raise EquivalenceCheckError(
-            f"batched and unbatched activations differ by {max_deviation:.3e}, "
-            f"above tolerance {tolerance:.1e}. Per-layer: "
-            f"{ {k: round(v, 6) for k, v in per_layer.items()} }. "
+            "batched and unbatched activations disagree: relative L2 "
+            f"{left['max_relative_l2']:.3e} (limit {relative_tolerance:.1e}), "
+            f"cosine {left['min_cosine']:.6f} (limit {min_cosine:.6f}). "
+            f"Per-layer: {left['per_layer']}. "
             "This almost always means the batch is right-padded, so position -1 "
             "is a pad token and every extracted activation is meaningless "
             "(CLAUDE.md invariant 4)."
         )
+
+    control: Optional[dict[str, Any]] = None
+    if positive_control:
+        original = tokenizer.padding_side
+        try:
+            tokenizer.padding_side = "right"
+            control = compare_batched_unbatched(model, tokenizer, prompts, layers)
+        finally:
+            tokenizer.padding_side = original
+        assert_left_padding(tokenizer)
+
+        LOGGER.info(
+            "positive control (deliberate right padding): relative L2 %.3e, "
+            "cosine %.6f -- this must be rejected",
+            control["max_relative_l2"],
+            control["min_cosine"],
+        )
+        if equivalence_passes(control, relative_tolerance, min_cosine):
+            raise EquivalenceCheckError(
+                "the positive control PASSED: with the tokenizer deliberately "
+                "right-padded, the criteria still accept it (relative L2 "
+                f"{control['max_relative_l2']:.3e}, cosine "
+                f"{control['min_cosine']:.6f}). The thresholds cannot "
+                "discriminate a real padding fault, so passing them means "
+                "nothing. Tighten them rather than proceeding."
+            )
+
     return {
-        "max_deviation": max_deviation,
-        "per_layer_deviation": {str(k): v for k, v in per_layer.items()},
-        "tolerance": tolerance,
+        "left_padding": left,
+        "right_padding_control": control,
+        "relative_tolerance": relative_tolerance,
+        "min_cosine": min_cosine,
+        "positive_control_ran": positive_control,
+        "positive_control_rejected": None if control is None else True,
         "n_prompts": len(prompts),
         "distinct_prompt_lengths": len(lengths),
+        # Kept so older artifacts stay comparable, but the absolute number is no
+        # longer a pass criterion (DECISIONS.md 014).
+        "max_deviation": left["max_abs"],
+        "max_relative_l2": left["max_relative_l2"],
+        "min_cosine_observed": left["min_cosine"],
     }
 
 

@@ -373,15 +373,28 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
             + ". Re-run the whole pipeline before quoting anything here."
         )
         add("")
+    control = equivalence.get("right_padding_control")
     add(
-        f"Left-padding equivalence check: max deviation "
-        f"**{equivalence['max_deviation']:.3e}** across "
-        f"{equivalence['n_prompts']} ragged prompts, tolerance "
-        f"{equivalence['tolerance']:.0e}. Batched and unbatched last-token "
-        "activations agree, so position -1 is the true final prompt token and "
-        "not a pad token (CLAUDE.md invariant 4)."
+        f"Left-padding equivalence check: relative L2 error "
+        f"**{equivalence['max_relative_l2']:.3e}** (limit "
+        f"{equivalence['relative_tolerance']:.0e}), cosine similarity "
+        f"**{equivalence['min_cosine_observed']:.6f}** (limit "
+        f"{equivalence['min_cosine']:.4f}), across {equivalence['n_prompts']} "
+        "prompts spanning the length distribution. Batched and unbatched "
+        "last-token activations agree, so position -1 is the true final prompt "
+        "token and not a pad token (CLAUDE.md invariant 4)."
     )
     add("")
+    if control is not None:
+        add(
+            "Positive control: repeating the same comparison with the tokenizer "
+            f"deliberately **right**-padded gives relative L2 "
+            f"{control['max_relative_l2']:.3e} and cosine "
+            f"{control['min_cosine']:.4f} — rejected, as it must be. The check "
+            "is therefore demonstrated to discriminate a real padding fault on "
+            "this model and this hardware, not merely to have passed."
+        )
+        add("")
 
     # 2. Dataset
     add("## 2. Dataset")
