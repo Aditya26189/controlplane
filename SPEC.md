@@ -231,7 +231,7 @@ The published result says probe generalisation **falters on mathematical reasoni
 
 | Test | Asserts |
 |---|---|
-| `test_normalization` | articles/punctuation/case handled; short-alias guard rejects `"US"` inside `"just us"`; whole-token match accepts it in `"the us"` |
+| `test_normalization` | articles/punctuation/case handled; short-alias guard rejects `"US"` inside `"Augustus"`; whole-token match accepts it in `"the us"` |
 | `test_split_integrity` | zero `question_id` overlap; zero normalised-question overlap; 60/20/20 within one example |
 | `test_padding_side` | loader raises if padding side is not left |
 | `test_left_padding_equivalence` | batched last-token activations match unbatched, tolerance `1e-2` |

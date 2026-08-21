@@ -144,3 +144,16 @@ Log a decision when a reviewer could reasonably challenge it. Not for variable n
 ---
 
 <!-- New entries below this line. Do not edit anything above it. -->
+
+## 010 — Short-alias guard is whole-token matching; SPEC.md §12's example corrected
+**Date:** 2026-08-21 · **Status:** accepted
+
+**Context:** `SPEC.md` §2 specifies that a normalised alias shorter than 3 characters must match as a whole token (`a in pred.split()`) rather than as a substring. `SPEC.md` §12 then gave `"US"` inside `"just us"` as the case the guard should *reject*. The two contradict each other: `"just us"` splits to `["just", "us"]`, so the whole-token rule accepts it, and the reference implementation in §2 returns `True`.
+
+**Decision:** §2 is authoritative — the guard is whole-token matching. §12's example was wrong and has been corrected to `"US"` inside `"Augustus"`, which is a genuine substring match that the guard does reject. The rule itself is unchanged.
+
+**Alternatives:**
+- *Make short aliases require full-string equality* — would have made §12's example pass, but it silently discards correct answers: a model that replies `"the US"` to a country question is right, and this rule would label it wrong. It also contradicts §2's stated semantics, which the spec instructs implementers to preserve exactly.
+- *Leave the spec inconsistent and skip the test* — the guard is on CLAUDE.md's pitfall list precisely because its failure is silent, so it needs a test that can actually fail.
+
+**Consequences:** `"just us"` is labelled correct for gold answer `"US"`. That is the intended behaviour of token matching and it is a rare surface form; the alternative loses many more true positives than it gains. A reviewer can check the boundary directly in `tests/test_normalization.py`, which now covers both the substring rejection and the token acceptance.
