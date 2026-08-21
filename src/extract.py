@@ -460,14 +460,22 @@ def base_rate_summary(labelled: pd.DataFrame) -> dict[str, float]:
     """
     n = len(labelled)
     correct = float(labelled["correct"].mean()) if n else 0.0
-    strict = float(labelled["exact_match"].mean()) if n else 0.0
+
+    # exact_match is NaN throughout when labeling.record_strict_em is off. The
+    # strict figures are then None rather than 0.0: reporting "not computed" as
+    # "nothing matched" would invent a 100-point labelling gap.
+    strict_column = labelled["exact_match"]
+    strict_recorded = bool(n) and not strict_column.isna().all()
+    strict = float(strict_column.mean()) if strict_recorded else None
+
     return {
         "n": n,
         "accuracy_lenient": correct,
         "accuracy_strict_em": strict,
+        "strict_em_recorded": strict_recorded,
         "base_rate_incorrect": 1.0 - correct,
-        "base_rate_incorrect_strict_em": 1.0 - strict,
-        "lenient_minus_strict_accuracy": correct - strict,
+        "base_rate_incorrect_strict_em": None if strict is None else 1.0 - strict,
+        "lenient_minus_strict_accuracy": None if strict is None else correct - strict,
         "abstention_rate": float(labelled["abstained"].mean()) if n else 0.0,
     }
 
@@ -494,11 +502,12 @@ def assert_base_rate(labelled: pd.DataFrame, config: Config) -> dict[str, float]
     summary = base_rate_summary(labelled)
     accuracy = summary["accuracy_lenient"]
     low, high = config.labeling.base_rate_min, config.labeling.base_rate_max
+    strict = summary["accuracy_strict_em"]
     LOGGER.info(
-        "labels: accuracy %.3f (lenient) / %.3f (strict EM); base rate incorrect %.3f; "
-        "abstention %.3f",
+        "labels: accuracy %.3f (lenient) / %s (strict EM); base rate incorrect "
+        "%.3f; abstention %.3f",
         accuracy,
-        summary["accuracy_strict_em"],
+        "not recorded" if strict is None else f"{strict:.3f}",
         summary["base_rate_incorrect"],
         summary["abstention_rate"],
     )

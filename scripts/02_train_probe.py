@@ -159,8 +159,12 @@ def main() -> int:
             "abstention": abstention,
             "roc": roc_points(y_test, test_scores, probe.threshold),
             "strict_em": {
-                "test_accuracy_strict": float(
-                    labels_frame.loc[test_mask, "exact_match"].mean()
+                # None, not NaN: the column is all-NaN when
+                # labeling.record_strict_em is off, and NaN is not valid JSON.
+                "test_accuracy_strict": (
+                    None
+                    if labels_frame.loc[test_mask, "exact_match"].isna().all()
+                    else float(labels_frame.loc[test_mask, "exact_match"].mean())
                 ),
                 "test_accuracy_lenient": float(
                     labels_frame.loc[test_mask, "correct"].mean()
