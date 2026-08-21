@@ -661,6 +661,34 @@ def provenance(config: Optional[Config] = None) -> dict[str, Any]:
     return block
 
 
+def _json_default(value: Any) -> Any:
+    """Serialise numpy scalars as numbers, and refuse anything else.
+
+    ``default=str`` would be simpler and would silently turn a stray
+    ``np.float32`` into the *string* ``"0.89"`` -- json only handles numpy types
+    that subclass Python builtins, and ``float32``, ``int64`` and ``bool_`` do
+    not. A number that becomes a string still looks like a number in the file,
+    then breaks or renders wrong three stages later. Everything else raises, so
+    an unserialisable value is a crash at the point it was produced.
+    """
+    import numpy as np
+
+    if isinstance(value, np.bool_):
+        return bool(value)
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        return float(value)
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, Path):
+        return str(value)
+    raise TypeError(
+        f"{type(value).__name__} is not JSON-serialisable. Cast it explicitly at "
+        "the point it is produced rather than letting it be stringified."
+    )
+
+
 def write_json_artifact(
     path: str | os.PathLike, payload: dict[str, Any], config: Optional[Config] = None
 ) -> Path:
