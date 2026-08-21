@@ -36,6 +36,7 @@ from src.extract import (  # noqa: E402
     check_left_padding_equivalence,
     run_extraction,
     save_activations,
+    select_equivalence_prompts,
 )
 from src.model import build_prompts, describe_model, load_model_and_tokenizer, resolve_layers  # noqa: E402
 
@@ -113,11 +114,14 @@ def main() -> int:
 
     # TASKS.md Stage 3, item 1: the highest-value check in the repo. Runs before
     # the expensive loop so a padding fault costs seconds rather than an hour.
-    sample = frame["question"].head(EQUIVALENCE_BATCH).tolist()
+    # Spanning the length distribution rather than taking the first few: the
+    # check is only as sensitive as the amount of padding in its batch.
+    all_prompts = build_prompts(tokenizer, frame["question"].tolist(), config)
+    sample = select_equivalence_prompts(tokenizer, all_prompts, EQUIVALENCE_BATCH)
     equivalence = check_left_padding_equivalence(
         model,
         tokenizer,
-        build_prompts(tokenizer, sample, config),
+        sample,
         layers,
         tolerance=EQUIVALENCE_TOLERANCE,
     )

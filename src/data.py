@@ -537,7 +537,10 @@ def label_frame(
             for text, aliases in zip(out["completion"], out["aliases"])
         ]
     else:
-        out["exact_match"] = False
+        # NaN, not False. "We did not compute this" and "no answer matched
+        # strictly" are different facts, and conflating them makes the strict-vs-
+        # lenient audit report a 100-point gap that never happened.
+        out["exact_match"] = np.nan
     out["label"] = (~out["correct"]).astype(int)
     out["abstained"] = [is_abstention(text, patterns) for text in out["completion"]]
     return out
