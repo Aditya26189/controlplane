@@ -59,6 +59,10 @@ def main() -> int:
         judge_accuracy=config.economics.judge_accuracy,
         recall_ci=(boot["recall"]["ci_low"], boot["recall"]["ci_high"]),
         flag_rate_ci=(boot["flag_rate"]["ci_low"], boot["flag_rate"]["ci_high"]),
+        measured_base_rate=test["base_rate"],
+        precision=test["precision"],
+        roc=probe_test.get("roc"),
+        projection_base_rates=config.economics.projection_base_rates,
     )
     economics["lift_ci"] = {
         "ci_low": boot["lift"]["ci_low"],
@@ -93,6 +97,26 @@ def main() -> int:
         economics["invariance"]["judge_accuracies_tested"],
         economics["invariance"]["spread"],
     )
+    ceiling = economics.get("ceiling")
+    if ceiling:
+        LOGGER.info(
+            "ceiling: base rate %.4f caps lift at %.2fx; measured %.2fx is %.1f%% "
+            "of that maximum",
+            ceiling["measured_base_rate"],
+            ceiling["max_attainable_lift"],
+            economics["lift"],
+            100 * ceiling["fraction_of_ceiling_achieved"],
+        )
+    for row in economics.get("projection", {}).get("rows", []):
+        LOGGER.info(
+            "  PROJECTION at base rate %.2f: f=%.4f R=%.4f -> lift %.2fx "
+            "(ceiling %.1fx)",
+            row["base_rate"],
+            row["flag_rate"],
+            row["recall"],
+            row["lift"],
+            row["ceiling"],
+        )
 
     write_json_artifact(
         config.results_path("economics.json"), {"economics": economics}, config

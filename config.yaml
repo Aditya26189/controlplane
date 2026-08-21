@@ -69,6 +69,11 @@ economics:
   judge_accuracy: 1.0          # cancels out of lift; kept explicit
   n_responses: 1000000         # for the worked table
   reference_error_rate: 0.03   # illustrative only; lift is independent of it
+  # Measured lift is bounded above by 1/base_rate (DECISIONS.md 015), so the
+  # number obtained on a hard benchmark understates what the same probe would
+  # deliver on rarer errors. These base rates are re-evaluated against the
+  # measured ROC and reported as an explicitly labelled PROJECTION.
+  projection_base_rates: [0.10, 0.05, 0.03, 0.01]
 
 evaluation:
   bootstrap_samples: 1000
