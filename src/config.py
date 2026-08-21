@@ -572,23 +572,37 @@ def _git(*args: str) -> Optional[str]:
 
 
 def library_versions() -> dict[str, Optional[str]]:
-    """Collect versions of libraries whose behaviour could move a measured number."""
+    """Collect versions of libraries whose behaviour could move a measured number.
+
+    Reads distribution metadata rather than importing each package. Importing
+    bitsandbytes alone costs several seconds, and provenance() runs on every
+    artifact write -- so importing here would add minutes to a pipeline run for
+    a string that is already on disk.
+    """
+    from importlib.metadata import PackageNotFoundError, version
+
     versions: dict[str, Optional[str]] = {}
-    for module_name, key in [
-        ("torch", "torch"),
-        ("transformers", "transformers"),
-        ("datasets", "datasets"),
-        ("sklearn", "scikit-learn"),
-        ("numpy", "numpy"),
-        ("pandas", "pandas"),
-        ("scipy", "scipy"),
-        ("bitsandbytes", "bitsandbytes"),
+    for distribution in [
+        "torch",
+        "transformers",
+        "datasets",
+        "scikit-learn",
+        "numpy",
+        "pandas",
+        "scipy",
+        "bitsandbytes",
     ]:
         try:
-            module = __import__(module_name)
-            versions[key] = getattr(module, "__version__", "unknown")
-        except Exception:  # noqa: BLE001 - absence is information, not a failure
-            versions[key] = None
+            versions[distribution] = version(distribution)
+        except PackageNotFoundError:
+            versions[distribution] = None
+
+    # If torch is already imported, prefer its own string: it carries the build
+    # tag ("+cpu", "+cu121") that distribution metadata drops, and that tag is
+    # part of what makes a latency number reproducible.
+    torch_module = sys.modules.get("torch")
+    if torch_module is not None:
+        versions["torch"] = getattr(torch_module, "__version__", versions["torch"])
     return versions
 
 

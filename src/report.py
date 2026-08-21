@@ -767,3 +767,142 @@ def render_readme(template: str, artifacts: dict[str, Any], config: Config) -> s
         LOGGER.warning("readme values with no placeholder: %s", unused)
 
     return PLACEHOLDER.sub(lambda m: values[m.group(1)], body)
+
+
+# --------------------------------------------------------------------------- #
+# Display helpers for notebooks
+#
+# These exist so notebooks/cascade_economics.ipynb can hold no logic
+# (CLAUDE.md, Coding standards). The notebook calls one function per cell and
+# displays what comes back; anything a reviewer might want to check therefore
+# lives in this module, under test, rather than in a cell.
+# --------------------------------------------------------------------------- #
+
+
+def metadata_frame(artifacts: dict[str, Any]) -> "Any":
+    """Run metadata as a two-column DataFrame, for the notebook's first cell."""
+    import pandas as pd
+
+    provenance = artifacts["probe_test"]["provenance"]
+    model_info = artifacts["extract_meta"]["model"]
+    equivalence = artifacts["extract_meta"]["equivalence_check"]
+    data = artifacts["data_stats"]["data"]
+    rows = [
+        ("Model", model_info["name"]),
+        ("Quantisation", f"{model_info['quantization']} ({model_info['dtype']})"),
+        ("Device", provenance["device"]["device_name"]),
+        ("Dataset", f"{data['dataset']} / {data['dataset_config']} / {data['split']}"),
+        ("Examples", f"{data['n_final']:,}"),
+        (
+            "Split sizes",
+            f"train {data['split_sizes']['train']:,} · "
+            f"val {data['split_sizes']['val']:,} · "
+            f"test {data['split_sizes']['test']:,}",
+        ),
+        ("Seed", provenance["seed"]),
+        ("Config hash", provenance["config_hash"]),
+        ("Git commit", str(provenance["git_commit"])[:12]),
+        ("Tree dirty at run time", provenance["dirty"]),
+        ("Timestamp (UTC)", provenance["timestamp_utc"]),
+        (
+            "Left-padding equivalence",
+            f"max deviation {equivalence['max_deviation']:.2e} "
+            f"(tolerance {equivalence['tolerance']:.0e})",
+        ),
+    ]
+    return pd.DataFrame(rows, columns=["Field", "Value"]).set_index("Field")
+
+
+def sweep_frame(artifacts: dict[str, Any]) -> "Any":
+    """Layer sweep as a layer x C DataFrame of validation AUROC."""
+    import pandas as pd
+
+    frame = pd.DataFrame(artifacts["probe_sweep"]["sweep"])
+    return frame.pivot(index="layer", columns="C", values="val_auroc").round(4)
+
+
+def test_metrics_frame(artifacts: dict[str, Any]) -> "Any":
+    """Test metrics with bootstrap intervals, precision and recall separate."""
+    import pandas as pd
+
+    test = artifacts["probe_test"]["test"]
+    boot = artifacts["probe_test"]["bootstrap"]
+    rows = [
+        ("AUROC", fmt(test["auroc"], 4), fmt_ci(boot["auroc"], 4)),
+        ("Measured flag rate f", fmt(test["flag_rate"], 4), fmt_ci(boot["flag_rate"], 4)),
+        ("Recall R", fmt(test["recall"], 4), fmt_ci(boot["recall"], 4)),
+        ("Precision", fmt(test["precision"], 4), fmt_ci(boot["precision"], 4)),
+        ("Base error rate", fmt(test["base_rate"], 4), "—"),
+        ("Test examples", f"{test['n']:,}", "—"),
+    ]
+    return pd.DataFrame(rows, columns=["Metric", "Value", "95% CI"]).set_index("Metric")
+
+
+def policy_frame(artifacts: dict[str, Any]) -> "Any":
+    """The three-policy comparison as a DataFrame.
+
+    This is the visual centrepiece of the notebook and of the video, so the
+    columns are named as a reader would say them aloud rather than as the JSON
+    keys them.
+    """
+    import pandas as pd
+
+    economics = artifacts["economics"]["economics"]
+    rows = [
+        {
+            "Policy": row["label"],
+            "Judge calls": fmt_count(row["judge_calls"]),
+            "Coverage": pct_number(row["coverage"]) + "%",
+            "Errors caught": fmt_count(row["errors_caught"]),
+            "Relative cost": f"{row['relative_cost']:.0f}x",
+        }
+        for row in economics["policies"]
+    ]
+    return pd.DataFrame(rows).set_index("Policy")
+
+
+def headline_markdown(artifacts: dict[str, Any]) -> str:
+    """The headline lift, its interval, and the independence sentence."""
+    economics = artifacts["economics"]["economics"]
+    boot = artifacts["probe_test"]["bootstrap"]
+    test = artifacts["probe_test"]["test"]
+    return "\n".join(
+        [
+            f"# lift = R / f = {fmt(economics['lift'], 2)}x",
+            "",
+            f"### 95% CI {fmt_ci(boot['lift'], 2)}",
+            "",
+            f"Measured on {test['n']:,} held-out questions: "
+            f"recall **R = {fmt(test['recall'], 3)}**, "
+            f"measured flag rate **f = {fmt(test['flag_rate'], 3)}**.",
+            "",
+            "At the same judge budget as random sampling, the probe surfaces "
+            f"**{fmt(economics['lift'], 2)}x** as many wrong answers.",
+            "",
+            "`R/f` is independent of the base error rate and of the judge's own "
+            "accuracy — both appear in every policy and cancel from the ratio.",
+        ]
+    )
+
+
+def latency_frame(artifacts: dict[str, Any]) -> "Any":
+    """Probe cost against generation cost, with the device attached."""
+    import pandas as pd
+
+    latency = artifacts["latency"]["latency"]
+    comparison = latency["comparison"]
+    rows = [
+        ("Probe score (median)", f"{comparison['probe_median_us']:.1f} µs"),
+        ("Probe score (p95)", f"{comparison['probe_p95_us']:.1f} µs"),
+        ("Generation (median/response)", f"{comparison['generation_median_ms']:.1f} ms"),
+        (
+            "Prefill (median/response)",
+            "n/a"
+            if comparison["prefill_median_ms"] is None
+            else f"{comparison['prefill_median_ms']:.1f} ms",
+        ),
+        ("Probe / generation", f"{comparison['probe_over_generation']:.2e}"),
+        ("Additional forward passes", "0 — the activation is a prefill by-product"),
+        ("Device", latency["device"]["device_name"]),
+    ]
+    return pd.DataFrame(rows, columns=["Measurement", "Value"]).set_index("Measurement")
