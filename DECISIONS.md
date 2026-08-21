@@ -170,3 +170,33 @@ Log a decision when a reviewer could reasonably challenge it. Not for variable n
 **Alternatives:** *Keep the duplicates and split at example level* — would have put the same question, byte-for-byte, in both train and test for roughly 80% of questions. This is the exact leak CLAUDE.md invariant 3 exists to prevent, and it would have inflated test AUROC by an amount we could not bound.
 
 **Consequences:** The effective pool is 9,961 unique questions, which still comfortably exceeds the 3,000 sampled. The number is reported in `results/RESULTS.md` rather than buried, because "you discarded 44% of your data" is a fair question with a good answer.
+
+---
+
+## 012 — Threshold by rank, and a fixed tie-break in layer selection
+**Date:** 2026-08-21 · **Status:** accepted · **Refines:** 006
+
+**Context:** Two selection steps admit several defensible rules, and both change which numbers get reported.
+
+**Decision:**
+1. *Threshold.* On validation, take the k-th largest probe score for `k = round(target_flag_rate · n_val)`. This hits the target rate on validation exactly rather than approximately.
+2. *Tie-break.* When two (layer, C) pairs tie on validation AUROC, prefer the shallower layer, then the smaller C.
+
+**Alternatives:**
+- *Threshold by score quantile* — equivalent in the limit, but with ties in the score distribution the realised rate can drift from the target, and the drift is invisible.
+- *Tie-break by dict or iteration order* — whatever `max()` happens to return. Two runs of the same sweep could then disagree about the winner, which would break the reproducibility claim for no benefit.
+
+**Consequences:** The realised flag rate on **test** still differs from the target — that is expected, and CLAUDE.md invariant 6 requires every downstream calculation to use the measured test rate. The tie-break favours the cheaper and more strongly regularised option, which is the conservative direction; it is recorded because a reviewer comparing two runs should know the rule rather than infer it.
+
+---
+
+## 013 — Bootstrap recall and flag rate jointly, not independently
+**Date:** 2026-08-21 · **Status:** accepted · **Refines:** 009
+
+**Context:** The headline is `lift = R/f`, and both inputs come from the same test set. The confidence interval has to reflect that.
+
+**Decision:** Each of the 1000 bootstrap resamples draws test rows with replacement once, then recomputes AUROC, `f`, `R`, precision and `lift` on that single resample. The interval on lift is the percentile interval of the resampled lifts.
+
+**Alternatives:** *Bootstrap `R` and `f` separately and combine their intervals* — simpler, and wrong. `R` and `f` are positively correlated through the same threshold on the same rows; treating them as independent misstates the interval on their ratio, and the ratio is the number being defended.
+
+**Consequences:** Resamples where a metric is undefined (no positives, nothing flagged, a single label class) are dropped for that metric and the surviving count is recorded beside the interval, rather than being coerced to zero — which would drag the interval toward a value the run never produced. At small `f` and small test `n`, a visible fraction of resamples flag nothing, so that count is worth reading before quoting the interval.
