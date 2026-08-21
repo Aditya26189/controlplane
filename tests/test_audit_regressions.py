@@ -281,3 +281,22 @@ def test_readme_base_rate_is_the_test_sets(tmp_path):
     assert values["base_rate"] == "0.330", "must be the test-set rate the row names"
     assert values["strict_em_base_rate"] == "0.450"  # 1 - test_accuracy_strict
     assert values["n_test"] == "600"
+
+
+# --- a failed base-rate gate must not discard the GPU hour ----------------- #
+
+
+def test_extract_persists_artifacts_before_the_base_rate_gate():
+    """The gate judges the labels; the activations cost 40-70 minutes.
+
+    assert_base_rate used to raise before save_activations, so a degenerate
+    label distribution destroyed the whole extraction and you had to re-run the
+    GPU to investigate why the labels looked wrong.
+    """
+    source = (REPO_ROOT / "scripts" / "01_extract.py").read_text(encoding="utf-8")
+    save_at = source.index("save_activations(acts")
+    meta_at = source.index('config.results_path("extract_meta.json")')
+    gate_at = source.rindex("assert_base_rate(labelled, config)")
+
+    assert save_at < gate_at, "activations must be saved before the gate can raise"
+    assert meta_at < gate_at, "extract_meta must be written before the gate can raise"
