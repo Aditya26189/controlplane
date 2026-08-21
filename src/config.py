@@ -645,3 +645,48 @@ def provenance(config: Optional[Config] = None) -> dict[str, Any]:
         block["seed"] = config.seed
         block["config"] = config.to_dict()
     return block
+
+
+def write_json_artifact(
+    path: str | os.PathLike, payload: dict[str, Any], config: Optional[Config] = None
+) -> Path:
+    """Write a results artifact with its provenance block attached.
+
+    Every stage writes through here so that no artifact can exist without the
+    config hash, seed, git commit and library versions that produced it
+    (CLAUDE.md invariant 7 -- a number in the README must be traceable to a
+    script, a seed and a config hash).
+
+    Args:
+        path: Destination JSON path.
+        payload: The stage's own results.
+        config: Config to stamp into the provenance block.
+
+    Returns:
+        The path written.
+    """
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    document = {"provenance": provenance(config), **payload}
+    with out.open("w", encoding="utf-8") as fh:
+        json.dump(document, fh, indent=2, sort_keys=False, default=str)
+        fh.write("\n")
+    logging.getLogger(__name__).info("wrote %s", out)
+    return out
+
+
+def read_json_artifact(path: str | os.PathLike) -> dict[str, Any]:
+    """Read an artifact written by :func:`write_json_artifact`.
+
+    Raises:
+        FileNotFoundError: with the stage that produces the file named, since
+            the usual cause is running stage N before stage N-1.
+    """
+    p = Path(path)
+    if not p.is_file():
+        raise FileNotFoundError(
+            f"{p} not found. Stages read each other's output from disk; run the "
+            "earlier stage first (see scripts/run_all.py for the order)."
+        )
+    with p.open("r", encoding="utf-8") as fh:
+        return json.load(fh)
