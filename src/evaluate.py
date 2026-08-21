@@ -12,6 +12,7 @@ question a reviewer asks (SPEC.md §6).
 """
 
 import logging
+from pathlib import Path
 from typing import Any, Optional, Sequence
 
 import numpy as np
@@ -290,6 +291,52 @@ def abstention_analysis(
             config.abstention.min_rate_to_report,
         )
     return result
+
+
+# --------------------------------------------------------------------------- #
+# Test-scoring audit trail
+# --------------------------------------------------------------------------- #
+
+
+def append_test_scoring(
+    path: "Path", record: dict[str, Any]
+) -> dict[str, Any]:
+    """Append one test-set scoring to an append-only log.
+
+    CLAUDE.md invariant 2 says the test set is opened once. That was a claim
+    nobody could check: stage 02 can be re-run at will, and each run silently
+    overwrites ``probe_test.json`` leaving no trace of the previous scoring.
+    After DECISIONS.md 016 the claim is weaker and must be *auditable* instead
+    — every scoring is recorded here, and ``RESULTS.md`` discloses the count.
+
+    Entries are only ever appended. A scoring that produced a disappointing
+    number cannot be removed by re-running until a better one appears, because
+    the earlier entry stays in the file and in the report.
+
+    Args:
+        path: Destination JSON path.
+        record: What this scoring produced and what selected it.
+
+    Returns:
+        The full log, including the running count.
+    """
+    import json
+
+    scorings: list[dict[str, Any]] = []
+    if path.is_file():
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                scorings = json.load(fh).get("scorings", [])
+        except (OSError, ValueError):  # a corrupt log must not erase history
+            LOGGER.warning("could not read %s; refusing to overwrite it", path)
+            raise
+    scorings.append(record)
+    LOGGER.info(
+        "test set has now been scored %d time(s); history recorded in %s",
+        len(scorings),
+        path,
+    )
+    return {"n_scorings": len(scorings), "scorings": scorings}
 
 
 # --------------------------------------------------------------------------- #
