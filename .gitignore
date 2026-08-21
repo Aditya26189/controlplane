@@ -19,6 +19,7 @@ results/activations.npz
 results/*.parquet
 results/probe.joblib
 results/*.npz
+results/config.smoke.yaml
 
 # Caches for models and datasets
 .cache/
