@@ -29,7 +29,10 @@ ARTIFACT_FILES = {
     "latency": "latency.json",
 }
 
-OPTIONAL_ARTIFACT_FILES = {"negative_control": "negative_control.json"}
+OPTIONAL_ARTIFACT_FILES = {
+    "negative_control": "negative_control.json",
+    "test_scoring_log": "test_scoring_log.json",
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -474,14 +477,45 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
         "(CLAUDE.md invariant 2, DECISIONS.md 006)."
     )
     add("")
+    if sweep.get("winner_at_grid_boundary"):
+        add(
+            f"> **The selected `C` sits at the edge of the grid** "
+            f"{sorted(sweep.get('C_grid', []))}. A boundary is not an optimum — "
+            "the search stopped where we stopped looking. The grid should be "
+            "widened and validation re-run before this number is treated as "
+            "final (SPEC.md §5)."
+        )
+        add("")
     add("![Layer sweep](layer_sweep.png)")
     add("")
 
     # 4. Test results
     add("## 4. Test results")
     add("")
-    add(f"The test set was scored exactly once, at n = {test['n']:,}.")
-    add("")
+    log = artifacts.get("test_scoring_log")
+    n_scorings = log.get("n_scorings", 1) if log else 1
+    if n_scorings <= 1:
+        add(f"The test set was scored exactly once, at n = {test['n']:,}.")
+        add("")
+    else:
+        add(
+            f"**The test set has been scored {n_scorings} times**, at "
+            f"n = {test['n']:,}. Disclosed rather than claimed: every scoring is "
+            "appended to `results/test_scoring_log.json` and reproduced below. "
+            "Each selection that produced one was made on validation alone "
+            "(DECISIONS.md 016)."
+        )
+        add("")
+        add("| # | Layer | C | AUROC | `f` | `R` | Lift | Config hash |")
+        add("|---|---|---|---|---|---|---|---|")
+        for i, row in enumerate(log.get("scorings", []), start=1):
+            add(
+                f"| {i} | {row.get('selected_layer')} | {row.get('selected_C'):g} "
+                f"| {fmt(row.get('auroc'), 4)} | {fmt(row.get('flag_rate'), 4)} "
+                f"| {fmt(row.get('recall'), 4)} | {fmt(row.get('lift'), 2)}x "
+                f"| `{row.get('config_hash')}` |"
+            )
+        add("")
     add("| Metric | Value | 95% CI |")
     add("|---|---|---|")
     add(f"| AUROC | {fmt(test['auroc'], 4)} | {fmt_ci(boot['auroc'], 4)} |")

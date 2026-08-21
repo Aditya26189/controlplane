@@ -23,9 +23,16 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.config import load_config, set_seeds, setup_logging, write_json_artifact  # noqa: E402
+from src.config import (  # noqa: E402
+    load_config,
+    provenance,
+    set_seeds,
+    setup_logging,
+    write_json_artifact,
+)
 from src.evaluate import (  # noqa: E402
     abstention_analysis,
+    append_test_scoring,
     auroc_floor_status,
     bootstrap_metrics,
     evaluate_at_threshold,
@@ -84,6 +91,21 @@ def main() -> int:
     for line in table.round(4).to_string().splitlines():
         LOGGER.info("  %s", line)
 
+    # SPEC.md §5: a winner at the edge of the grid means the search stopped at
+    # the boundary rather than at an optimum. Reported loudly, on validation
+    # evidence only, so the grid can be widened before anything is published.
+    grid = sorted(config.probe.C_grid)
+    at_boundary = best["C"] in (grid[0], grid[-1]) and len(grid) > 1
+    if at_boundary:
+        LOGGER.warning(
+            "selected C=%g is at the %s edge of the grid %s. The search found a "
+            "boundary, not an optimum -- widen probe.C_grid and re-select on "
+            "validation (SPEC.md §5, DECISIONS.md 016).",
+            best["C"],
+            "lower" if best["C"] == grid[0] else "upper",
+            grid,
+        )
+
     write_json_artifact(
         config.results_path("probe_sweep.json"),
         {
@@ -92,6 +114,20 @@ def main() -> int:
             "layer_fractions": list(config.model.layer_fractions),
             "C_grid": list(config.probe.C_grid),
             "selected_on": "validation",
+            "winner_at_grid_boundary": bool(at_boundary),
+            "layers_selecting_smallest_C": sorted(
+                {
+                    row["layer"]
+                    for row in sweep["sweep"]
+                    if row["C"] == grid[0]
+                    and row["val_auroc"]
+                    == max(
+                        r["val_auroc"]
+                        for r in sweep["sweep"]
+                        if r["layer"] == row["layer"]
+                    )
+                }
+            ),
         },
         config,
     )
@@ -181,6 +217,35 @@ def main() -> int:
         },
         config,
     )
+
+    # Append-only record of every test scoring (DECISIONS.md 016).
+    scoring_log = append_test_scoring(
+        config.results_path("test_scoring_log.json"),
+        {
+            "timestamp_utc": provenance(config)["timestamp_utc"],
+            "config_hash": config.config_hash,
+            "git_commit": provenance(config)["git_commit"],
+            "selected_layer": probe.layer,
+            "selected_C": probe.c_value,
+            "C_grid": list(config.probe.C_grid),
+            "threshold": probe.threshold,
+            "auroc": point["auroc"],
+            "flag_rate": point["flag_rate"],
+            "recall": point["recall"],
+            "precision": point["precision"],
+            "lift": point["lift"],
+            "n_test": point["n"],
+        },
+    )
+    write_json_artifact(
+        config.results_path("test_scoring_log.json"), scoring_log, config
+    )
+    if scoring_log["n_scorings"] > 1:
+        LOGGER.warning(
+            "the test set has now been scored %d times. This is disclosed in "
+            "RESULTS.md; every scoring stays in the log (DECISIONS.md 016).",
+            scoring_log["n_scorings"],
+        )
 
     if floor["below_floor"]:
         LOGGER.warning(
