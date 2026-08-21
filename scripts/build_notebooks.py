@@ -298,6 +298,59 @@ for question in [
     ),
     markdown(
         """
+## Padding diagnostic — measure before committing to the full run
+
+Prints what the equivalence check actually sees on this model: relative L2 error and
+cosine similarity under left padding, then the same under deliberate right padding. The
+gap between the two columns is the check's discriminating power on *your* hardware.
+
+Takes about 20 seconds and needs no full run.
+"""
+    ),
+    code(
+        """
+import pandas as pd
+
+from src.extract import compare_batched_unbatched, select_equivalence_prompts
+from src.model import build_prompts, configure_tokenizer, resolve_layers
+from src.data import prepare_dataset
+
+frame, _ = prepare_dataset(config)
+layers = resolve_layers(model, config)
+prompts = select_equivalence_prompts(
+    tokenizer,
+    build_prompts(tokenizer, frame["question"].tolist(), config),
+    config.equivalence_check.batch,
+)
+print("prompt token lengths:", [len(tokenizer(p)["input_ids"]) for p in prompts])
+
+configure_tokenizer(tokenizer)
+left = compare_batched_unbatched(model, tokenizer, prompts, layers)
+tokenizer.padding_side = "right"
+right = compare_batched_unbatched(model, tokenizer, prompts, layers)
+configure_tokenizer(tokenizer)   # restore before anything else runs
+
+rows = []
+for layer in layers:
+    key = str(layer)
+    rows.append({
+        "layer": layer,
+        "LEFT rel L2": left["per_layer"][key]["max_relative_l2"],
+        "LEFT cosine": left["per_layer"][key]["min_cosine"],
+        "RIGHT rel L2": right["per_layer"][key]["max_relative_l2"],
+        "RIGHT cosine": right["per_layer"][key]["min_cosine"],
+        "activation norm": left["per_layer"][key]["reference_norm_median"],
+    })
+print()
+print(pd.DataFrame(rows).to_string(index=False))
+print()
+print(f"limits: relative L2 <= {config.equivalence_check.relative_tolerance}, "
+      f"cosine >= {config.equivalence_check.min_cosine}")
+print("LEFT must pass both. RIGHT must fail both, by a wide margin.")
+"""
+    ),
+    markdown(
+        """
 ## Stage 3 pre-flight — do not skip this
 
 Three checks before the GPU hour, per TASKS.md Stage 3:
@@ -325,8 +378,14 @@ torch.cuda.empty_cache()
         """
 **Read the output above before continuing.**
 
-- Max deviation should be around `1e-3` or smaller. If the check failed it raised, and
-  the padding is wrong — stop, do not work around it.
+- The equivalence check reports **relative L2 error** and **cosine similarity**, not an
+  absolute deviation — in bfloat16 the absolute number is dominated by rounding and means
+  nothing on its own (DECISIONS.md 014). Expect relative L2 well under `0.10` and cosine
+  above `0.999`.
+- It also runs a **positive control**: the same comparison with the tokenizer deliberately
+  right-padded, which must be *rejected*. You should see that line in the log. If the
+  control passes, the run stops — the limits would not be discriminating anything.
+- If the check failed it raised, and the padding is wrong — stop, do not work around it.
 - The completions should be short answers, not echoes of the prompt or empty strings.
 - Roughly half should be marked `OK`. `0/20` or `20/20` means the prompt or the matching
   rule is broken, not that the model is unusually bad or good.

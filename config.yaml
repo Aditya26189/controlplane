@@ -28,6 +28,22 @@ prompt:
   system: "You are a helpful assistant. Answer the question concisely."
   add_generation_prompt: true
 
+equivalence_check:
+  # CLAUDE.md invariant 4, verified numerically before every extraction.
+  # Criteria are SCALE-INVARIANT, not absolute. Residual-stream activations run
+  # to magnitudes in the hundreds, where one bfloat16 rounding step is ~1.0 --
+  # so an absolute tolerance rejects healthy runs on arithmetic noise alone.
+  batch: 4                     # prompts, chosen to span the length distribution
+  # Measured separation on a 4-layer fp32 model: left padding gives relative L2
+  # 1.8e-07 and cosine 1.000000000; right padding gives 1.36 and 0.036. In
+  # bfloat16 the left-padding side rises to ~1e-2 relative L2 from accumulated
+  # rounding, so the limits sit between the two regimes, and cosine carries most
+  # of the discrimination. positive_control is what makes a permissive-looking
+  # limit safe: if either limit ever accepts right padding, the run stops.
+  relative_tolerance: 0.10     # max per-row ||batched - unbatched|| / ||unbatched||
+  min_cosine: 0.999            # min per-row cosine(batched, unbatched)
+  positive_control: true       # prove right padding IS rejected, every run
+
 generation:
   max_new_tokens: 32           # TriviaQA answers are short spans
   do_sample: false             # greedy — labels must be deterministic
