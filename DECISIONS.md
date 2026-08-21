@@ -218,3 +218,32 @@ Every one of those values is an exact multiple of 0.125, and bfloat16 has an 8-b
 - *Cosine alone* — nearly sufficient (right padding drops cosine to 0.036 on the fixture model) but blind to a uniform rescaling. Relative L2 catches that, so both are required.
 
 **Consequences:** The limits look permissive next to `1e-2`, and on their own they would be. The positive control is what makes them defensible: measured separation on the fp32 fixture is relative L2 `1.8e-07` (left) against `1.36` (right), a factor of 7.7 million, and cosine `1.000000000` against `0.036`. Both limits sit far from either regime. Every `extract_meta.json` now records both sides, so a reviewer can check the margin rather than trust the threshold. If a future model or dtype narrows that margin, the control fails and the run stops rather than proceeding on a check that no longer discriminates.
+
+---
+
+## 015 — Report the lift ceiling beside the lift, and separate the two independence claims
+**Date:** 2026-08-21 · **Status:** accepted · **Refines:** 009
+
+**Context:** The first full run measured lift `2.30x [2.02, 2.65]` at test AUROC `0.8545`. Those look inconsistent — a probe that ranks that well should surface far more than 2.3x. It doesn't, and the reason is structural:
+
+```
+lift = R/f = precision / base_rate          (flag rate cancels)
+```
+
+Precision cannot exceed 1, so **lift is capped at `1 / base_rate`**. TriviaQA no-context has a measured base error rate of `0.3883`, giving a ceiling of `2.575x`. The measured `2.297x` is **89.2%** of everything attainable on that dataset. The probe was never the limiting factor.
+
+This exposed a real defect in how the result was being reported. `RESULTS.md` §6 said only that "`R/f` is independent of the base error rate", which is true of the rate *assumed in the policy table* and false of the rate *the measurement was taken at*. Stated alone it invites a reader to carry `2.30x` to a workload where the ceiling is `33x`, and it would not survive a technical reviewer.
+
+**Decision:** Report three things together, always:
+1. the measured lift with its bootstrap CI;
+2. the ceiling `1/base_rate` for the set it was measured on, and what fraction of it was achieved;
+3. the two independence claims stated separately, so they cannot be conflated — the *assumed* production error rate and judge accuracy cancel from the ratio; the *measured* base rate bounds it.
+
+Additionally, because a ROC is base-rate independent, the measured curve is re-read at lower base error rates and reported as an explicitly labelled **projection**, never as a result.
+
+**Alternatives:**
+- *Report the lift alone* — what we were doing. It understates the probe on this benchmark and overstates its transfer to any other, in the same breath.
+- *Re-run on an easier dataset to get a bigger number* — chasing a headline by choosing a benchmark. The AUROC is the transferable quantity; changing datasets to inflate the lift is the kind of selection this repo exists not to do.
+- *Report only the projection* — a projection is not a measurement, and leading with one would be worse than leading with a small honest number.
+
+**Consequences:** The headline gets more complicated to explain, and that is the correct trade: `2.30x, which is 89% of the 2.58x ceiling this benchmark allows` is a defensible sentence, where `2.30x` alone is not. The projection rows (`5.2x` to `7.7x` at base rates 0.10 down to 0.01) carry a caveat naming the untested assumption — that the probe ranks equally well on those workloads, which is exactly the cross-domain generalisation this repo has not measured. A reviewer may fairly say the projection is unverified; the answer is that it is labelled as such and the ROC it derives from is measured.
