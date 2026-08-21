@@ -157,3 +157,16 @@ Log a decision when a reviewer could reasonably challenge it. Not for variable n
 - *Leave the spec inconsistent and skip the test* — the guard is on CLAUDE.md's pitfall list precisely because its failure is silent, so it needs a test that can actually fail.
 
 **Consequences:** `"just us"` is labelled correct for gold answer `"US"`. That is the intended behaviour of token matching and it is a rare surface form; the alternative loses many more true positives than it gains. A reviewer can check the boundary directly in `tests/test_normalization.py`, which now covers both the substring rejection and the token acceptance.
+
+---
+
+## 011 — Deduplication removes 44% of TriviaQA rc.nocontext validation, as designed
+**Date:** 2026-08-21 · **Status:** accepted · **Refines:** 003
+
+**Context:** Running the 003 dedup rule on the real split dropped 7,983 of 17,944 rows — 44.5%. A drop that large needs explaining before anyone reads a number produced downstream of it.
+
+**Decision:** Keep the rule. The drop is a property of the dataset, not a bug. Measured: `rc.nocontext` validation has 17,944 rows over 9,960 unique `question_id`s — mean 1.80 rows per id, max 2. The `rc` configs carry one row per (question, evidence document) pair, and the `nocontext` variant strips the documents while keeping the rows, so ~80% of questions appear twice with identical text and identical id.
+
+**Alternatives:** *Keep the duplicates and split at example level* — would have put the same question, byte-for-byte, in both train and test for roughly 80% of questions. This is the exact leak CLAUDE.md invariant 3 exists to prevent, and it would have inflated test AUROC by an amount we could not bound.
+
+**Consequences:** The effective pool is 9,961 unique questions, which still comfortably exceeds the 3,000 sampled. The number is reported in `results/RESULTS.md` rather than buried, because "you discarded 44% of your data" is a fair question with a good answer.
