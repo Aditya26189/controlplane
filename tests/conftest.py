@@ -3,6 +3,9 @@
 Puts the repository root on ``sys.path`` so ``import src...`` works regardless
 of where pytest is invoked from, and provides the fixtures that more than one
 test file needs.
+
+The suite as a whole covers the table in SPEC.md §12; every fixture here is
+built offline so a clean checkout with no network and no model cache can run it.
 """
 
 import sys
