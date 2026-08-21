@@ -290,6 +290,24 @@ def layer_sweep_table(sweep: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def projection_table_markdown(economics: dict[str, Any]) -> str:
+    """Markdown for the base-rate projection, or an empty string if absent."""
+    projection = economics.get("projection")
+    if not projection or not projection.get("rows"):
+        return ""
+    lines = [
+        "| Base error rate | Budget `f` | Recall `R` | Lift | Ceiling (1/base rate) |",
+        "|---|---|---|---|---|",
+    ]
+    for row in projection["rows"]:
+        lines.append(
+            f"| {fmt(row['base_rate'], 3)} | {fmt(row['flag_rate'], 4)} "
+            f"| {fmt(row['recall'], 4)} | {fmt(row['lift'], 2)}x "
+            f"| {fmt(row['ceiling'], 1)}x |"
+        )
+    return "\n".join(lines)
+
+
 def policy_table_markdown(economics: dict[str, Any]) -> str:
     """Markdown rendering of the three-policy comparison."""
     lines = [
@@ -536,12 +554,52 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
     )
     add("")
     add(
-        "**`R/f` is independent of the base error rate and of the judge's own "
-        "accuracy.** Both appear in every policy's errors-caught figure and "
-        "cancel from the ratio, so the multiplier does not rest on an assumption "
-        "about how often the model is wrong or about how good the judge is."
+        "**The base error rate assumed in the policy table, and the judge's "
+        "accuracy, both cancel from the ratio.** They appear in every policy's "
+        "errors-caught figure, so the multiplier does not rest on an assumption "
+        "about how often the model is wrong in production or about how good the "
+        "judge is."
     )
     add("")
+    ceiling = economics.get("ceiling")
+    if ceiling:
+        add(
+            "**But the measured lift is bounded by the base rate of the set it "
+            "was measured on**, and that is a different statement. Algebraically "
+            "`lift = R/f = precision / base_rate`, so precision <= 1 caps lift at "
+            f"`1 / base_rate` = **{fmt(ceiling['max_attainable_lift'], 2)}x** on "
+            f"this test set, whose base error rate is "
+            f"{fmt(ceiling['measured_base_rate'], 4)}. The measured "
+            f"{fmt(economics['lift'], 2)}x is "
+            f"**{fmt_pct(ceiling['fraction_of_ceiling_achieved'], 1)} of "
+            "everything that was attainable here.** No probe, however well it "
+            "ranks, could have scored much higher on this dataset "
+            "(DECISIONS.md 015)."
+        )
+        add("")
+        if ceiling.get("lift_from_precision") is not None:
+            add(
+                f"Checked both ways: `R/f` = {fmt(economics['lift'], 4)} and "
+                f"`precision/base_rate` = "
+                f"{fmt(ceiling['lift_from_precision'], 4)}."
+            )
+            add("")
+    projection = economics.get("projection")
+    if projection and projection.get("rows"):
+        add("#### Headroom at lower base error rates — a projection, not a result")
+        add("")
+        add(
+            "A ROC curve is base-rate independent: it describes how well the probe "
+            "*ranks*, which is a property of the probe rather than of how often "
+            "the model is wrong. So the measured curve can be re-read at other "
+            f"base error rates, holding the budget at the measured `f` = "
+            f"{fmt(projection['budget'], 4)}."
+        )
+        add("")
+        add(projection_table_markdown(economics))
+        add("")
+        add(f"> **{projection['caveat']}**")
+        add("")
     inv = economics["invariance"]
     add(
         f"Demonstrated, not asserted: recomputing the table across error rates "
@@ -776,6 +834,7 @@ def readme_values(artifacts: dict[str, Any], config: Config) -> dict[str, str]:
     comparison = latency["comparison"]
     policies = {row["policy"]: row for row in economics["policies"]}
 
+    ceiling_block = economics.get("ceiling", {})
     strict_accuracy = probe_test.get("strict_em", {}).get("test_accuracy_strict")
     strict_test_base_rate = (
         None if strict_accuracy is None else 1.0 - strict_accuracy
@@ -804,6 +863,14 @@ def readme_values(artifacts: dict[str, Any], config: Config) -> dict[str, str]:
         "recall_ci_high": fmt(boot["recall"]["ci_high"], 3),
         "precision": fmt(test["precision"], 3),
         "lift": fmt(economics["lift"], 1),
+        "lift_ceiling": fmt(ceiling_block.get("max_attainable_lift"), 1),
+        "lift_pct_of_ceiling": fmt_pct(
+            ceiling_block.get("fraction_of_ceiling_achieved"), 0
+        ),
+        "measured_base_rate": fmt(ceiling_block.get("measured_base_rate"), 3),
+        "projection_table": projection_table_markdown(economics)
+        or "_Not computed for this run._",
+        "projection_caveat": economics.get("projection", {}).get("caveat", ""),
         "lift_ci_low": fmt(boot["lift"]["ci_low"], 1),
         "lift_ci_high": fmt(boot["lift"]["ci_high"], 1),
         "probe_latency_us": fmt(comparison["probe_median_us"], 1),
