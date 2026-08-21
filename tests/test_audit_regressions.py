@@ -300,3 +300,133 @@ def test_extract_persists_artifacts_before_the_base_rate_gate():
 
     assert save_at < gate_at, "activations must be saved before the gate can raise"
     assert meta_at < gate_at, "extract_meta must be written before the gate can raise"
+
+
+# --- the dirty flag must describe the code, not the pipeline's own output --- #
+
+
+def test_dirty_flag_ignores_the_results_directory(monkeypatch):
+    """The pipeline writes into results/, a committed path.
+
+    On the first real run that made stage 01 dirty the tree and every later
+    artifact recorded dirty=true regardless of the code, which is the opposite
+    of what the flag is for.
+    """
+    import src.config as config_module
+
+    monkeypatch.setattr(
+        config_module,
+        "_git",
+        lambda *args: "?? results/\n?? results/probe_test.json",
+    )
+    assert config_module.working_tree_changes("results") == []
+
+
+def test_dirty_flag_still_reports_real_code_changes(monkeypatch):
+    import src.config as config_module
+
+    monkeypatch.setattr(
+        config_module, "_git", lambda *args: " M src/extract.py\n?? results/x.json"
+    )
+    assert config_module.working_tree_changes("results") == ["src/extract.py"]
+
+
+def test_porcelain_parsing_survives_the_stripped_first_line(monkeypatch):
+    """_git() strips the whole output, removing the leading space of line 1 only.
+
+    A fixed-offset slice therefore ate one character of the first path and no
+    others -- ' M src/config.py' became 'rc/config.py'. Caught while verifying
+    the fix above, which had exactly that bug.
+    """
+    import src.config as config_module
+
+    # Exactly what _git returns: leading space of the first line already gone.
+    monkeypatch.setattr(
+        config_module,
+        "_git",
+        lambda *args: "M src/config.py\n M src/evaluate.py\nMM src/report.py",
+    )
+    assert config_module.working_tree_changes("results") == [
+        "src/config.py",
+        "src/evaluate.py",
+        "src/report.py",
+    ]
+
+
+def test_porcelain_parsing_handles_renames_and_quotes(monkeypatch):
+    import src.config as config_module
+
+    monkeypatch.setattr(
+        config_module,
+        "_git",
+        lambda *args: 'R  src/old.py -> src/new.py\n?? "src/with space.py"',
+    )
+    assert config_module.working_tree_changes("results") == [
+        "src/new.py",
+        "src/with space.py",
+    ]
+
+
+# --- the ceiling and the bootstrap must not appear to contradict ----------- #
+
+
+def test_lift_never_exceeds_ceiling_within_a_resample():
+    """lift/ceiling == precision <= 1, so they cannot cross inside one resample.
+
+    The point-estimate ceiling (2.575) is below the lift CI upper bound (2.655)
+    on the real run, which reads as a contradiction until you see that the
+    ceiling is resampled too.
+    """
+    import numpy as np
+
+    from src.evaluate import bootstrap_metrics, evaluate_at_threshold
+
+    rng = np.random.RandomState(0)
+    labels = (rng.rand(600) < 0.39).astype(int)
+    scores = rng.randn(600) + labels * 1.2
+    threshold = float(np.quantile(scores, 0.94))
+
+    point = evaluate_at_threshold(labels, scores, threshold)
+    assert point["ceiling"] == pytest.approx(1.0 / point["base_rate"])
+    assert point["lift"] <= point["ceiling"] + 1e-9
+    assert point["lift"] / point["ceiling"] == pytest.approx(point["precision"])
+
+    boot = bootstrap_metrics(labels, scores, threshold, 200, 0.95, 1729)
+    assert boot["ceiling"]["ci_low"] is not None
+    assert boot["ceiling"]["point"] == pytest.approx(point["ceiling"])
+
+
+def test_limitations_names_the_ceiling():
+    """SPEC.md §13 calls the limitations section 'not optional and not boilerplate'.
+
+    It omitted the single most important caveat about the headline number.
+    """
+    from src.config import load_config
+    from src.report import limitations
+
+    config = load_config(REPO_ROOT / "config.yaml")
+    artifacts = {
+        "extract_meta": {
+            "model": {"name": "m"},
+            "base_rates": {"lenient_minus_strict_accuracy": 0.48},
+        },
+        "data_stats": {"data": {"dataset": "d", "dataset_config": "c"}},
+        "probe_test": {
+            "provenance": {"seed": 1729},
+            "test": {"n": 600, "flag_rate": 0.0617, "auroc": 0.85},
+            "auroc_floor": {"below_floor": False, "floor": 0.55},
+        },
+        "economics": {
+            "economics": {
+                "ceiling": {
+                    "measured_base_rate": 0.3883,
+                    "max_attainable_lift": 2.5751,
+                    "fraction_of_ceiling_achieved": 0.892,
+                }
+            }
+        },
+    }
+    text = " ".join(limitations(artifacts, config))
+    assert "ceiling" in text.lower() or "bounded by this benchmark" in text.lower()
+    assert "2.58" in text
+    assert "AUROC" in text, "must name AUROC as the transferable quantity"

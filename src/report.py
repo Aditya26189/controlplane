@@ -539,6 +539,20 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
         f"{fmt_pct(economics['measured_flag_rate'])} verdict. That gap is the result."
     )
     add("")
+    if economics.get("ceiling"):
+        add(
+            "> **The 'errors caught' column mixes two regimes.** It applies the "
+            f"recall measured at a base error rate of "
+            f"{fmt(economics['ceiling']['measured_base_rate'], 4)} to an assumed "
+            f"production rate of {fmt(economics['reference_error_rate'])}. The "
+            "**ratio** between the rows is unaffected — that is the point of "
+            "`lift`, and both the assumed rate and judge accuracy cancel from it. "
+            "The **absolute counts** are conservative: at the lower assumed rate "
+            "the same probe would reach a higher recall (see the projection "
+            "below), so the probe-triggered row understates rather than "
+            "overstates."
+        )
+        add("")
 
     # 6. Headline
     add("## 6. Headline — lift")
@@ -582,6 +596,17 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
                 f"Checked both ways: `R/f` = {fmt(economics['lift'], 4)} and "
                 f"`precision/base_rate` = "
                 f"{fmt(ceiling['lift_from_precision'], 4)}."
+            )
+            add("")
+        if boot.get("ceiling", {}).get("ci_low") is not None:
+            add(
+                f"The ceiling is itself an estimate: {fmt_ci(boot['ceiling'], 2)} "
+                "over the same bootstrap resamples. A resample drawing fewer "
+                "incorrect answers has a higher ceiling, which is why the "
+                f"interval on lift ({fmt_ci(boot['lift'], 2)}) can reach above the "
+                f"{fmt(ceiling['max_attainable_lift'], 2)}x computed from the "
+                "point base rate. Within any single resample the two cannot "
+                "cross: `lift / ceiling` is precision, which is at most 1."
             )
             add("")
     projection = economics.get("projection")
@@ -793,6 +818,19 @@ def limitations(artifacts: dict[str, Any], config: Config) -> list[str]:
         "why every headline number carries a bootstrap interval rather than a "
         "point estimate alone.",
     ]
+    ceiling = artifacts.get("economics", {}).get("economics", {}).get("ceiling")
+    if ceiling:
+        items.insert(
+            0,
+            "**The headline lift is bounded by this benchmark, not by the probe.** "
+            f"`lift = precision / base_rate`, so a base error rate of "
+            f"{fmt(ceiling['measured_base_rate'], 4)} caps it at "
+            f"{fmt(ceiling['max_attainable_lift'], 2)}x however well the probe "
+            f"ranks. The measured value reaches "
+            f"{fmt_pct(ceiling['fraction_of_ceiling_achieved'], 1)} of that. The "
+            "transferable quantity is the AUROC; the lift is specific to a "
+            "workload where the model is wrong this often (DECISIONS.md 015).",
+        )
     if probe_test["auroc_floor"]["below_floor"]:
         items.insert(
             0,
