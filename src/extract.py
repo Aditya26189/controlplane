@@ -221,6 +221,34 @@ def check_left_padding_equivalence(
 # --------------------------------------------------------------------------- #
 
 
+def select_equivalence_prompts(
+    tokenizer: Any, prompts: Sequence[str], n: int = 4
+) -> list[str]:
+    """Pick the ``n`` prompts that maximise padding in one batch.
+
+    The check's sensitivity scales with how much padding there is: batching four
+    prompts of near-identical length pads by a handful of tokens and would still
+    look fine if position -1 were slightly wrong. Taking the shortest and the
+    longest, plus an even spread between them, puts the maximum available
+    padding into the batch -- which is the condition most likely to expose a
+    padding fault.
+
+    Args:
+        tokenizer: Tokenizer used to measure prompt length.
+        prompts: Candidate prompts, ideally the whole run's.
+        n: How many to select.
+
+    Returns:
+        ``n`` prompts spanning the length distribution, shortest first.
+    """
+    if len(prompts) <= n:
+        return list(prompts)
+    lengths = np.array([len(tokenizer(p)["input_ids"]) for p in prompts])
+    ranked = np.argsort(lengths, kind="stable")
+    picks = np.unique(np.linspace(0, len(ranked) - 1, n).round().astype(int))
+    return [prompts[int(ranked[i])] for i in picks]
+
+
 def _length_sorted_order(tokenizer: Any, prompts: Sequence[str]) -> np.ndarray:
     """Indices that sort prompts by token length, to cut padding waste.
 
