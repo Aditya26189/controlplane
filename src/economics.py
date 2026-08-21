@@ -23,7 +23,7 @@ expensive verdict.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 LOGGER = logging.getLogger(__name__)
 
@@ -55,6 +55,89 @@ def lift(recall: float, flag_rate: float) -> float:
             "and there is no budget to compare against"
         )
     return recall / flag_rate
+
+
+def lift_ceiling(base_rate: float) -> float:
+    """The largest lift any probe could achieve at this base error rate.
+
+    Algebraically, ``lift = R/f = precision / base_rate`` -- flag rate cancels.
+    Precision cannot exceed 1, so no probe, however good, can beat
+    ``1 / base_rate`` on a workload where that fraction of responses is wrong.
+
+    This is the piece of context the headline number is meaningless without. A
+    lift of 2.3 on a benchmark with a 39% error rate is 89% of everything that
+    was available; the same probe on rarer errors has far more headroom
+    (DECISIONS.md 015).
+
+    Args:
+        base_rate: Fraction of responses that are incorrect.
+
+    Returns:
+        The maximum attainable lift.
+    """
+    if not 0.0 < base_rate <= 1.0:
+        raise ValueError(f"base_rate must be in (0, 1], got {base_rate}")
+    return 1.0 / base_rate
+
+
+def lift_from_precision(precision: float, base_rate: float) -> float:
+    """``lift = precision / base_rate``, the identity behind the ceiling.
+
+    Computed independently of ``R/f`` so the two can be checked against each
+    other; they are the same quantity written two ways.
+    """
+    if not 0.0 < base_rate <= 1.0:
+        raise ValueError(f"base_rate must be in (0, 1], got {base_rate}")
+    return precision / base_rate
+
+
+def project_lift_at_base_rate(
+    fpr: Sequence[float],
+    tpr: Sequence[float],
+    base_rate: float,
+    budget: float,
+) -> Optional[dict[str, Any]]:
+    """Re-evaluate the measured ROC at a different base error rate.
+
+    A ROC curve is base-rate independent -- it describes how well the probe
+    *ranks*, which is a property of the probe, not of how often the model is
+    wrong. So the same curve can be read at another operating regime: at base
+    rate ``p``, a threshold with false-positive rate ``FPR`` and true-positive
+    rate ``TPR`` flags ``f = (1-p)·FPR + p·TPR`` of all traffic and achieves
+    ``lift = TPR / f``.
+
+    **This is a projection, not a measurement**, and everything that renders it
+    must say so. It assumes the probe ranks equally well on the other workload,
+    which is exactly the cross-domain generalisation this repo has not tested.
+
+    Args:
+        fpr: False-positive rates from the measured ROC, ascending.
+        tpr: True-positive rates from the measured ROC, ascending.
+        base_rate: The base error rate to project onto.
+        budget: Maximum flag rate allowed.
+
+    Returns:
+        The best operating point within budget, or None if the curve has none.
+    """
+    if not 0.0 < base_rate < 1.0:
+        raise ValueError(f"base_rate must be in (0, 1), got {base_rate}")
+    best: Optional[tuple[float, float, float]] = None
+    for false_positive, true_positive in zip(fpr, tpr):
+        flag_rate = (1.0 - base_rate) * false_positive + base_rate * true_positive
+        if flag_rate <= budget:
+            best = (flag_rate, true_positive, false_positive)
+    if best is None or best[0] <= 0.0:
+        return None
+    flag_rate, true_positive, false_positive = best
+    return {
+        "base_rate": float(base_rate),
+        "flag_rate": float(flag_rate),
+        "recall": float(true_positive),
+        "fpr": float(false_positive),
+        "lift": float(true_positive / flag_rate),
+        "ceiling": lift_ceiling(base_rate),
+        "projected": True,
+    }
 
 
 def policy_table(
@@ -122,6 +205,10 @@ def compare_policies(
     judge_accuracy: float = 1.0,
     recall_ci: Optional[tuple[Optional[float], Optional[float]]] = None,
     flag_rate_ci: Optional[tuple[Optional[float], Optional[float]]] = None,
+    measured_base_rate: Optional[float] = None,
+    precision: Optional[float] = None,
+    roc: Optional[dict[str, Any]] = None,
+    projection_base_rates: Sequence[float] = (),
 ) -> dict[str, Any]:
     """Build the full economics result: the table, the lift, and the invariance.
 
@@ -169,11 +256,47 @@ def compare_policies(
         "policies": table,
         "invariance": invariance_check(flag_rate, recall, judge_accuracy),
         "note": (
-            "lift = R/f. The base error rate and the judge's accuracy appear in "
-            "every policy's errors-caught figure and cancel from the ratio, so "
-            "the multiplier does not depend on either."
+            "lift = R/f. The base error rate ASSUMED in the policy table, and "
+            "the judge's accuracy, appear in every policy's errors-caught figure "
+            "and cancel from the ratio, so the multiplier does not depend on "
+            "either. That is a different statement from the ceiling below: the "
+            "MEASURED lift equals precision/base_rate and is therefore bounded "
+            "by the base rate of the set it was measured on (DECISIONS.md 015)."
         ),
     }
+    if measured_base_rate is not None:
+        ceiling = lift_ceiling(measured_base_rate)
+        result["ceiling"] = {
+            "measured_base_rate": float(measured_base_rate),
+            "max_attainable_lift": ceiling,
+            "fraction_of_ceiling_achieved": float(headline / ceiling),
+            "explanation": (
+                "lift = R/f = precision/base_rate, so precision <= 1 caps lift at "
+                "1/base_rate. A probe cannot beat this however well it ranks."
+            ),
+        }
+        if precision is not None:
+            result["ceiling"]["lift_from_precision"] = lift_from_precision(
+                precision, measured_base_rate
+            )
+    if roc is not None and projection_base_rates:
+        projections = [
+            project_lift_at_base_rate(
+                roc.get("fpr", []), roc.get("tpr", []), rate, flag_rate
+            )
+            for rate in projection_base_rates
+        ]
+        result["projection"] = {
+            "budget": float(flag_rate),
+            "rows": [row for row in projections if row is not None],
+            "caveat": (
+                "PROJECTION, NOT MEASUREMENT. A ROC is base-rate independent, so "
+                "the measured curve can be read at another base error rate. This "
+                "assumes the probe ranks equally well on that workload -- the "
+                "cross-domain generalisation this repo has NOT tested. Treat as "
+                "an illustration of headroom, never as a result."
+            ),
+        }
     if recall_ci is not None and flag_rate_ci is not None:
         result["lift_inputs_ci"] = {
             "recall": list(recall_ci),

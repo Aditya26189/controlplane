@@ -240,6 +240,7 @@ class EconomicsConfig:
     judge_accuracy: float
     n_responses: int
     reference_error_rate: float
+    projection_base_rates: tuple[float, ...]
 
     def __post_init__(self) -> None:
         if not 0.0 < self.target_flag_rate < 1.0:
@@ -258,6 +259,12 @@ class EconomicsConfig:
                 "economics.reference_error_rate must be in [0, 1], got "
                 f"{self.reference_error_rate}"
             )
+        for rate in self.projection_base_rates:
+            if not 0.0 < rate < 1.0:
+                raise ConfigError(
+                    "economics.projection_base_rates entries must be in (0, 1), "
+                    f"got {rate}"
+                )
 
 
 @dataclass(frozen=True)

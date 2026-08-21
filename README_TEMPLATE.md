@@ -28,7 +28,17 @@ If you can, monitoring gets much cheaper. Serious checkers — LLM-as-judge, sem
 
 **Reading:** at the same judge budget as random sampling, the probe surfaces **{{lift}}×** as many wrong answers.
 
-`R/f` is independent of the base error rate and of the judge's own accuracy — both appear in every policy and cancel from the ratio. The multiplier does not rest on an assumption about how often the model is wrong.
+**Read that number with its ceiling.** `lift = R/f = precision / base_rate`, so precision ≤ 1 caps lift at `1/base_rate`. This test set has a base error rate of {{measured_base_rate}}, which caps lift at **{{lift_ceiling}}×** — the measured {{lift}}× is **{{lift_pct_of_ceiling}} of everything attainable here**. TriviaQA no-context is a deliberately hard benchmark; the model is wrong on nearly 40% of it, which leaves little room for any triage to beat random sampling by a wide margin.
+
+The base error rate *assumed in the policy table below*, and the judge's accuracy, do both cancel from the ratio — the multiplier does not rest on an assumption about production error rates. That is a separate point from the ceiling above, and the two are easy to conflate.
+
+### Headroom — projection, not measurement
+
+A ROC curve is base-rate independent, so the measured curve can be re-read at rarer error rates at the same budget:
+
+{{projection_table}}
+
+> {{projection_caveat}}
 
 ## How it works
 

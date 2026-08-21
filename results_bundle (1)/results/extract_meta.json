@@ -1,0 +1,332 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-21T15:13:48+00:00",
+    "git_commit": "bec7f865e4b5b224aff8923fd6b728b11c9cb3e4",
+    "git_branch": "main",
+    "dirty": true,
+    "python": "3.12.13",
+    "libraries": {
+      "torch": "2.10.0+cu128",
+      "transformers": "5.0.0",
+      "datasets": "5.0.0",
+      "scikit-learn": "1.6.1",
+      "numpy": "2.0.2",
+      "pandas": "2.3.3",
+      "scipy": "1.16.3",
+      "bitsandbytes": "0.50.1"
+    },
+    "device": {
+      "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+      "processor": "x86_64",
+      "cuda_available": true,
+      "device_name": "Tesla T4",
+      "device_count": 2,
+      "cuda_version": "12.8"
+    },
+    "config_hash": "cbac792afcf74bc3",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "dtype": "bfloat16",
+        "device_map": "auto",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ]
+      },
+      "data": {
+        "dataset": "mandarjoshi/trivia_qa",
+        "config": "rc.nocontext",
+        "split": "validation",
+        "n_examples": 3000,
+        "train_frac": 0.6,
+        "val_frac": 0.2,
+        "test_frac": 0.2,
+        "dedup_questions": true
+      },
+      "prompt": {
+        "system": "You are a helpful assistant. Answer the question concisely.",
+        "add_generation_prompt": true
+      },
+      "equivalence_check": {
+        "batch": 4,
+        "relative_tolerance": 0.1,
+        "min_cosine": 0.999,
+        "positive_control": true
+      },
+      "generation": {
+        "max_new_tokens": 32,
+        "do_sample": false,
+        "batch_size": 8,
+        "sort_by_length": true
+      },
+      "labeling": {
+        "min_alias_len_for_substring": 3,
+        "record_strict_em": true,
+        "base_rate_min": 0.25,
+        "base_rate_max": 0.85
+      },
+      "probe": {
+        "type": "logistic_regression",
+        "standardize": true,
+        "class_weight": "balanced",
+        "max_iter": 2000,
+        "C_grid": [
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "economics": {
+        "target_flag_rate": 0.05,
+        "judge_accuracy": 1.0,
+        "n_responses": 1000000,
+        "reference_error_rate": 0.03
+      },
+      "evaluation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_auroc_to_proceed": 0.55
+      },
+      "latency": {
+        "probe_timing_repeats": 1000
+      },
+      "abstention": {
+        "patterns": [
+          "i don't know",
+          "i do not know",
+          "i'm not sure",
+          "i am not sure",
+          "i cannot",
+          "unable to",
+          "no information"
+        ],
+        "min_rate_to_report": 0.02
+      },
+      "negative_control": {
+        "enabled": false,
+        "dataset": "gsm8k",
+        "config": "main",
+        "n_examples": 1000
+      },
+      "paths": {
+        "results_dir": "results",
+        "activations": "results/activations.npz",
+        "labels": "results/labels.parquet",
+        "splits": "results/splits.parquet"
+      }
+    }
+  },
+  "data": {
+    "dataset": "mandarjoshi/trivia_qa",
+    "dataset_config": "rc.nocontext",
+    "split": "validation",
+    "rows_loaded": 17944,
+    "duplicates_dropped": 7983,
+    "empty_or_aliasless_dropped": 0,
+    "n_examples_requested": 3000,
+    "n_final": 3000,
+    "split_sizes": {
+      "train": 1800,
+      "val": 600,
+      "test": 600
+    },
+    "seed": 1729
+  },
+  "model": {
+    "name": "Qwen/Qwen2.5-7B-Instruct",
+    "quantization": "nf4",
+    "dtype": "bfloat16",
+    "num_hidden_layers": 28,
+    "hidden_size": 3584,
+    "probe_layers": [
+      8,
+      11,
+      14,
+      17,
+      20,
+      23,
+      26
+    ],
+    "layer_fractions": [
+      0.29,
+      0.39,
+      0.5,
+      0.61,
+      0.71,
+      0.82,
+      0.93
+    ],
+    "padding_side": "left",
+    "pad_token": "<|endoftext|>",
+    "eos_token": "<|im_end|>",
+    "peak_memory_gb_after_load": 2.361870288848877,
+    "example_prompt": "<|im_start|>system\nYou are a helpful assistant. Answer the question concisely.<|im_end|>\n<|im_start|>user\n<QUESTION><|im_end|>\n<|im_start|>assistant\n",
+    "system_prompt": "You are a helpful assistant. Answer the question concisely."
+  },
+  "equivalence_check": {
+    "left_padding": {
+      "padding_side": "left",
+      "per_layer": {
+        "8": {
+          "max_abs": 0.125,
+          "max_relative_l2": 0.01227902535772596,
+          "min_cosine": 0.9999252910908263,
+          "reference_norm_median": 33.207889585292534
+        },
+        "11": {
+          "max_abs": 0.25,
+          "max_relative_l2": 0.013557816394291433,
+          "min_cosine": 0.9999100506585906,
+          "reference_norm_median": 45.01457154932873
+        },
+        "14": {
+          "max_abs": 0.375,
+          "max_relative_l2": 0.013151862620896187,
+          "min_cosine": 0.9999143112610713,
+          "reference_norm_median": 58.15707890371401
+        },
+        "17": {
+          "max_abs": 0.5,
+          "max_relative_l2": 0.01333460673209015,
+          "min_cosine": 0.9999115166605332,
+          "reference_norm_median": 64.49917858429913
+        },
+        "20": {
+          "max_abs": 0.5,
+          "max_relative_l2": 0.013524468680620245,
+          "min_cosine": 0.9999100999329265,
+          "reference_norm_median": 87.12463943269947
+        },
+        "23": {
+          "max_abs": 1.0,
+          "max_relative_l2": 0.01459729881710269,
+          "min_cosine": 0.9999006330817749,
+          "reference_norm_median": 147.11915313316652
+        },
+        "26": {
+          "max_abs": 1.0,
+          "max_relative_l2": 0.015555842518912667,
+          "min_cosine": 0.9998802228355487,
+          "reference_norm_median": 320.17423332417184
+        }
+      },
+      "max_abs": 1.0,
+      "max_relative_l2": 0.015555842518912667,
+      "min_cosine": 0.9998802228355487
+    },
+    "right_padding_control": {
+      "padding_side": "right",
+      "per_layer": {
+        "8": {
+          "max_abs": 9.6875,
+          "max_relative_l2": 1.1640437519552316,
+          "min_cosine": 0.3238475184059366,
+          "reference_norm_median": 33.207889585292534
+        },
+        "11": {
+          "max_abs": 13.3125,
+          "max_relative_l2": 1.1660297046731598,
+          "min_cosine": 0.3533992602451151,
+          "reference_norm_median": 45.01457154932873
+        },
+        "14": {
+          "max_abs": 27.6875,
+          "max_relative_l2": 1.1879447594688866,
+          "min_cosine": 0.29578783885264737,
+          "reference_norm_median": 58.15707890371401
+        },
+        "17": {
+          "max_abs": 26.75,
+          "max_relative_l2": 1.2698569861654274,
+          "min_cosine": 0.2646262371197597,
+          "reference_norm_median": 64.49917858429913
+        },
+        "20": {
+          "max_abs": 47.71875,
+          "max_relative_l2": 1.2784737677749642,
+          "min_cosine": 0.15950272289833173,
+          "reference_norm_median": 87.12463943269947
+        },
+        "23": {
+          "max_abs": 52.3125,
+          "max_relative_l2": 1.1709200607160317,
+          "min_cosine": 0.15085403886575444,
+          "reference_norm_median": 147.11915313316652
+        },
+        "26": {
+          "max_abs": 109.375,
+          "max_relative_l2": 1.167110336741052,
+          "min_cosine": 0.1414157887688373,
+          "reference_norm_median": 320.17423332417184
+        }
+      },
+      "max_abs": 109.375,
+      "max_relative_l2": 1.2784737677749642,
+      "min_cosine": 0.1414157887688373
+    },
+    "relative_tolerance": 0.1,
+    "min_cosine": 0.999,
+    "positive_control_ran": true,
+    "positive_control_rejected": true,
+    "n_prompts": 4,
+    "distinct_prompt_lengths": 4,
+    "max_deviation": 1.0,
+    "max_relative_l2": 0.015555842518912667,
+    "min_cosine_observed": 0.9998802228355487
+  },
+  "extraction": {
+    "n_examples": 3000,
+    "layers": [
+      8,
+      11,
+      14,
+      17,
+      20,
+      23,
+      26
+    ],
+    "hidden_size": 3584,
+    "batch_size": 8,
+    "sort_by_length": true,
+    "total_seconds": 8301.133392445001,
+    "examples_per_second": 0.36139643325456616,
+    "median_prefill_seconds_per_response": 0.3532350566250102,
+    "median_generate_seconds_per_response": 2.5183560899999975,
+    "max_padded_length": 192.0
+  },
+  "base_rates": {
+    "n": 3000,
+    "accuracy_lenient": 0.594,
+    "accuracy_strict_em": 0.10566666666666667,
+    "strict_em_recorded": true,
+    "base_rate_incorrect": 0.406,
+    "base_rate_incorrect_strict_em": 0.8943333333333333,
+    "lenient_minus_strict_accuracy": 0.4883333333333333,
+    "abstention_rate": 0.0006666666666666666
+  },
+  "base_rate_by_split": {
+    "train": {
+      "n": 1800,
+      "base_rate_incorrect": 0.40555555555555556
+    },
+    "val": {
+      "n": 600,
+      "base_rate_incorrect": 0.425
+    },
+    "test": {
+      "n": 600,
+      "base_rate_incorrect": 0.3883333333333333
+    }
+  }
+}
