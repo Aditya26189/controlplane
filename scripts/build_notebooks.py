@@ -226,7 +226,17 @@ import os, shutil, subprocess, sys
 from pathlib import Path
 
 WORK = Path("/kaggle/working/controlplane")
-if REPO_URL:
+ACTIVATIONS = WORK / "results" / "activations.npz"
+
+# Update in place when the repo is already here, rather than deleting and
+# re-cloning. results/ is untracked, so `git reset --hard` leaves it alone --
+# and results/activations.npz is 40-70 minutes of GPU time that a blind
+# rmtree would throw away.
+if WORK.exists() and (WORK / ".git").is_dir() and REPO_URL:
+    print("repo already present; updating in place to preserve results/")
+    subprocess.run(["git", "-C", str(WORK), "fetch", "--depth", "1", "origin", "main"], check=True)
+    subprocess.run(["git", "-C", str(WORK), "reset", "--hard", "FETCH_HEAD"], check=True)
+elif REPO_URL:
     if WORK.exists():
         shutil.rmtree(WORK)
     subprocess.run(["git", "clone", "--depth", "1", REPO_URL, str(WORK)], check=True)
@@ -238,7 +248,15 @@ else:
 os.chdir(WORK)
 sys.path.insert(0, str(WORK))
 print("working directory:", Path.cwd())
+print("commit:", subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+                                capture_output=True, text=True).stdout.strip())
 print(sorted(p.name for p in Path.cwd().iterdir()))
+print()
+if ACTIVATIONS.is_file():
+    print(f"activations.npz PRESENT ({ACTIVATIONS.stat().st_size / 1024**2:.0f} MB)"
+          " -- you can re-run downstream stages with --from 02, no GPU hour needed")
+else:
+    print("activations.npz absent -- a full run is required (extraction included)")
 """
     ),
     code(
@@ -392,13 +410,33 @@ torch.cuda.empty_cache()
 
 ## The full run
 
-Extraction, probe, economics, latency, report. Any stage can be re-run alone afterwards
-with `--from`, so a failure at stage 04 does not cost the extraction again.
+Extraction, probe, economics, latency, report.
+
+**If `activations.npz` is already present** (the cell above says so), you do not need this
+cell. Skip to the one below it and re-run only the downstream stages — a minute of CPU
+instead of a couple of hours of GPU.
 """
     ),
     code(
         """
 !python scripts/run_all.py --config config.yaml
+"""
+    ),
+    markdown(
+        """
+### Re-run downstream stages only
+
+Use this when `activations.npz` already exists and only the probe, economics, latency or
+report need regenerating — after a config change such as widening `probe.C_grid`.
+
+Note that re-running stage 02 scores the test set again. That is recorded: every scoring
+is appended to `results/test_scoring_log.json` and `RESULTS.md` discloses the count and
+the full history (DECISIONS.md 016).
+"""
+    ),
+    code(
+        """
+!python scripts/run_all.py --config config.yaml --from 02
 """
     ),
     markdown("## The result"),
