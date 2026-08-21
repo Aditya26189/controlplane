@@ -33,6 +33,7 @@ from src.config import (  # noqa: E402
 from src.data import prepare_dataset, save_splits  # noqa: E402
 from src.extract import (  # noqa: E402
     assert_base_rate,
+    base_rate_summary,
     check_left_padding_equivalence,
     run_extraction,
     save_activations,
@@ -140,14 +141,17 @@ def main() -> int:
             row["answer_value"][:40],
         )
 
-    # Gate: a degenerate label distribution makes everything downstream
-    # meaningless, so this raises rather than warns.
-    base_rates = assert_base_rate(labelled, config)
+    base_rates = base_rate_summary(labelled)
 
     if args.dry_run:
         LOGGER.info("--dry-run: no artifacts written")
+        assert_base_rate(labelled, config)
         return 0
 
+    # Artifacts are written BEFORE the base-rate gate fires. The gate is a
+    # judgement about the labels, not about the activations, and the activations
+    # cost 40-70 minutes of GPU. Throwing them away would mean re-extracting to
+    # investigate why the labels looked wrong -- so persist, then judge.
     save_activations(acts, labelled["question_id"].tolist(), config.paths.activations)
     labelled.to_parquet(config.paths.labels, index=False)
     LOGGER.info("wrote %s (%d rows)", config.paths.labels, len(labelled))
@@ -178,6 +182,10 @@ def main() -> int:
         extract_meta["total_seconds"],
         extract_meta["examples_per_second"],
     )
+
+    # Now the gate. Everything above is already on disk, so if this raises the
+    # run is stopped for inspection rather than lost (TASKS.md Stage 3 gate).
+    assert_base_rate(labelled, config)
     return 0
 
 
