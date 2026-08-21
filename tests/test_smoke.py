@@ -159,8 +159,16 @@ def synthetic_run(tmp_path_factory):
             },
             "equivalence_check": {
                 "max_deviation": 4.17e-07,
-                "per_layer_deviation": {},
-                "tolerance": 0.01,
+                "max_relative_l2": 1.8e-07,
+                "min_cosine_observed": 1.0,
+                "relative_tolerance": 0.10,
+                "min_cosine": 0.999,
+                "positive_control_ran": True,
+                "positive_control_rejected": True,
+                "right_padding_control": {
+                    "max_relative_l2": 1.357,
+                    "min_cosine": 0.036,
+                },
                 "n_prompts": 4,
                 "distinct_prompt_lengths": 4,
             },
@@ -329,7 +337,15 @@ def test_extract_stage_runs_end_to_end(tmp_path, tiny_model, tiny_tokenizer):
     assert (results / "extract_meta.json").is_file()
 
     meta = json.loads((results / "extract_meta.json").read_text(encoding="utf-8"))
-    assert meta["equivalence_check"]["max_deviation"] < meta["equivalence_check"]["tolerance"]
+    check = meta["equivalence_check"]
+    assert check["max_relative_l2"] < check["relative_tolerance"]
+    assert check["min_cosine_observed"] > check["min_cosine"]
+    # The positive control must have run and rejected right padding, so passing
+    # is a demonstration rather than an assertion (DECISIONS.md 014).
+    assert check["positive_control_rejected"] is True
+    assert not (
+        check["right_padding_control"]["max_relative_l2"] < check["relative_tolerance"]
+    )
     assert meta["model"]["padding_side"] == "left"
     assert meta["extraction"]["n_examples"] == 16
 

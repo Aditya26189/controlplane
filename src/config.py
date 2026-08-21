@@ -128,6 +128,39 @@ class PromptConfig:
 
 
 @dataclass(frozen=True)
+class EquivalenceCheckConfig:
+    """Thresholds for the left-padding equivalence check (CLAUDE.md invariant 4).
+
+    Scale-invariant on purpose. An absolute tolerance conflates "the batch is
+    read at the wrong position", which changes the vector entirely, with "the
+    two forward passes rounded differently", which is unavoidable in bfloat16
+    and grows with activation magnitude. Relative L2 error and cosine
+    similarity separate the two cleanly.
+    """
+
+    batch: int
+    relative_tolerance: float
+    min_cosine: float
+    positive_control: bool
+
+    def __post_init__(self) -> None:
+        if self.batch < 2:
+            raise ConfigError(
+                "equivalence_check.batch must be at least 2: a single prompt has "
+                "no padding, so the comparison would prove nothing"
+            )
+        if not 0.0 < self.relative_tolerance < 1.0:
+            raise ConfigError(
+                "equivalence_check.relative_tolerance must be in (0, 1), got "
+                f"{self.relative_tolerance}"
+            )
+        if not 0.0 < self.min_cosine <= 1.0:
+            raise ConfigError(
+                f"equivalence_check.min_cosine must be in (0, 1], got {self.min_cosine}"
+            )
+
+
+@dataclass(frozen=True)
 class GenerationConfig:
     """Decoding settings for the labelling pass."""
 
@@ -306,6 +339,7 @@ class Config:
     model: ModelConfig
     data: DataConfig
     prompt: PromptConfig
+    equivalence_check: EquivalenceCheckConfig
     generation: GenerationConfig
     labeling: LabelingConfig
     probe: ProbeConfig

@@ -43,8 +43,6 @@ from src.model import build_prompts, describe_model, load_model_and_tokenizer, r
 
 LOGGER = logging.getLogger("01_extract")
 
-EQUIVALENCE_BATCH = 4
-EQUIVALENCE_TOLERANCE = 1e-2
 PREVIEW_COMPLETIONS = 10
 
 
@@ -118,15 +116,29 @@ def main() -> int:
     # Spanning the length distribution rather than taking the first few: the
     # check is only as sensitive as the amount of padding in its batch.
     all_prompts = build_prompts(tokenizer, frame["question"].tolist(), config)
-    sample = select_equivalence_prompts(tokenizer, all_prompts, EQUIVALENCE_BATCH)
+    sample = select_equivalence_prompts(
+        tokenizer, all_prompts, config.equivalence_check.batch
+    )
     equivalence = check_left_padding_equivalence(
         model,
         tokenizer,
         sample,
         layers,
-        tolerance=EQUIVALENCE_TOLERANCE,
+        relative_tolerance=config.equivalence_check.relative_tolerance,
+        min_cosine=config.equivalence_check.min_cosine,
+        positive_control=config.equivalence_check.positive_control,
     )
-    LOGGER.info("equivalence check passed: max deviation %.3e", equivalence["max_deviation"])
+    LOGGER.info(
+        "equivalence check passed: relative L2 %.3e, cosine %.9f%s",
+        equivalence["max_relative_l2"],
+        equivalence["min_cosine_observed"],
+        ""
+        if equivalence["right_padding_control"] is None
+        else (
+            "; positive control rejected right padding at relative L2 %.3e"
+            % equivalence["right_padding_control"]["max_relative_l2"]
+        ),
+    )
 
     acts, labelled, extract_meta = run_extraction(model, tokenizer, frame, config, layers)
 

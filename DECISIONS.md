@@ -200,3 +200,21 @@ Log a decision when a reviewer could reasonably challenge it. Not for variable n
 **Alternatives:** *Bootstrap `R` and `f` separately and combine their intervals* — simpler, and wrong. `R` and `f` are positively correlated through the same threshold on the same rows; treating them as independent misstates the interval on their ratio, and the ratio is the number being defended.
 
 **Consequences:** Resamples where a metric is undefined (no positives, nothing flagged, a single label class) are dropped for that metric and the surviving count is recorded beside the interval, rather than being coerced to zero — which would drag the interval toward a value the run never produced. At small `f` and small test `n`, a visible fraction of resamples flag nothing, so that count is worth reading before quoting the interval.
+
+---
+
+## 014 — The left-padding check uses scale-invariant criteria, plus a positive control
+**Date:** 2026-08-21 · **Status:** accepted · **Supersedes the tolerance in** `SPEC.md` §4
+
+**Context:** The first full run on a Kaggle T4 aborted at the equivalence check. Qwen2.5-7B, NF4, bfloat16, `padding_side` confirmed `left` by the Stage 2 gate. Per-layer absolute deviations were `{8: 0.125, 11: 0.25, 14: 0.375, 17: 0.375, 20: 0.75, 23: 0.625, 26: 3.0}` against SPEC's absolute tolerance of `1e-2`.
+
+Every one of those values is an exact multiple of 0.125, and bfloat16 has an 8-bit mantissa: at residual-stream magnitudes of 16–256 its ULP is 0.125–1.0. The deviations are 1–6 ULP, and they grow with depth exactly as residual-stream magnitude grows. Batched and unbatched forwards use different GEMM shapes, so cuBLAS picks different tilings and accumulates in a different order. This is arithmetic noise, not a padding fault.
+
+**Decision:** Judge the check on two **scale-invariant** quantities instead of an absolute deviation: per-row relative L2 error (limit `0.10`) and per-row cosine similarity (limit `0.999`), both in `config.yaml` under `equivalence_check`. Additionally, **every run repeats the comparison with the tokenizer deliberately right-padded and requires that it fail.** If the control passes, the run stops.
+
+**Alternatives:**
+- *Raise the absolute tolerance until the run passes* — rejected outright. It is unfalsifiable: no absolute number distinguishes rounding from a wrong read position, because the activations' magnitude varies by an order of magnitude across depth and by dtype. It is also precisely the move `KICKOFF.md` warns against, and a reviewer would be right to discount every number downstream of it.
+- *Run the check in float32* — would make the comparison exact, but it measures a forward pass the experiment does not perform. The check must exercise the arithmetic the run actually uses.
+- *Cosine alone* — nearly sufficient (right padding drops cosine to 0.036 on the fixture model) but blind to a uniform rescaling. Relative L2 catches that, so both are required.
+
+**Consequences:** The limits look permissive next to `1e-2`, and on their own they would be. The positive control is what makes them defensible: measured separation on the fp32 fixture is relative L2 `1.8e-07` (left) against `1.36` (right), a factor of 7.7 million, and cosine `1.000000000` against `0.036`. Both limits sit far from either regime. Every `extract_meta.json` now records both sides, so a reviewer can check the margin rather than trust the threshold. If a future model or dtype narrows that margin, the control fails and the run stops rather than proceeding on a check that no longer discriminates.
