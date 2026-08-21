@@ -201,7 +201,11 @@ def test_probe_stage_writes_its_artifacts(synthetic_run):
     assert (results / "probe_test.json").is_file()
 
     sweep = json.loads((results / "probe_sweep.json").read_text(encoding="utf-8"))
-    assert len(sweep["sweep"]) == 7 * 4, "every layer x C combination must appear"
+    # Derived from config rather than hardcoded: duplicating the grid size here
+    # means widening probe.C_grid breaks a test that has nothing to do with it.
+    config = load_config(config_path)
+    expected = len(config.probe.C_grid) * len(config.resolve_layers(28))
+    assert len(sweep["sweep"]) == expected, "every layer x C combination must appear"
     assert sweep["selected_on"] == "validation"
 
     probe_test = json.loads((results / "probe_test.json").read_text(encoding="utf-8"))
