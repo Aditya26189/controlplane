@@ -1,5 +1,7 @@
 """The probe: standardisation, logistic regression, layer sweep, threshold.
 
+Implements SPEC.md §5.
+
 Features are the residual-stream vector at one layer, taken at the final prompt
 token. The label is ``1`` when the generated answer was **incorrect** -- the
 positive class is the thing we want to catch (DECISIONS.md 004). Getting that
