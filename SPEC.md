@@ -167,7 +167,7 @@ clf.fit(scaler.transform(X_train), y_train)
 
 **Threshold selection.** On validation, find the threshold whose flag rate is closest to `config.economics.target_flag_rate` (default 0.05). Freeze it. Apply it unchanged to test.
 
-**Then open the test set, once.** Report: AUROC, measured flag rate `f`, recall `R`, precision, base rate.
+**Then open the test set.** Report: AUROC, measured flag rate `f`, recall `R`, precision, base rate. Every opening is appended to `results/test_scoring_log.json` and disclosed in `RESULTS.md`; no selection may consult it (CLAUDE.md invariant 2).
 
 ## 6. Metrics and uncertainty
 

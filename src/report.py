@@ -473,8 +473,9 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
         f"**Selected: layer {probe['layer']} of {model_info['num_hidden_layers']}, "
         f"C = {probe['C']:g}**, on validation AUROC {fmt(probe['val_auroc'], 4)}. "
         "The layer, the regularisation strength and the threshold were all chosen "
-        "here. The test set was opened afterwards, once "
-        "(CLAUDE.md invariant 2, DECISIONS.md 006)."
+        "here, on validation. Test played no part in the selection "
+        "(CLAUDE.md invariant 2); every scoring of it is disclosed in the next "
+        "section."
     )
     add("")
     if sweep.get("winner_at_grid_boundary"):
@@ -493,9 +494,23 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
     add("## 4. Test results")
     add("")
     log = artifacts.get("test_scoring_log")
-    n_scorings = log.get("n_scorings", 1) if log else 1
-    if n_scorings <= 1:
-        add(f"The test set was scored exactly once, at n = {test['n']:,}.")
+    n_scorings = log.get("n_scorings", 0) if log else 0
+    if log is None:
+        # No log means we cannot state a count. Saying "once" here would be a
+        # claim about something we did not record (CLAUDE.md invariant 2).
+        add(
+            f"Test set scored at n = {test['n']:,}. No scoring log is present in "
+            "this results directory, so the number of times it has been scored "
+            "is not recorded here; runs from `scripts/02_train_probe.py` write "
+            "`results/test_scoring_log.json`."
+        )
+        add("")
+    elif n_scorings <= 1:
+        add(
+            f"The test set was scored once, at n = {test['n']:,}, per "
+            "`results/test_scoring_log.json`. Selection of the layer, `C` and "
+            "the threshold used validation only."
+        )
         add("")
     else:
         add(
