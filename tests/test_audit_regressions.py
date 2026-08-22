@@ -692,3 +692,45 @@ def test_presentation_notebook_ships_with_outputs():
     ]
     assert not errors, f"notebook stores an error output: {errors[:1]}"
     assert len(with_outputs) == len(code_cells), "every code cell must have run"
+
+
+# --- the handover document ------------------------------------------------ #
+
+
+def test_handover_renders_and_carries_the_ceiling():
+    """The handover exists to stop the lift being quoted without its ceiling."""
+    from src.config import load_config
+    from src.report import load_artifacts, render_handover_md
+
+    config = load_config(REPO_ROOT / "config.yaml")
+    if not (REPO_ROOT / config.paths.results_dir / "probe_test.json").is_file():
+        pytest.skip("no measured artifacts in results/")
+
+    text = render_handover_md(load_artifacts(config), config)
+
+    assert "How to quote it" in text
+    assert "ceiling" in text.lower()
+    assert "precision / base_rate" in text
+    # The API-access boundary is the sharpest question; it must be stated.
+    assert "weight access" in text
+    assert "Don't say" in text
+    # And it must not repeat the retired claim.
+    assert "scored once" not in text
+    assert "{{" not in text, "unsubstituted placeholder"
+
+
+def test_handover_links_resolve_from_the_docs_directory():
+    """HANDOVER.md lives in docs/, so its relative links need one level up."""
+    from src.config import load_config
+    from src.report import load_artifacts, render_handover_md
+
+    config = load_config(REPO_ROOT / "config.yaml")
+    if not (REPO_ROOT / config.paths.results_dir / "probe_test.json").is_file():
+        pytest.skip("no measured artifacts in results/")
+
+    text = render_handover_md(load_artifacts(config), config)
+    targets = re.findall(r"\]\((\.\./[^)]+)\)", text)
+    assert targets, "expected relative links out of docs/"
+    for target in targets:
+        resolved = (REPO_ROOT / "docs" / target).resolve()
+        assert resolved.exists(), f"broken link in HANDOVER.md: {target}"

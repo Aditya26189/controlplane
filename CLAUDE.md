@@ -73,9 +73,12 @@ scripts/
   03_economics.py    → results/economics.json
   04_latency.py      → results/latency.json
   05_report.py       → results/RESULTS.md, results/*.png, README.md
+  06_handover.py     → docs/HANDOVER.md
   run_all.py         orchestrates 01→05
   build_notebooks.py regenerates both notebooks from source
 tests/
+docs/
+  HANDOVER.md        generated orientation doc for someone joining cold
 notebooks/
   cascade_economics.ipynb   thin presentation wrapper over src/, no logic
   run_on_kaggle.ipynb       GPU runner: stage gates, pre-flight, full run
