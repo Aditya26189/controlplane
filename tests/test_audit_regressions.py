@@ -616,3 +616,79 @@ def test_rendered_readme_does_not_claim_a_single_scoring():
     text = (REPO_ROOT / "README_TEMPLATE.md").read_text(encoding="utf-8")
     assert "Test was scored once" not in text
     assert "opened once" not in text
+
+
+# --- the notebook display helpers must track the artifact schema ----------- #
+
+
+def test_notebook_display_helpers_run_against_real_artifacts():
+    """metadata_frame kept reading 'tolerance' after the equivalence rewrite.
+
+    Nothing caught it: no test called the notebook helpers with real-shaped
+    data, so the break only surfaced when the notebook was executed. These
+    helpers render the notebook that gets screen-recorded, so a KeyError here
+    is a broken deliverable.
+    """
+    from src.config import load_config
+    from src.report import (
+        headline_markdown,
+        latency_frame,
+        load_artifacts,
+        metadata_frame,
+        policy_frame,
+        sweep_frame,
+        test_metrics_frame,
+    )
+
+    config = load_config(REPO_ROOT / "config.yaml")
+    if not (REPO_ROOT / config.paths.results_dir / "probe_test.json").is_file():
+        pytest.skip("no measured artifacts in results/")
+
+    artifacts = load_artifacts(config)
+    for helper in (
+        metadata_frame,
+        sweep_frame,
+        test_metrics_frame,
+        policy_frame,
+        latency_frame,
+    ):
+        frame = helper(artifacts)
+        assert len(frame) > 0, f"{helper.__name__} returned nothing"
+    assert "lift" in headline_markdown(artifacts).lower()
+
+
+def test_notebook_setup_cell_chdirs_to_the_repo_root():
+    """Jupyter runs a notebook with cwd set to its own folder.
+
+    config.yaml's paths are relative to the repo root, so without the chdir
+    results/ resolved to notebooks/results/ and every artifact looked missing.
+    """
+    source = (REPO_ROOT / "scripts" / "build_notebooks.py").read_text(encoding="utf-8")
+    assert "os.chdir(REPO_ROOT)" in source
+
+    notebook = json.loads(
+        (REPO_ROOT / "notebooks" / "cascade_economics.ipynb").read_text(encoding="utf-8")
+    )
+    setup = "".join(notebook["cells"][1]["source"])
+    assert "os.chdir(REPO_ROOT)" in setup
+
+
+def test_presentation_notebook_ships_with_outputs():
+    """CONTRIBUTING.md keeps this notebook's outputs on purpose.
+
+    It renders on GitHub for judges who will never run it, so stripped outputs
+    would make it a blank page.
+    """
+    notebook = json.loads(
+        (REPO_ROOT / "notebooks" / "cascade_economics.ipynb").read_text(encoding="utf-8")
+    )
+    code_cells = [c for c in notebook["cells"] if c["cell_type"] == "code"]
+    with_outputs = [c for c in code_cells if c.get("outputs")]
+    errors = [
+        o
+        for c in code_cells
+        for o in c.get("outputs", [])
+        if o.get("output_type") == "error"
+    ]
+    assert not errors, f"notebook stores an error output: {errors[:1]}"
+    assert len(with_outputs) == len(code_cells), "every code cell must have run"
