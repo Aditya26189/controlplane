@@ -1068,8 +1068,20 @@ def metadata_frame(artifacts: dict[str, Any]) -> "Any":
         ("Timestamp (UTC)", provenance["timestamp_utc"]),
         (
             "Left-padding equivalence",
-            f"max deviation {equivalence['max_deviation']:.2e} "
-            f"(tolerance {equivalence['tolerance']:.0e})",
+            f"relative L2 {equivalence['max_relative_l2']:.2e} "
+            f"(limit {equivalence['relative_tolerance']:.0e}), cosine "
+            f"{equivalence['min_cosine_observed']:.6f} "
+            f"(limit {equivalence['min_cosine']:.4f})",
+        ),
+        (
+            "Positive control",
+            "not run"
+            if equivalence.get("right_padding_control") is None
+            else (
+                "right padding rejected at relative L2 "
+                f"{equivalence['right_padding_control']['max_relative_l2']:.2e}, "
+                f"cosine {equivalence['right_padding_control']['min_cosine']:.4f}"
+            ),
         ),
     ]
     return pd.DataFrame(rows, columns=["Field", "Value"]).set_index("Field")

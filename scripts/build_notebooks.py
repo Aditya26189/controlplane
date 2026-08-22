@@ -93,11 +93,17 @@ every number is read from `results/*.json`, and every table is built by a functi
     ),
     code(
         """
+import os
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path.cwd().parent if Path.cwd().name == "notebooks" else Path.cwd()
 sys.path.insert(0, str(REPO_ROOT))
+
+# Jupyter sets the working directory to the notebook's own folder, but the
+# paths in config.yaml are relative to the repo root. Without this chdir,
+# results/ resolves to notebooks/results/ and every artifact appears missing.
+os.chdir(REPO_ROOT)
 
 from IPython.display import Image, Markdown, display
 
