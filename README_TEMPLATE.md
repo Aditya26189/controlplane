@@ -69,6 +69,10 @@ Coverage and verdict are different things. Every response passes the cheap layer
 
 Validation AUROC by depth. The layer was chosen here, on validation. Test played no part in the choice.
 
+## Start here
+
+New to this work? **[docs/HANDOVER.md](docs/HANDOVER.md)** is the orientation doc: what was built, what the numbers mean, what bounds them, and which framings to avoid when presenting.
+
 ## Reproducing
 
 ```bash
