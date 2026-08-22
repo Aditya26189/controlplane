@@ -27,7 +27,12 @@ If true, a logistic regression on that state — one dot product, effectively fr
 Violating any of these invalidates the result. If a change would break one, stop and flag it rather than working around it.
 
 1. **Activations are taken at question-time.** Last token of the prompt, before any generated token exists. Never mid-generation, never from the answer.
-2. **The test set is touched exactly once.** Layer selection, threshold selection, and hyperparameter choice all happen on validation. Test is opened at the end, for the final numbers, and never again.
+2. **The test set is never used for selection, and every scoring of it is disclosed.** Layer selection, threshold selection, and hyperparameter choice all happen on validation. Test is opened at the end, for the final numbers.
+   The original form of this invariant was "touched exactly once". It has in fact been opened three times (`DECISIONS.md` 016, 017), so the enforceable rule is the one that can be checked rather than the one that sounds strongest:
+   - no selection may consult test — not the layer, not `C`, not the threshold;
+   - every scoring is appended to `results/test_scoring_log.json` and disclosed in `RESULTS.md`;
+   - any re-scoring is pre-registered in `DECISIONS.md`, with the prior numbers, **before** it runs.
+   Re-opening test until a number improves is forbidden, and the append-only log is what makes that checkable by someone who was not here.
 3. **Splits are by question, never by example.** Group by `question_id`, deduplicate near-identical question strings first, and assert zero overlap between splits.
 4. **Left padding for all batched inference.** With right padding, position `-1` is a pad token and every activation is garbage. This fails silently — it produces plausible-looking AUROC near 0.5 and nothing errors out.
 5. **Precision and recall are always reported separately.** Never a blended F1 anywhere in code, output, or README.

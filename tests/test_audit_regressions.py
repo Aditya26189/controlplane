@@ -4,6 +4,7 @@ One test per finding, each named for the failure it prevents coming back.
 """
 
 import json
+import re
 from dataclasses import replace
 from pathlib import Path
 
@@ -483,7 +484,7 @@ def test_report_discloses_repeat_scorings():
     assert "has been scored 2 times" in text
     assert "cbac792afcf74bc3" in text, "the earlier scoring must remain visible"
     assert "0.8545" in text
-    assert "scored exactly once" not in text
+    assert "scored once" not in text, "a repeat scoring must not be described as one"
 
 
 def test_report_warns_when_the_winner_is_at_a_grid_boundary():
@@ -575,3 +576,43 @@ def _minimal_artifacts():
             "quantization": "nf4",
         }},
     }
+
+
+# --- the "scored once" claim must not creep back into published prose ------ #
+
+FORBIDDEN_ONCE = re.compile(
+    r"(scored|opened|touched)[^.\n]{0,25}(exactly )?once", re.IGNORECASE
+)
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    ["README_TEMPLATE.md", "SPEC.md", "CLAUDE.md", "scripts/build_notebooks.py"],
+)
+def test_published_prose_does_not_claim_a_single_scoring(relative_path):
+    """The test set has been scored three times; nothing shipped may say once.
+
+    DECISIONS.md 016 said the claim "must not be repeated anywhere" and it then
+    survived in eight places, two of which rendered into the published README
+    and the screen-recorded notebook. This is the guard against that returning.
+
+    CLAUDE.md and DECISIONS.md may *describe* the retired wording, so a line is
+    only a violation if it asserts the claim rather than quoting its history.
+    """
+    text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+    offenders = [
+        line.strip()
+        for line in text.splitlines()
+        if FORBIDDEN_ONCE.search(line)
+        and "once read" not in line
+        and "original form" not in line
+        and "no longer" not in line
+    ]
+    assert not offenders, f"{relative_path} still claims a single scoring: {offenders}"
+
+
+def test_rendered_readme_does_not_claim_a_single_scoring():
+    """The template renders into a public, judged artifact."""
+    text = (REPO_ROOT / "README_TEMPLATE.md").read_text(encoding="utf-8")
+    assert "Test was scored once" not in text
+    assert "opened once" not in text

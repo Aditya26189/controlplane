@@ -145,11 +145,12 @@ def main() -> int:
     )
 
     # ======================================================================== #
-    # 4. THE TEST SET IS OPENED HERE, ONCE.                                    #
+    # 4. THE TEST SET IS OPENED HERE. THIS IS THE ONLY PLACE.                  #
     #                                                                          #
     # Everything above this line saw train and validation only. Nothing below  #
     # feeds back into layer choice, C, or the threshold -- those are frozen in #
-    # `probe` already (CLAUDE.md invariant 2).                                 #
+    # `probe` already (CLAUDE.md invariant 2). Every scoring is appended to     #
+    # results/test_scoring_log.json so the count is auditable, not asserted.    #
     # ======================================================================== #
     test_mask = split == "test"
     if not test_mask.any():
