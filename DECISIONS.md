@@ -270,3 +270,27 @@ This is visible in `probe_sweep.json`, which contains validation numbers only. *
 - *Widen the grid upward as well* — unnecessary. Validation AUROC falls monotonically with increasing `C` at every layer, so the useful direction is unambiguous.
 
 **Consequences:** The strict "test opened exactly once" claim of DECISIONS.md 006 no longer holds and must not be repeated anywhere. It is replaced by a weaker, checkable claim: *test has been scored twice, both scorings are published, and the selection that produced each was made on validation alone.* To make that auditable rather than asserted, `scripts/02_train_probe.py` now appends every test scoring to `results/test_scoring_log.json`, and `RESULTS.md` discloses the count and the history whenever it exceeds one. If a future run scores test a third time, the report will say so without anyone having to remember.
+
+---
+
+## 017 — Outcome of 016: the widened grid confirmed the result rather than changing it
+**Date:** 2026-08-22 · **Status:** accepted · **Resolves:** 016
+
+**Context:** DECISIONS.md 016 pre-registered widening `probe.C_grid` from `{1e-3 … 1.0}` to `{1e-6 … 1.0}`, and committed in advance to reporting whatever the re-scoring produced. This entry records that outcome.
+
+**Result.** Validation selected **layer 23 at `C = 1e-4`** — an *interior* point. `winner_at_grid_boundary` is now `false` and no layer selects the smallest `C`; validation AUROC falls on both sides of `1e-4` at every layer. The search now brackets an optimum rather than stopping at a wall.
+
+| | First scoring (`cbac792a`) | Second scoring (`c429ce5e`) |
+|---|---|---|
+| Selected | layer 23, `C = 1e-3` | layer 23, `C = 1e-4` |
+| Test AUROC | 0.8545 [0.8219, 0.8869] | **0.8551 [0.8217, 0.8878]** |
+| `f` | 0.0617 | 0.0617 |
+| `R` | 0.1416 | 0.1416 |
+| Precision | 0.8919 | 0.8919 |
+| Lift | 2.297× | 2.297× |
+
+**Decision:** Report the second scoring. The change in AUROC is **+0.0006** — far inside the noise of a 600-example validation set — and `f`, `R`, precision and lift are identical to four decimal places. The honest reading is that **the truncated grid was a genuine methodological flaw whose correction changed nothing material**, not that the probe improved.
+
+**Alternatives:** *Present the widened grid as an improvement* — it moved the headline by six ten-thousandths and no other number at all. Claiming it as a gain would misrepresent a housekeeping fix as a result.
+
+**Consequences:** The test set has now been scored three times in total: once before `results/test_scoring_log.json` existed (recorded in 016), and twice after — the latter two being byte-identical re-runs 66 seconds apart under the same config and seed, which incidentally confirms the determinism claim on real data rather than only in the test suite. `RESULTS.md` discloses the log's count and notes that scorings predating the log live here. A reviewer can fairly observe that three scorings is two more than the design intended; the answer is that all three are published, every selection was made on validation, and the pre-registration in 016 was written before the outcome was known.

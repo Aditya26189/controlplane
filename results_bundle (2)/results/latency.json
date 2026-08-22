@@ -1,0 +1,185 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-22T02:13:23+00:00",
+    "git_commit": "6a77b3e4aa5c5abd2b84a07dad777814ae65a39b",
+    "git_branch": "main",
+    "dirty": true,
+    "dirty_paths": [
+      "README.md"
+    ],
+    "dirty_excludes": "results",
+    "python": "3.12.13",
+    "libraries": {
+      "torch": "2.10.0+cu128",
+      "transformers": "5.0.0",
+      "datasets": "5.0.0",
+      "scikit-learn": "1.6.1",
+      "numpy": "2.0.2",
+      "pandas": "2.3.3",
+      "scipy": "1.16.3",
+      "bitsandbytes": "0.50.1"
+    },
+    "device": {
+      "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+      "processor": "x86_64",
+      "cuda_available": true,
+      "device_name": "Tesla T4",
+      "device_count": 2,
+      "cuda_version": "12.8"
+    },
+    "config_hash": "c429ce5e92da9a22",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "dtype": "bfloat16",
+        "device_map": "auto",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ]
+      },
+      "data": {
+        "dataset": "mandarjoshi/trivia_qa",
+        "config": "rc.nocontext",
+        "split": "validation",
+        "n_examples": 3000,
+        "train_frac": 0.6,
+        "val_frac": 0.2,
+        "test_frac": 0.2,
+        "dedup_questions": true
+      },
+      "prompt": {
+        "system": "You are a helpful assistant. Answer the question concisely.",
+        "add_generation_prompt": true
+      },
+      "equivalence_check": {
+        "batch": 4,
+        "relative_tolerance": 0.1,
+        "min_cosine": 0.999,
+        "positive_control": true
+      },
+      "generation": {
+        "max_new_tokens": 32,
+        "do_sample": false,
+        "batch_size": 8,
+        "sort_by_length": true
+      },
+      "labeling": {
+        "min_alias_len_for_substring": 3,
+        "record_strict_em": true,
+        "base_rate_min": 0.25,
+        "base_rate_max": 0.85
+      },
+      "probe": {
+        "type": "logistic_regression",
+        "standardize": true,
+        "class_weight": "balanced",
+        "max_iter": 2000,
+        "C_grid": [
+          1e-06,
+          1e-05,
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "economics": {
+        "target_flag_rate": 0.05,
+        "judge_accuracy": 1.0,
+        "n_responses": 1000000,
+        "reference_error_rate": 0.03,
+        "projection_base_rates": [
+          0.1,
+          0.05,
+          0.03,
+          0.01
+        ]
+      },
+      "evaluation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_auroc_to_proceed": 0.55
+      },
+      "latency": {
+        "probe_timing_repeats": 1000
+      },
+      "abstention": {
+        "patterns": [
+          "i don't know",
+          "i do not know",
+          "i'm not sure",
+          "i am not sure",
+          "i cannot",
+          "unable to",
+          "no information"
+        ],
+        "min_rate_to_report": 0.02
+      },
+      "negative_control": {
+        "enabled": false,
+        "dataset": "gsm8k",
+        "config": "main",
+        "n_examples": 1000
+      },
+      "paths": {
+        "results_dir": "results",
+        "activations": "results/activations.npz",
+        "labels": "results/labels.parquet",
+        "splits": "results/splits.parquet"
+      }
+    }
+  },
+  "latency": {
+    "probe_timing": {
+      "median_us": 228.72149929753505,
+      "p95_us": 315.1076001813635,
+      "mean_us": 240.98329895605275,
+      "min_us": 200.6129998335382,
+      "max_us": 574.542998947436,
+      "repeats": 1000
+    },
+    "raw_dot_product_timing": {
+      "median_us": 7.663999895157758,
+      "p95_us": 9.306099036621163,
+      "repeats": 1000
+    },
+    "comparison": {
+      "probe_median_us": 228.72149929753505,
+      "probe_p95_us": 315.1076001813635,
+      "generation_median_ms": 2557.3366243749974,
+      "prefill_median_ms": 351.42387362498084,
+      "probe_over_generation": 8.943738462801457e-05,
+      "probe_over_prefill": 0.0006508422348722198,
+      "orders_of_magnitude": 4.048480909124788,
+      "adds_a_forward_pass": false,
+      "note": "The probe adds no additional forward pass. The activation is a by-product of the prefill that generation already performs, so the marginal cost is the scale-and-dot-product timed here. The headline figure is the full scikit-learn call including its input validation, which is the conservative number; the raw arithmetic is reported alongside it.",
+      "raw_dot_product_median_us": 7.663999895157758,
+      "sklearn_overhead_factor": 29.84361983643098
+    },
+    "device": {
+      "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+      "processor": "x86_64",
+      "cuda_available": true,
+      "device_name": "Tesla T4",
+      "device_count": 2,
+      "cuda_version": "12.8"
+    },
+    "versions": {
+      "torch": "2.10.0+cu128"
+    },
+    "quantization": "nf4",
+    "model": "Qwen/Qwen2.5-7B-Instruct",
+    "hidden_size": 3584
+  }
+}

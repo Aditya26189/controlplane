@@ -1,0 +1,566 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-22T02:13:13+00:00",
+    "git_commit": "6a77b3e4aa5c5abd2b84a07dad777814ae65a39b",
+    "git_branch": "main",
+    "dirty": true,
+    "dirty_paths": [
+      "README.md"
+    ],
+    "dirty_excludes": "results",
+    "python": "3.12.13",
+    "libraries": {
+      "torch": "2.10.0+cu128",
+      "transformers": "5.0.0",
+      "datasets": "5.0.0",
+      "scikit-learn": "1.6.1",
+      "numpy": "2.0.2",
+      "pandas": "2.3.3",
+      "scipy": "1.16.3",
+      "bitsandbytes": "0.50.1"
+    },
+    "device": {
+      "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+      "processor": "x86_64",
+      "cuda_available": true,
+      "device_name": "Tesla T4",
+      "device_count": 2,
+      "cuda_version": "12.8"
+    },
+    "config_hash": "c429ce5e92da9a22",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "dtype": "bfloat16",
+        "device_map": "auto",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ]
+      },
+      "data": {
+        "dataset": "mandarjoshi/trivia_qa",
+        "config": "rc.nocontext",
+        "split": "validation",
+        "n_examples": 3000,
+        "train_frac": 0.6,
+        "val_frac": 0.2,
+        "test_frac": 0.2,
+        "dedup_questions": true
+      },
+      "prompt": {
+        "system": "You are a helpful assistant. Answer the question concisely.",
+        "add_generation_prompt": true
+      },
+      "equivalence_check": {
+        "batch": 4,
+        "relative_tolerance": 0.1,
+        "min_cosine": 0.999,
+        "positive_control": true
+      },
+      "generation": {
+        "max_new_tokens": 32,
+        "do_sample": false,
+        "batch_size": 8,
+        "sort_by_length": true
+      },
+      "labeling": {
+        "min_alias_len_for_substring": 3,
+        "record_strict_em": true,
+        "base_rate_min": 0.25,
+        "base_rate_max": 0.85
+      },
+      "probe": {
+        "type": "logistic_regression",
+        "standardize": true,
+        "class_weight": "balanced",
+        "max_iter": 2000,
+        "C_grid": [
+          1e-06,
+          1e-05,
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "economics": {
+        "target_flag_rate": 0.05,
+        "judge_accuracy": 1.0,
+        "n_responses": 1000000,
+        "reference_error_rate": 0.03,
+        "projection_base_rates": [
+          0.1,
+          0.05,
+          0.03,
+          0.01
+        ]
+      },
+      "evaluation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_auroc_to_proceed": 0.55
+      },
+      "latency": {
+        "probe_timing_repeats": 1000
+      },
+      "abstention": {
+        "patterns": [
+          "i don't know",
+          "i do not know",
+          "i'm not sure",
+          "i am not sure",
+          "i cannot",
+          "unable to",
+          "no information"
+        ],
+        "min_rate_to_report": 0.02
+      },
+      "negative_control": {
+        "enabled": false,
+        "dataset": "gsm8k",
+        "config": "main",
+        "n_examples": 1000
+      },
+      "paths": {
+        "results_dir": "results",
+        "activations": "results/activations.npz",
+        "labels": "results/labels.parquet",
+        "splits": "results/splits.parquet"
+      }
+    }
+  },
+  "sweep": [
+    {
+      "layer": 8,
+      "C": 1e-06,
+      "val_auroc": 0.6690309747087241,
+      "train_auroc": 0.7003136602227628,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 8,
+      "C": 1e-05,
+      "val_auroc": 0.7003807899971581,
+      "train_auroc": 0.7322813980284215,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 8,
+      "C": 0.0001,
+      "val_auroc": 0.7359704461494744,
+      "train_auroc": 0.7924439892459352,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 8,
+      "C": 0.001,
+      "val_auroc": 0.7330264279624894,
+      "train_auroc": 0.8803392651389066,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 8,
+      "C": 0.01,
+      "val_auroc": 0.709644785450412,
+      "train_auroc": 0.9744270900012802,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 8,
+      "C": 0.1,
+      "val_auroc": 0.6893321966467747,
+      "train_auroc": 0.9999705543464344,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 8,
+      "C": 1.0,
+      "val_auroc": 0.6806479113384484,
+      "train_auroc": 1.0,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 11,
+      "C": 1e-06,
+      "val_auroc": 0.694822392725206,
+      "train_auroc": 0.7078875944181282,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 11,
+      "C": 1e-05,
+      "val_auroc": 0.733901676612674,
+      "train_auroc": 0.7432223786967098,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 11,
+      "C": 0.0001,
+      "val_auroc": 0.7702870133560671,
+      "train_auroc": 0.8022506721290489,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 11,
+      "C": 0.001,
+      "val_auroc": 0.7659221369707303,
+      "train_auroc": 0.8826040199718346,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 11,
+      "C": 0.01,
+      "val_auroc": 0.728513782324524,
+      "train_auroc": 0.9738791447958008,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 11,
+      "C": 0.1,
+      "val_auroc": 0.6985052571753338,
+      "train_auroc": 0.9999692741006273,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 11,
+      "C": 1.0,
+      "val_auroc": 0.6888434214265416,
+      "train_auroc": 1.0,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 14,
+      "C": 1e-06,
+      "val_auroc": 0.7193407217959648,
+      "train_auroc": 0.7425041607988734,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 14,
+      "C": 1e-05,
+      "val_auroc": 0.7601818698493891,
+      "train_auroc": 0.778969402125208,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 14,
+      "C": 0.0001,
+      "val_auroc": 0.8028076157999431,
+      "train_auroc": 0.8304096786583024,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 14,
+      "C": 0.001,
+      "val_auroc": 0.8079909065075306,
+      "train_auroc": 0.9032531045960824,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 14,
+      "C": 0.01,
+      "val_auroc": 0.7764251207729467,
+      "train_auroc": 0.9833081551657918,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 14,
+      "C": 0.1,
+      "val_auroc": 0.7437794828076157,
+      "train_auroc": 0.9999974395083856,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 14,
+      "C": 1.0,
+      "val_auroc": 0.7306393861892583,
+      "train_auroc": 1.0,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 17,
+      "C": 1e-06,
+      "val_auroc": 0.7751065643648763,
+      "train_auroc": 0.7925246447317885,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 17,
+      "C": 1e-05,
+      "val_auroc": 0.7961579994316567,
+      "train_auroc": 0.813020099859173,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 17,
+      "C": 0.0001,
+      "val_auroc": 0.8190622335890878,
+      "train_auroc": 0.8526552298041223,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 17,
+      "C": 0.001,
+      "val_auroc": 0.8140153452685422,
+      "train_auroc": 0.9141864037895276,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 17,
+      "C": 0.01,
+      "val_auroc": 0.7712418300653593,
+      "train_auroc": 0.9857342209704264,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 17,
+      "C": 0.1,
+      "val_auroc": 0.7254901960784313,
+      "train_auroc": 1.0,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 17,
+      "C": 1.0,
+      "val_auroc": 0.7073486786018756,
+      "train_auroc": 1.0,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 20,
+      "C": 1e-06,
+      "val_auroc": 0.8004774083546462,
+      "train_auroc": 0.8240916655997952,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 20,
+      "C": 1e-05,
+      "val_auroc": 0.8166979255470304,
+      "train_auroc": 0.8413519395723981,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 20,
+      "C": 0.0001,
+      "val_auroc": 0.8379539641943735,
+      "train_auroc": 0.8784598642939444,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 20,
+      "C": 0.001,
+      "val_auroc": 0.8344416027280478,
+      "train_auroc": 0.936111893483549,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 20,
+      "C": 0.01,
+      "val_auroc": 0.8054447286160842,
+      "train_auroc": 0.9931199590321342,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 20,
+      "C": 0.1,
+      "val_auroc": 0.7780505825518613,
+      "train_auroc": 1.0,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 20,
+      "C": 1.0,
+      "val_auroc": 0.7674907644217107,
+      "train_auroc": 1.0,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 23,
+      "C": 1e-06,
+      "val_auroc": 0.8047968172776357,
+      "train_auroc": 0.8341070285494815,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 23,
+      "C": 1e-05,
+      "val_auroc": 0.8197669792554703,
+      "train_auroc": 0.850006401229036,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 23,
+      "C": 0.0001,
+      "val_auroc": 0.8424666098323388,
+      "train_auroc": 0.889966713609013,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 23,
+      "C": 0.001,
+      "val_auroc": 0.8376811594202898,
+      "train_auroc": 0.9552451670720778,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 23,
+      "C": 0.01,
+      "val_auroc": 0.7970787155441889,
+      "train_auroc": 0.9990577390859045,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 23,
+      "C": 0.1,
+      "val_auroc": 0.7670929241261722,
+      "train_auroc": 1.0,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 23,
+      "C": 1.0,
+      "val_auroc": 0.7551690821256039,
+      "train_auroc": 1.0,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 26,
+      "C": 1e-06,
+      "val_auroc": 0.7946348394430236,
+      "train_auroc": 0.8330994750992191,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 26,
+      "C": 1e-05,
+      "val_auroc": 0.8034214265416311,
+      "train_auroc": 0.8454973754960953,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 26,
+      "C": 0.0001,
+      "val_auroc": 0.8262915601023018,
+      "train_auroc": 0.8942555370631162,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 26,
+      "C": 0.001,
+      "val_auroc": 0.8258027848820687,
+      "train_auroc": 0.9720291896044041,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 26,
+      "C": 0.01,
+      "val_auroc": 0.7956351236146633,
+      "train_auroc": 0.9995608756881321,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 26,
+      "C": 0.1,
+      "val_auroc": 0.7752315998863313,
+      "train_auroc": 1.0,
+      "n_train": 1800,
+      "n_val": 600
+    },
+    {
+      "layer": 26,
+      "C": 1.0,
+      "val_auroc": 0.7636487638533674,
+      "train_auroc": 1.0,
+      "n_train": 1800,
+      "n_val": 600
+    }
+  ],
+  "best": {
+    "layer": 23,
+    "C": 0.0001,
+    "val_auroc": 0.8424666098323388,
+    "train_auroc": 0.889966713609013,
+    "n_train": 1800,
+    "n_val": 600
+  },
+  "layer_fractions": [
+    0.29,
+    0.39,
+    0.5,
+    0.61,
+    0.71,
+    0.82,
+    0.93
+  ],
+  "C_grid": [
+    1e-06,
+    1e-05,
+    0.0001,
+    0.001,
+    0.01,
+    0.1,
+    1.0
+  ],
+  "selected_on": "validation",
+  "winner_at_grid_boundary": false,
+  "layers_selecting_smallest_C": []
+}

@@ -1,0 +1,321 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-22T02:13:17+00:00",
+    "git_commit": "6a77b3e4aa5c5abd2b84a07dad777814ae65a39b",
+    "git_branch": "main",
+    "dirty": true,
+    "dirty_paths": [
+      "README.md"
+    ],
+    "dirty_excludes": "results",
+    "python": "3.12.13",
+    "libraries": {
+      "torch": "2.10.0+cu128",
+      "transformers": "5.0.0",
+      "datasets": "5.0.0",
+      "scikit-learn": "1.6.1",
+      "numpy": "2.0.2",
+      "pandas": "2.3.3",
+      "scipy": "1.16.3",
+      "bitsandbytes": "0.50.1"
+    },
+    "device": {
+      "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+      "processor": "x86_64",
+      "cuda_available": true,
+      "device_name": "Tesla T4",
+      "device_count": 2,
+      "cuda_version": "12.8"
+    },
+    "config_hash": "c429ce5e92da9a22",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "dtype": "bfloat16",
+        "device_map": "auto",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ]
+      },
+      "data": {
+        "dataset": "mandarjoshi/trivia_qa",
+        "config": "rc.nocontext",
+        "split": "validation",
+        "n_examples": 3000,
+        "train_frac": 0.6,
+        "val_frac": 0.2,
+        "test_frac": 0.2,
+        "dedup_questions": true
+      },
+      "prompt": {
+        "system": "You are a helpful assistant. Answer the question concisely.",
+        "add_generation_prompt": true
+      },
+      "equivalence_check": {
+        "batch": 4,
+        "relative_tolerance": 0.1,
+        "min_cosine": 0.999,
+        "positive_control": true
+      },
+      "generation": {
+        "max_new_tokens": 32,
+        "do_sample": false,
+        "batch_size": 8,
+        "sort_by_length": true
+      },
+      "labeling": {
+        "min_alias_len_for_substring": 3,
+        "record_strict_em": true,
+        "base_rate_min": 0.25,
+        "base_rate_max": 0.85
+      },
+      "probe": {
+        "type": "logistic_regression",
+        "standardize": true,
+        "class_weight": "balanced",
+        "max_iter": 2000,
+        "C_grid": [
+          1e-06,
+          1e-05,
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "economics": {
+        "target_flag_rate": 0.05,
+        "judge_accuracy": 1.0,
+        "n_responses": 1000000,
+        "reference_error_rate": 0.03,
+        "projection_base_rates": [
+          0.1,
+          0.05,
+          0.03,
+          0.01
+        ]
+      },
+      "evaluation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_auroc_to_proceed": 0.55
+      },
+      "latency": {
+        "probe_timing_repeats": 1000
+      },
+      "abstention": {
+        "patterns": [
+          "i don't know",
+          "i do not know",
+          "i'm not sure",
+          "i am not sure",
+          "i cannot",
+          "unable to",
+          "no information"
+        ],
+        "min_rate_to_report": 0.02
+      },
+      "negative_control": {
+        "enabled": false,
+        "dataset": "gsm8k",
+        "config": "main",
+        "n_examples": 1000
+      },
+      "paths": {
+        "results_dir": "results",
+        "activations": "results/activations.npz",
+        "labels": "results/labels.parquet",
+        "splits": "results/splits.parquet"
+      }
+    }
+  },
+  "economics": {
+    "n_responses": 1000000,
+    "reference_error_rate": 0.03,
+    "judge_accuracy": 1.0,
+    "measured_flag_rate": 0.06166666666666667,
+    "measured_recall": 0.14163090128755365,
+    "lift": 2.2967173181765457,
+    "lift_from_policy_table": 2.2967173181765457,
+    "policies": [
+      {
+        "policy": "judge_everything",
+        "label": "Judge everything",
+        "judge_calls": 1000000.0,
+        "coverage": 1.0,
+        "errors_caught": 30000.0,
+        "relative_cost": 16.216216216216218
+      },
+      {
+        "policy": "random_sample",
+        "label": "Random 6.2% sample",
+        "judge_calls": 61666.66666666667,
+        "coverage": 0.06166666666666667,
+        "errors_caught": 1850.0,
+        "relative_cost": 1.0
+      },
+      {
+        "policy": "probe_triggered",
+        "label": "Probe-triggered",
+        "judge_calls": 61666.66666666667,
+        "coverage": 1.0,
+        "errors_caught": 4248.92703862661,
+        "relative_cost": 1.0
+      }
+    ],
+    "invariance": {
+      "error_rates_tested": [
+        0.01,
+        0.03,
+        0.1,
+        0.5
+      ],
+      "judge_accuracies_tested": [
+        0.5,
+        0.8,
+        1.0
+      ],
+      "lifts": [
+        {
+          "error_rate": 0.01,
+          "judge_accuracy": 0.5,
+          "lift": 2.296717318176546
+        },
+        {
+          "error_rate": 0.01,
+          "judge_accuracy": 0.8,
+          "lift": 2.2967173181765457
+        },
+        {
+          "error_rate": 0.01,
+          "judge_accuracy": 1.0,
+          "lift": 2.296717318176546
+        },
+        {
+          "error_rate": 0.03,
+          "judge_accuracy": 0.5,
+          "lift": 2.2967173181765457
+        },
+        {
+          "error_rate": 0.03,
+          "judge_accuracy": 0.8,
+          "lift": 2.296717318176546
+        },
+        {
+          "error_rate": 0.03,
+          "judge_accuracy": 1.0,
+          "lift": 2.2967173181765457
+        },
+        {
+          "error_rate": 0.1,
+          "judge_accuracy": 0.5,
+          "lift": 2.2967173181765452
+        },
+        {
+          "error_rate": 0.1,
+          "judge_accuracy": 0.8,
+          "lift": 2.2967173181765457
+        },
+        {
+          "error_rate": 0.1,
+          "judge_accuracy": 1.0,
+          "lift": 2.2967173181765452
+        },
+        {
+          "error_rate": 0.5,
+          "judge_accuracy": 0.5,
+          "lift": 2.2967173181765457
+        },
+        {
+          "error_rate": 0.5,
+          "judge_accuracy": 0.8,
+          "lift": 2.2967173181765452
+        },
+        {
+          "error_rate": 0.5,
+          "judge_accuracy": 1.0,
+          "lift": 2.2967173181765457
+        }
+      ],
+      "all_equal": true,
+      "spread": 8.881784197001252e-16
+    },
+    "note": "lift = R/f. The base error rate ASSUMED in the policy table, and the judge's accuracy, appear in every policy's errors-caught figure and cancel from the ratio, so the multiplier does not depend on either. That is a different statement from the ceiling below: the MEASURED lift equals precision/base_rate and is therefore bounded by the base rate of the set it was measured on (DECISIONS.md 015).",
+    "ceiling": {
+      "measured_base_rate": 0.3883333333333333,
+      "max_attainable_lift": 2.575107296137339,
+      "fraction_of_ceiling_achieved": 0.8918918918918919,
+      "explanation": "lift = R/f = precision/base_rate, so precision <= 1 caps lift at 1/base_rate. A probe cannot beat this however well it ranks.",
+      "lift_from_precision": 2.2967173181765457
+    },
+    "projection": {
+      "budget": 0.06166666666666667,
+      "rows": [
+        {
+          "base_rate": 0.1,
+          "flag_rate": 0.05873513349159758,
+          "recall": 0.31759656652360513,
+          "fpr": 0.02997275204359673,
+          "lift": 5.407267297162766,
+          "ceiling": 10.0,
+          "projected": true
+        },
+        {
+          "base_rate": 0.05,
+          "flag_rate": 0.06158856755271251,
+          "recall": 0.4034334763948498,
+          "fpr": 0.043596730245231606,
+          "lift": 6.550460457609418,
+          "ceiling": 20.0,
+          "projected": true
+        },
+        {
+          "base_rate": 0.03,
+          "flag_rate": 0.06045046836079569,
+          "recall": 0.4291845493562232,
+          "fpr": 0.04904632152588556,
+          "lift": 7.099772110857041,
+          "ceiling": 33.333333333333336,
+          "projected": true
+        },
+        {
+          "base_rate": 0.01,
+          "flag_rate": 0.05832863608190759,
+          "recall": 0.43776824034334766,
+          "fpr": 0.05449591280653951,
+          "lift": 7.505202757160558,
+          "ceiling": 100.0,
+          "projected": true
+        }
+      ],
+      "caveat": "PROJECTION, NOT MEASUREMENT. A ROC is base-rate independent, so the measured curve can be read at another base error rate. This assumes the probe ranks equally well on that workload -- the cross-domain generalisation this repo has NOT tested. Treat as an illustration of headroom, never as a result."
+    },
+    "lift_inputs_ci": {
+      "recall": [
+        0.10037644787644788,
+        0.18652560339204174
+      ],
+      "flag_rate": [
+        0.043333333333333335,
+        0.08166666666666667
+      ]
+    },
+    "lift_ci": {
+      "ci_low": 2.0216933102535384,
+      "ci_high": 2.629656683710738,
+      "ci": 0.95,
+      "n_samples": 1000
+    }
+  }
+}
