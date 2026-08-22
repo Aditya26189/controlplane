@@ -67,7 +67,7 @@ Coverage and verdict are different things. Every response passes the cheap layer
 
 ![Layer sweep](results/layer_sweep.png)
 
-Validation AUROC by depth. The layer was chosen here; the test set was opened once, afterwards.
+Validation AUROC by depth. The layer was chosen here, on validation. Test played no part in the choice.
 
 ## Reproducing
 
@@ -87,7 +87,7 @@ Offline clusters: pre-download the model and dataset into `HF_HOME` on a login n
 
 **Splitting.** By `question_id`, after deduplicating normalised question strings. TriviaQA ships answer aliases and some near-duplicate questions; splitting at example level leaks them across train and test and inflates AUROC.
 
-**Selection discipline.** Layer, regularisation strength, and threshold were all chosen on validation. Test was scored once.
+**Selection discipline.** Layer, regularisation strength, and threshold were all chosen on validation; test was never consulted for any of them. Every scoring of the test set is logged and published — see `results/test_scoring_log.json` and `DECISIONS.md` 016-017, which pre-registers the one re-scoring and reports its outcome.
 
 **Labelling.** Greedy decoding, then normalised alias matching (lowercase, strip punctuation, drop articles). Aliases under 3 characters require a whole-token match rather than substring containment. Strict exact match is reported alongside as an audit: {{strict_em_base_rate}} vs {{base_rate}} lenient.
 

@@ -1,4 +1,4 @@
-"""The test set is touched exactly once (CLAUDE.md invariant 2).
+"""The test set is never used for selection (CLAUDE.md invariant 2).
 
 Selecting the layer, C, or the threshold on test is the single most common way
 to produce an inflated headline number, and it is the first thing a reviewer
@@ -8,6 +8,9 @@ checks. These tests make the claim checkable rather than asserted:
   so it cannot have seen val or test;
 * corrupting every test row leaves the sweep and the chosen threshold
   bit-identical, so neither can depend on test.
+
+The count of scorings is disclosed rather than capped; what must never happen is
+a *selection* that consulted test (DECISIONS.md 016, 017).
 """
 
 import numpy as np
