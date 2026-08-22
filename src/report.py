@@ -506,6 +506,12 @@ def render_results_md(artifacts: dict[str, Any], config: Config) -> str:
             "(DECISIONS.md 016)."
         )
         add("")
+        add(
+            "The log begins when it was introduced, so any scoring that predates "
+            "it is recorded in `DECISIONS.md` 016 and 017 rather than in the "
+            "table below. Treat the two together as the full history."
+        )
+        add("")
         add("| # | Layer | C | AUROC | `f` | `R` | Lift | Config hash |")
         add("|---|---|---|---|---|---|---|---|")
         for i, row in enumerate(log.get("scorings", []), start=1):

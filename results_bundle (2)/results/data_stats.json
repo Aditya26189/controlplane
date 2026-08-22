@@ -1,0 +1,157 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-21T23:50:27+00:00",
+    "git_commit": "6a77b3e4aa5c5abd2b84a07dad777814ae65a39b",
+    "git_branch": "main",
+    "dirty": false,
+    "dirty_paths": [],
+    "dirty_excludes": "results",
+    "python": "3.12.13",
+    "libraries": {
+      "torch": "2.10.0+cu128",
+      "transformers": "5.0.0",
+      "datasets": "5.0.0",
+      "scikit-learn": "1.6.1",
+      "numpy": "2.0.2",
+      "pandas": "2.3.3",
+      "scipy": "1.16.3",
+      "bitsandbytes": "0.50.1"
+    },
+    "device": {
+      "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+      "processor": "x86_64",
+      "cuda_available": true,
+      "device_name": "Tesla T4",
+      "device_count": 2,
+      "cuda_version": "12.8"
+    },
+    "config_hash": "c429ce5e92da9a22",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "dtype": "bfloat16",
+        "device_map": "auto",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ]
+      },
+      "data": {
+        "dataset": "mandarjoshi/trivia_qa",
+        "config": "rc.nocontext",
+        "split": "validation",
+        "n_examples": 3000,
+        "train_frac": 0.6,
+        "val_frac": 0.2,
+        "test_frac": 0.2,
+        "dedup_questions": true
+      },
+      "prompt": {
+        "system": "You are a helpful assistant. Answer the question concisely.",
+        "add_generation_prompt": true
+      },
+      "equivalence_check": {
+        "batch": 4,
+        "relative_tolerance": 0.1,
+        "min_cosine": 0.999,
+        "positive_control": true
+      },
+      "generation": {
+        "max_new_tokens": 32,
+        "do_sample": false,
+        "batch_size": 8,
+        "sort_by_length": true
+      },
+      "labeling": {
+        "min_alias_len_for_substring": 3,
+        "record_strict_em": true,
+        "base_rate_min": 0.25,
+        "base_rate_max": 0.85
+      },
+      "probe": {
+        "type": "logistic_regression",
+        "standardize": true,
+        "class_weight": "balanced",
+        "max_iter": 2000,
+        "C_grid": [
+          1e-06,
+          1e-05,
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "economics": {
+        "target_flag_rate": 0.05,
+        "judge_accuracy": 1.0,
+        "n_responses": 1000000,
+        "reference_error_rate": 0.03,
+        "projection_base_rates": [
+          0.1,
+          0.05,
+          0.03,
+          0.01
+        ]
+      },
+      "evaluation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_auroc_to_proceed": 0.55
+      },
+      "latency": {
+        "probe_timing_repeats": 1000
+      },
+      "abstention": {
+        "patterns": [
+          "i don't know",
+          "i do not know",
+          "i'm not sure",
+          "i am not sure",
+          "i cannot",
+          "unable to",
+          "no information"
+        ],
+        "min_rate_to_report": 0.02
+      },
+      "negative_control": {
+        "enabled": false,
+        "dataset": "gsm8k",
+        "config": "main",
+        "n_examples": 1000
+      },
+      "paths": {
+        "results_dir": "results",
+        "activations": "results/activations.npz",
+        "labels": "results/labels.parquet",
+        "splits": "results/splits.parquet"
+      }
+    }
+  },
+  "data": {
+    "dataset": "mandarjoshi/trivia_qa",
+    "dataset_config": "rc.nocontext",
+    "split": "validation",
+    "rows_loaded": 17944,
+    "duplicates_dropped": 7983,
+    "empty_or_aliasless_dropped": 0,
+    "n_examples_requested": 3000,
+    "n_final": 3000,
+    "split_sizes": {
+      "train": 1800,
+      "val": 600,
+      "test": 600
+    },
+    "seed": 1729
+  }
+}
