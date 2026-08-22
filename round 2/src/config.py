@@ -8,9 +8,10 @@ here rather than by discipline:
   frozen block and :mod:`src.economics.sizing` takes it as its only source.
   There is no second place to read a flag rate or a base rate from, so two
   scenarios cannot be mixed into one table.
-* **Invariant 8 — every number in a document is computed by code.** The config
-  hash defined here is half of what makes a number traceable to the run that
-  produced it.
+* **Invariant 8 — every number in a document is computed by code.** Nothing is
+  written to ``results/`` except through :func:`write_json_artifact`, which
+  attaches the config hash, seed, git commit and dirty flag that make a number
+  traceable to the run that produced it.
 
 The loader is strict on purpose. An unknown key is an error, not a warning: a
 mistyped knob that is silently dropped produces a run whose settings differ from
@@ -25,8 +26,12 @@ import json
 import logging
 import math
 import os
+import platform
+import random
+import subprocess
 import sys
 from dataclasses import fields, is_dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from types import UnionType
 from typing import Any, Optional, Union, get_args, get_origin, get_type_hints
@@ -37,6 +42,14 @@ __all__ = [
     "Config",
     "ConfigError",
     "load_config",
+    "provenance",
+    "project_root",
+    "read_json_artifact",
+    "repo_root",
+    "set_seeds",
+    "setup_logging",
+    "working_tree_changes",
+    "write_json_artifact",
 ]
 
 
@@ -72,11 +85,6 @@ def _reject_non_permissive(value: str, path: str) -> None:
                 "project's public claim is a fully open self-hostable stack; "
                 "see CLAUDE.md, 'Out of scope'."
             )
-
-
-def _project_root() -> Path:
-    """The project root — the directory holding ``config.yaml``."""
-    return Path(__file__).resolve().parents[1]
 
 
 # --------------------------------------------------------------------------- #
@@ -678,15 +686,15 @@ class Config:
 
     def results_path(self, name: str) -> Path:
         """Resolve a filename inside the configured results directory."""
-        return _project_root() / self.paths.results_dir / name
+        return project_root() / self.paths.results_dir / name
 
     def evalset_path(self, name: str) -> Path:
         """Resolve a filename inside the configured evalsets directory."""
-        return _project_root() / self.paths.evalsets_dir / name
+        return project_root() / self.paths.evalsets_dir / name
 
     def policy_path(self, name: str) -> Path:
         """Resolve a filename inside the configured policies directory."""
-        return _project_root() / self.paths.policies_dir / name
+        return project_root() / self.paths.policies_dir / name
 
     def evalset_ids(self) -> tuple[str, ...]:
         """Declared eval set ids, in config order."""
@@ -853,3 +861,315 @@ def load_config(
     return _from_mapping(Config, raw)
 
 
+# --------------------------------------------------------------------------- #
+# Runtime setup
+# --------------------------------------------------------------------------- #
+
+
+def set_seeds(seed: int) -> None:
+    """Seed every RNG that can move a measured number.
+
+    Torch is seeded only if already importable; the store, sampling, economics
+    and policy layers must stay runnable on a machine with no torch installed,
+    so importing it here would make a CPU-only test suite depend on a GPU stack.
+
+    Args:
+        seed: The seed from ``config.yaml``.
+    """
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    try:
+        import numpy as np
+
+        np.random.seed(seed)
+    except ImportError:  # pragma: no cover - numpy is a hard dependency in practice
+        pass
+    torch_module = sys.modules.get("torch")
+    if torch_module is None:
+        try:
+            import torch as torch_module  # type: ignore[no-redef]
+        except ImportError:
+            torch_module = None
+    if torch_module is not None:
+        torch_module.manual_seed(seed)
+        if torch_module.cuda.is_available():
+            torch_module.cuda.manual_seed_all(seed)
+
+
+def setup_logging(level: int = logging.INFO) -> None:
+    """Configure structured stdout logging with UTC timestamps.
+
+    Timestamps are UTC because artifacts record UTC and a reader correlating a
+    log line with a certificate should not have to guess a timezone offset.
+    """
+    logging.Formatter.converter = lambda *args: datetime.now(timezone.utc).timetuple()
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)sZ %(levelname)-7s %(name)s | %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+        stream=sys.stdout,
+        force=True,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Provenance
+# --------------------------------------------------------------------------- #
+
+
+def project_root() -> Path:
+    """Return the Round 2 project root — the directory holding ``config.yaml``.
+
+    Distinct from :func:`repo_root`: Round 2 is a subdirectory of a repository
+    whose root belongs to Round 1. Artifact paths resolve against this; git
+    commands run against the repo root.
+    """
+    return Path(__file__).resolve().parents[1]
+
+
+def repo_root() -> Path:
+    """Return the git repository root, located by walking up to the ``.git`` entry."""
+    here = Path(__file__).resolve()
+    for candidate in [here.parent, *here.parents]:
+        if (candidate / ".git").exists():
+            return candidate
+    return project_root()
+
+
+def _git(*args: str) -> Optional[str]:
+    """Run a git command in the repo root, returning None if git is unavailable."""
+    try:
+        out = subprocess.run(
+            ["git", *args],
+            cwd=repo_root(),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    return out.stdout.strip()
+
+
+def working_tree_changes(results_dir: str = "results") -> Optional[list[str]]:
+    """Paths differing from HEAD, ignoring generated results.
+
+    ``dirty`` exists to answer one question: *did the code that ran match the
+    commit recorded beside these numbers?* A bare ``git status --porcelain``
+    cannot answer it, because the pipeline writes its own artifacts into a
+    tracked ``results/`` directory — so the first stage dirties the tree and
+    every later stage records ``dirty: true`` regardless of the code. Excluding
+    the results directory restores the flag's meaning.
+
+    Paths are reported relative to the repository root, so a Round 1 file
+    changed while Round 2 runs still shows up. That is intentional: the flag
+    describes the tree the commit hash came from.
+
+    Args:
+        results_dir: Directory to exclude, relative to the project root.
+
+    Returns:
+        Changed paths outside the results directory, or None if git is absent.
+    """
+    status = _git("status", "--porcelain")
+    if status is None:
+        return None
+    try:
+        excluded = (
+            (project_root() / results_dir).resolve().relative_to(repo_root().resolve())
+        ).as_posix()
+    except ValueError:  # results dir outside the repo — exclude nothing
+        excluded = None
+    changed: list[str] = []
+    for line in status.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Split on whitespace rather than slicing a fixed offset. Porcelain
+        # status codes are two characters, but an unstaged change renders as
+        # " M path" and _git() strips the whole output — which removes that
+        # leading space from the *first* line only, so a fixed offset silently
+        # eats a character of the first path and no others.
+        parts = stripped.split(None, 1)
+        if len(parts) < 2:
+            continue
+        path = parts[1].strip().strip('"')
+        if " -> " in path:  # rename: report the destination
+            path = path.split(" -> ", 1)[1].strip().strip('"')
+        path = path.replace("\\", "/").rstrip("/")
+        if excluded and (path == excluded or path.startswith(excluded + "/")):
+            continue
+        changed.append(path)
+    return changed
+
+
+def library_versions() -> dict[str, Optional[str]]:
+    """Versions of libraries whose behaviour could move a measured number.
+
+    Reads distribution metadata rather than importing each package. ``provenance()``
+    runs on every artifact write, and importing torch or spacy here would add
+    seconds to each one for a string already on disk.
+    """
+    from importlib.metadata import PackageNotFoundError, version
+
+    versions: dict[str, Optional[str]] = {}
+    for distribution in (
+        "torch",
+        "transformers",
+        "scikit-learn",
+        "numpy",
+        "scipy",
+        "pandas",
+        "statsmodels",
+        "presidio-analyzer",
+        "bitsandbytes",
+    ):
+        try:
+            versions[distribution] = version(distribution)
+        except PackageNotFoundError:
+            versions[distribution] = None
+
+    # If torch is already imported, prefer its own string: it carries the build
+    # tag ("+cpu", "+cu121") that distribution metadata drops, and that tag is
+    # part of what makes a latency number reproducible.
+    torch_module = sys.modules.get("torch")
+    if torch_module is not None:
+        versions["torch"] = getattr(torch_module, "__version__", versions["torch"])
+    return versions
+
+
+def device_info() -> dict[str, Any]:
+    """Describe the compute device: latency numbers are meaningless without it."""
+    info: dict[str, Any] = {
+        "platform": platform.platform(),
+        "processor": platform.processor() or platform.machine(),
+        "cuda_available": False,
+        "device_name": "cpu",
+    }
+    torch_module = sys.modules.get("torch")
+    if torch_module is None:
+        return info
+    info["cuda_available"] = bool(torch_module.cuda.is_available())
+    if info["cuda_available"]:
+        info["device_name"] = torch_module.cuda.get_device_name(0)
+        info["device_count"] = torch_module.cuda.device_count()
+        info["cuda_version"] = torch_module.version.cuda
+    return info
+
+
+def provenance(config: Optional[Config] = None) -> dict[str, Any]:
+    """Build the provenance block embedded in every artifact.
+
+    Records ``git_commit`` as HEAD at the moment the script ran — the commit of
+    the *code* that produced the artifact, never the commit that contains it
+    (``CONTRIBUTING.md``, "The provenance ordering problem"). Those can never be
+    the same hash, so the rule has to be stated rather than inferred.
+
+    ``dirty`` comes from :func:`working_tree_changes`. An artifact generated from
+    a dirty tree records a commit that does not describe the code that ran, so
+    the flag has to travel with the hash rather than be checked once by hand.
+
+    Args:
+        config: If given, its hash, seed and resolved values are embedded too.
+
+    Returns:
+        A JSON-serialisable provenance mapping.
+    """
+    results_dir = config.paths.results_dir if config is not None else "results"
+    changed = working_tree_changes(results_dir)
+    block: dict[str, Any] = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "git_commit": _git("rev-parse", "HEAD"),
+        "git_branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
+        "dirty": None if changed is None else bool(changed),
+        "dirty_paths": None if changed is None else sorted(changed)[:20],
+        "dirty_excludes": results_dir,
+        "python": sys.version.split()[0],
+        "libraries": library_versions(),
+        "device": device_info(),
+    }
+    if config is not None:
+        block["config_hash"] = config.config_hash
+        block["seed"] = config.seed
+        block["config"] = config.to_dict()
+    return block
+
+
+def _json_default(value: Any) -> Any:
+    """Serialise numpy scalars and paths as themselves; refuse anything else.
+
+    ``default=str`` would be simpler and would silently turn a stray
+    ``np.float32`` into the *string* ``"0.89"`` — json only handles numpy types
+    that subclass Python builtins, and ``float32``, ``int64`` and ``bool_`` do
+    not. A number that becomes a string still looks like a number in the file,
+    then breaks or renders wrong three stages later. Everything else raises, so
+    an unserialisable value is a crash at the point it was produced.
+    """
+    import numpy as np
+
+    if isinstance(value, np.bool_):
+        return bool(value)
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        return float(value)
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    raise TypeError(
+        f"{type(value).__name__} is not JSON-serialisable. Cast it explicitly at "
+        "the point it is produced rather than letting it be stringified."
+    )
+
+
+def write_json_artifact(
+    path: str | os.PathLike,
+    payload: dict[str, Any],
+    config: Optional[Config] = None,
+) -> Path:
+    """Write a results artifact with its provenance block attached.
+
+    Every stage writes through here, so no artifact can exist without the config
+    hash, seed, git commit and dirty flag that produced it. That is
+    ``CLAUDE.md`` invariant 8 made structural: a number in a document is
+    traceable because there is no other way to have written it.
+
+    Args:
+        path: Destination JSON path.
+        payload: The stage's own results.
+        config: Config to stamp into the provenance block.
+
+    Returns:
+        The path written.
+    """
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    document = {"provenance": provenance(config), **payload}
+    with out.open("w", encoding="utf-8") as fh:
+        json.dump(document, fh, indent=2, sort_keys=False, default=_json_default)
+        fh.write("\n")
+    logging.getLogger(__name__).info("wrote %s", out)
+    return out
+
+
+def read_json_artifact(path: str | os.PathLike) -> dict[str, Any]:
+    """Read an artifact written by :func:`write_json_artifact`.
+
+    Raises:
+        FileNotFoundError: With the ordering named, since the usual cause is
+            running a stage before the one that produces its input.
+    """
+    p = Path(path)
+    if not p.is_file():
+        raise FileNotFoundError(
+            f"{p} not found. Stages read each other's output from disk; run the "
+            "earlier stage first (see scripts/run_all.py for the order)."
+        )
+    with p.open("r", encoding="utf-8") as fh:
+        return json.load(fh)
