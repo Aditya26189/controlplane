@@ -11,7 +11,8 @@ result rather than as a bug, so the polarity is asserted rather than assumed.
 Selection discipline (CLAUDE.md invariant 2): the layer, the regularisation
 strength and the threshold are all chosen on **validation**. Nothing in this
 module reads test rows -- ``run_sweep`` is handed the split labels and filters
-to train and val only. Test is scored once, by ``scripts/02_train_probe.py``.
+to train and val only. Test is scored by ``scripts/02_train_probe.py`` alone,
+which appends every scoring to an append-only log.
 """
 
 import logging

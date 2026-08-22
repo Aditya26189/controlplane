@@ -303,11 +303,12 @@ def append_test_scoring(
 ) -> dict[str, Any]:
     """Append one test-set scoring to an append-only log.
 
-    CLAUDE.md invariant 2 says the test set is opened once. That was a claim
-    nobody could check: stage 02 can be re-run at will, and each run silently
-    overwrites ``probe_test.json`` leaving no trace of the previous scoring.
-    After DECISIONS.md 016 the claim is weaker and must be *auditable* instead
-    — every scoring is recorded here, and ``RESULTS.md`` discloses the count.
+    CLAUDE.md invariant 2 once read "the test set is touched exactly once".
+    Nobody could check that: stage 02 can be re-run at will, and each run
+    silently overwrote ``probe_test.json``, leaving no trace of the previous
+    scoring. The invariant now forbids *selection* on test and requires every
+    scoring to be disclosed — a weaker claim, but an auditable one, and this
+    log is what makes it auditable (DECISIONS.md 016, 017).
 
     Entries are only ever appended. A scoring that produced a disappointing
     number cannot be removed by re-running until a better one appears, because

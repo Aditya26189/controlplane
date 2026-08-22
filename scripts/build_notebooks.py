@@ -134,7 +134,8 @@ nothing raises — the pipeline completes and returns an AUROC near 0.5 that rea
 ## 2. Where in the stack the signal lives
 
 Validation AUROC for every layer and every regularisation strength tried. **The layer was
-chosen here, on validation.** The test set was opened once, afterwards.
+chosen here, on validation.** Test played no part in the choice; every scoring of it is
+logged and disclosed.
 
 A smooth curve peaking mid-stack is itself evidence the signal is real rather than noise,
 which is why the whole table is shown and not just the winner.
@@ -144,7 +145,7 @@ which is why the whole table is shown and not just the winner.
     code('display(Image(filename=str(results_dir / "layer_sweep.png")))'),
     markdown(
         """
-## 3. Test results — scored once
+## 3. Test results
 
 Precision and recall are reported separately and never blended into an F1. The two failure
 modes differ in cost by orders of magnitude: a false positive wastes one judge call, a
