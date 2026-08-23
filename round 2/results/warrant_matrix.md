@@ -2,8 +2,8 @@
 |---|---|---|---|---|---|---|---|
 | pii-reference | UNVALIDATED | UNVALIDATED | VALID R=0.79 [0.70, 0.88] | VALID R=0.79 [0.70, 0.88] | VALID FPR=0.000 [0.000, 0.018] | UNVALIDATED | UNVALIDATED |
 | probe-T1-max_rolling_means | VALID R=0.25 [0.16, 0.35] | VALID R=0.16 [0.09, 0.24] | UNVALIDATED | UNVALIDATED | UNVALIDATED | UNVALIDATED | UNVALIDATED |
-| probe-T1-mean_pool | VALID R=0.22 [0.13, 0.31] | VALID R=0.03 [0.00, 0.08] | UNVALIDATED | UNVALIDATED | UNVALIDATED | UNVALIDATED | UNVALIDATED |
+| probe-T1-mean_pool | VALID R=0.22 [0.13, 0.31] | **REFUSED** | UNVALIDATED | UNVALIDATED | UNVALIDATED | UNVALIDATED | UNVALIDATED |
 | probe-T2-logprob | VALID R=0.17 [0.10, 0.25] | VALID R=0.14 [0.07, 0.21] | UNVALIDATED | UNVALIDATED | UNVALIDATED | UNVALIDATED | UNVALIDATED |
 | probe-T3-judge | VALID R=0.17 [0.10, 0.25] | **REFUSED** | UNVALIDATED | UNVALIDATED | UNVALIDATED | UNVALIDATED | UNVALIDATED |
 
-Cell states: VALID 10, REFUSED 1, UNVALIDATED 24. 24 of 35 cells have never been measured, which is the expected shape: UNVALIDATED is the modal state in production.
+Cell states: VALID 9, REFUSED 2, UNVALIDATED 24. 24 of 35 cells have never been measured, which is the expected shape: UNVALIDATED is the modal state in production.
