@@ -29,6 +29,7 @@ from ..model import Metric, MetricKind
 
 __all__ = [
     "MeasurementError",
+    "clopper_pearson",
     "assert_polarity",
     "auroc",
     "bootstrap_interval",
@@ -380,6 +381,48 @@ def bootstrap_interval(
     return low, high, len(values)
 
 
+def clopper_pearson(successes: int, n: int, ci: float) -> tuple[float, float]:
+    """Exact binomial interval for a proportion. Correct at the boundary.
+
+    Used where the bootstrap collapses. If a detector fires on **zero** of 200
+    hard negatives, every bootstrap resample also contains zero events, so the
+    percentile interval is ``[0, 0]`` — a claim of *perfect certainty* from 200
+    observations. That is the loudest possible false claim in a project whose
+    entire thesis is that unbacked claims are the problem.
+
+    The exact interval for 0/200 at 95% is ``[0, 0.0149]``, which is the
+    familiar rule of three: with no events in ``n`` trials the upper bound is
+    about ``3/n``. Saying "at most 1.5%, from 200 observations" is both true and
+    useful; saying "0.0%" is neither.
+
+    Quantity: a binomial proportion. Propagation: Clopper-Pearson, inverting the
+    binomial CDF via the Beta distribution, which has guaranteed coverage at the
+    boundary where normal approximations and resampling both fail.
+
+    Args:
+        successes: Events observed.
+        n: Trials.
+        ci: Coverage, e.g. 0.95.
+
+    Returns:
+        ``(low, high)``.
+    """
+    from scipy import stats as scipy_stats
+
+    if n <= 0:
+        raise MeasurementError("a proportion interval needs at least one trial")
+    if not 0 <= successes <= n:
+        raise MeasurementError(f"{successes} successes in {n} trials is impossible")
+    alpha = 1.0 - ci
+    low = 0.0 if successes == 0 else float(
+        scipy_stats.beta.ppf(alpha / 2, successes, n - successes + 1)
+    )
+    high = 1.0 if successes == n else float(
+        scipy_stats.beta.ppf(1 - alpha / 2, successes + 1, n - successes)
+    )
+    return low, high
+
+
 def estimated(
     name: str,
     statistic: Callable[[np.ndarray, np.ndarray], float],
@@ -391,6 +434,8 @@ def estimated(
     seed: int,
     groups: Optional[np.ndarray] = None,
     unit: str = "rate",
+    binomial_events: Optional[int] = None,
+    binomial_trials: Optional[int] = None,
 ) -> Metric:
     """Compute a statistic and its bootstrap interval as one :class:`Metric`.
 
@@ -409,6 +454,11 @@ def estimated(
         seed: Resampling seed.
         groups: Resampling unit; see :func:`bootstrap_interval`.
         unit: ``"rate"`` or ``"ratio"``.
+        binomial_events: Numerator, when the statistic is a proportion. Supplied
+            so the boundary case can fall back to an exact interval — see
+            :func:`clopper_pearson` for why a zero-width bootstrap interval is
+            the worst possible output here.
+        binomial_trials: Denominator for the same fallback.
 
     Returns:
         An ``ESTIMATED`` metric carrying bounds, ``n`` and its estimator.
@@ -429,6 +479,22 @@ def estimated(
     low = min(low, value)
     high = max(high, value)
     unit_of_resampling = "questions" if groups is not None else "items"
+    estimator = f"bootstrap-percentile-{n_effective} over {unit_of_resampling}, seed={seed}"
+
+    # The bootstrap collapses at the boundary. Zero events in n trials means
+    # every resample also has zero, so the percentile interval is [0, 0] -- a
+    # claim of perfect certainty from a finite sample. Fall back to the exact
+    # binomial interval, which is correct precisely where resampling is not.
+    if low == high and unit == "rate" and binomial_events is not None:
+        n_trials = binomial_trials if binomial_trials is not None else int(np.asarray(labels).size)
+        if n_trials > 0:
+            low, high = clopper_pearson(int(binomial_events), int(n_trials), ci)
+            low, high = min(low, value), max(high, value)
+            estimator = (
+                f"Clopper-Pearson exact ({int(binomial_events)}/{n_trials} events); "
+                "the bootstrap degenerated to a zero-width interval at the boundary"
+            )
+
     return Metric(
         name=name,
         value=value,
@@ -438,9 +504,7 @@ def estimated(
         ci_high=high,
         ci_level=ci,
         unit=unit,
-        estimator=(
-            f"bootstrap-percentile-{n_effective} over {unit_of_resampling}, seed={seed}"
-        ),
+        estimator=estimator,
     )
 
 
