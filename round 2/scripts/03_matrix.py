@@ -26,7 +26,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import load_config, set_seeds, setup_logging, write_json_artifact
+from src.config import (
+    load_config,
+    provenance,
+    set_seeds,
+    setup_logging,
+    write_json_artifact,
+)
 from src.detectors.pii_reference import ReferencePiiDetector
 from src.evalsets import (
     build_canary_pii,
@@ -35,6 +41,7 @@ from src.evalsets import (
     build_longctx,
 )
 from src.matrix import Profile, WarrantMatrix, route
+from src.report import render_results
 from src.store import Ledger, RecordKind
 from src.validation.ablation import run_ablation
 from src.validation.synthetic import synthetic_cache, synthetic_evalset
@@ -192,6 +199,14 @@ def main(argv: list[str] | None = None) -> int:
             matrix.render() + "\n", encoding="utf-8"
         )
         _LOG.info("wrote %s", results_dir / "warrant_matrix.md")
+
+        # RESULTS.md refuses to print any number from a synthetic envelope.
+        # Right now that is most of them, and the document says so at the top
+        # rather than leaving a reader to work it out (DECISIONS.md 046).
+        (results_dir / "RESULTS.md").write_text(
+            render_results(matrix, provenance=provenance(config)), encoding="utf-8"
+        )
+        _LOG.info("wrote %s", results_dir / "RESULTS.md")
 
         verification = ledger.verify_chain()
         _LOG.info(

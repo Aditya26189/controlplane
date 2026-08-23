@@ -6,5 +6,6 @@ computed by code" (invariant 8) checkable rather than aspirational.
 """
 
 from .plots import plot_tier_ladder
+from .results import FIXTURE_MARKER, ResultsRefusal, render_results
 
-__all__ = ["plot_tier_ladder"]
+__all__ = ["FIXTURE_MARKER", "ResultsRefusal", "plot_tier_ladder", "render_results"]
