@@ -255,17 +255,38 @@ class WarrantMetrics:
         extra: Any additional metrics, each carrying its own kind.
     """
 
-    auroc: Metric
-    recall: Metric
-    precision: Metric
+    auroc: Optional[Metric]
+    recall: Optional[Metric]
+    precision: Optional[Metric]
     flag_rate: Metric
     confirmed_errors: Metric
     fpr_hard_negatives: Optional[Metric] = None
     extra: tuple[Metric, ...] = ()
 
     def __post_init__(self) -> None:
+        # Ranking metrics are all-or-nothing. On a single-class envelope --
+        # hard-negatives-200 contains no positives by construction -- AUROC,
+        # recall and precision are undefined, and the honest record says so
+        # rather than reporting a number computed from an empty denominator.
+        # Invariant 5 survives: precision and recall are absent *together*, so
+        # there is still no way to claim one without the other.
+        present = [
+            name
+            for name in ("auroc", "recall", "precision")
+            if getattr(self, name) is not None
+        ]
+        if present and len(present) != 3:
+            missing = sorted({"auroc", "recall", "precision"} - set(present))
+            raise MetricError(
+                f"ranking metrics must be present together or absent together; "
+                f"got {present} without {missing}. Precision and recall travel "
+                "together (CLAUDE.md invariant 5), and an AUROC without them "
+                "describes a curve nobody is operating on."
+            )
         for name in ("auroc", "recall", "precision", "flag_rate"):
-            metric: Metric = getattr(self, name)
+            metric = getattr(self, name)
+            if metric is None:
+                continue
             if metric.kind is not MetricKind.ESTIMATED:
                 raise MetricError(
                     f"{name} must be ESTIMATED. It is a rate measured on a finite "
@@ -291,12 +312,11 @@ class WarrantMetrics:
     def all_metrics(self) -> tuple[Metric, ...]:
         """Every metric on this warrant, in report order."""
         ordered = [
-            self.auroc,
-            self.recall,
-            self.precision,
-            self.flag_rate,
-            self.confirmed_errors,
+            metric
+            for metric in (self.auroc, self.recall, self.precision)
+            if metric is not None
         ]
+        ordered += [self.flag_rate, self.confirmed_errors]
         if self.fpr_hard_negatives is not None:
             ordered.append(self.fpr_hard_negatives)
         ordered.extend(self.extra)
@@ -316,6 +336,12 @@ class WarrantMetrics:
         reporting rule the renderer enforces, and it is why precision is a
         required field on this record rather than an optional one.
         """
+        if self.recall is None:
+            raise MetricError(
+                "lift is recall / flag_rate and recall is undefined on this "
+                "envelope, which contains only one class. There is no lift to "
+                "report and reporting one would invent the missing half."
+            )
         f = self.flag_rate.value
         if f <= 0:
             raise MetricError(

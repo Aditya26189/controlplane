@@ -158,6 +158,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     try:
         for run in ladder.runs:
+            if ledger.contains(RecordKind.WARRANT, run.warrant.warrant_id):
+                _LOG.info(
+                    "warrant %s already recorded; identical validation, not "
+                    "appending a duplicate",
+                    run.warrant.warrant_id,
+                )
+                continue
             ledger.append_warrant(run.warrant)
             ledger.append_validation_run(
                 run.run_id + "-" + run.variant,

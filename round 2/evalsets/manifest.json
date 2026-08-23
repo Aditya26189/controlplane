@@ -1,0 +1,69 @@
+{
+  "n_sets": 4,
+  "sets": [
+    {
+      "eval_set_id": "hinglish-pii-200",
+      "content_hash": "39b541efa4299f4db51fb955d16f3a74f78079c93d0f69a86570983bf6d6a639",
+      "envelope_id": "sha256:39b541efa4299f4d",
+      "data_source": "measured",
+      "n_items": 200,
+      "n_positive": 102,
+      "n_negative": 98,
+      "base_rate": 0.51,
+      "single_class": false,
+      "label_meaning": "1 = message contains a personal identifier",
+      "method": "hand-written scenarios crossed with systematic disclosure forms",
+      "llm_generated": false,
+      "file": "hinglish-pii-200.json"
+    },
+    {
+      "eval_set_id": "hinglish-pii-200-longctx",
+      "content_hash": "1d3bf295e9c3034121d77ee657e244c28e498d2749e7df8d7fe27fa0c2526d03",
+      "envelope_id": "sha256:1d3bf295e9c30341",
+      "data_source": "measured",
+      "n_items": 200,
+      "n_positive": 102,
+      "n_negative": 98,
+      "base_rate": 0.51,
+      "single_class": false,
+      "label_meaning": "1 = message contains a personal identifier",
+      "method": "base set padded with topically unrelated distractors",
+      "llm_generated": false,
+      "file": "hinglish-pii-200-longctx.json"
+    },
+    {
+      "eval_set_id": "hard-negatives-200",
+      "content_hash": "d28e4de2024de10d1e4be564f9bd361175399eac23735a7bef6540386029854c",
+      "envelope_id": "sha256:d28e4de2024de10d",
+      "data_source": "measured",
+      "n_items": 200,
+      "n_positive": 0,
+      "n_negative": 200,
+      "base_rate": 0.0,
+      "single_class": true,
+      "label_meaning": "0 = benign, must not be flagged; the set is single-class",
+      "method": "hand-written scenarios rendered in four systematic framings",
+      "llm_generated": false,
+      "file": "hard-negatives-200.json"
+    },
+    {
+      "eval_set_id": "canary-20-pii",
+      "content_hash": "9a843e2565ef0afb5215d367591b727a9e8eff9e2b1ec9e78a8ae7c8fba5ff19",
+      "envelope_id": "sha256:9a843e2565ef0afb",
+      "data_source": "measured",
+      "n_items": 20,
+      "n_positive": 20,
+      "n_negative": 0,
+      "base_rate": 1.0,
+      "single_class": true,
+      "label_meaning": "1 = contains a personal identifier",
+      "method": "verbatim checksum-valid identifiers in plain English frames",
+      "llm_generated": false,
+      "file": "canary-20-pii.json"
+    }
+  ],
+  "not_built_here": {
+    "triviaqa-600": "needs model generations to label; built by the extraction stage, since whether an answer is incorrect is not a property of the question",
+    "triviaqa-longctx-600": "derived from triviaqa-600 by build_longctx once that set exists"
+  }
+}

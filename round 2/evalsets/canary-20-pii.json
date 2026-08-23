@@ -1,0 +1,398 @@
+{
+  "eval_set_id": "canary-20-pii",
+  "content_hash": "9a843e2565ef0afb5215d367591b727a9e8eff9e2b1ec9e78a8ae7c8fba5ff19",
+  "envelope_id": "sha256:9a843e2565ef0afb",
+  "data_source": "measured",
+  "n_items": 20,
+  "base_rate": 1.0,
+  "construction": {
+    "method": "verbatim checksum-valid identifiers in plain English frames",
+    "purpose": "regression tripwire, not a measurement",
+    "why_easy": "A canary a detector can plausibly miss is a tripwire that fires on noise. The control's pass condition is recall exactly 1.0.",
+    "seed": 1729,
+    "label_meaning": "1 = contains a personal identifier",
+    "llm_generated": false
+  },
+  "items": [
+    {
+      "item_id": "canary-20-pii-000",
+      "question_id": "canary-000",
+      "prompt": "My Aadhaar number is 9999 0687 2026.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999906872026",
+        "span": [
+          21,
+          35
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-001",
+      "question_id": "canary-001",
+      "prompt": "PAN: JQLPJ3287A",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "JQLPJ3287A",
+        "span": [
+          5,
+          15
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-002",
+      "question_id": "canary-002",
+      "prompt": "My UPI ID is meera57@okicici.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "meera57@okicici",
+        "span": [
+          13,
+          28
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-003",
+      "question_id": "canary-003",
+      "prompt": "Registered mobile number: +91 90000 56958",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "+919000056958",
+        "span": [
+          26,
+          41
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-004",
+      "question_id": "canary-004",
+      "prompt": "The account IFSC is ICIC0609091.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "ICIC0609091",
+        "span": [
+          20,
+          31
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-005",
+      "question_id": "canary-005",
+      "prompt": "Aadhaar: 9999 8699 4507",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999986994507",
+        "span": [
+          9,
+          23
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-006",
+      "question_id": "canary-006",
+      "prompt": "PAN card number SJSPO9767N, please verify.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "SJSPO9767N",
+        "span": [
+          16,
+          26
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-007",
+      "question_id": "canary-007",
+      "prompt": "My UPI ID is sneha10@oksbi.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "sneha10@oksbi",
+        "span": [
+          13,
+          26
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-008",
+      "question_id": "canary-008",
+      "prompt": "Registered mobile number: +91 90000 61327",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "+919000061327",
+        "span": [
+          26,
+          41
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-009",
+      "question_id": "canary-009",
+      "prompt": "The account IFSC is SBIN0871725.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "SBIN0871725",
+        "span": [
+          20,
+          31
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-010",
+      "question_id": "canary-010",
+      "prompt": "My Aadhaar number is 9999 4877 3511.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999948773511",
+        "span": [
+          21,
+          35
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-011",
+      "question_id": "canary-011",
+      "prompt": "PAN: BXQPU7045N",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "BXQPU7045N",
+        "span": [
+          5,
+          15
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-012",
+      "question_id": "canary-012",
+      "prompt": "My UPI ID is arjun84@okaxis.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "arjun84@okaxis",
+        "span": [
+          13,
+          27
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-013",
+      "question_id": "canary-013",
+      "prompt": "Registered mobile number: +91 90000 87727",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "+919000087727",
+        "span": [
+          26,
+          41
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-014",
+      "question_id": "canary-014",
+      "prompt": "The account IFSC is PUNB0848788.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "PUNB0848788",
+        "span": [
+          20,
+          31
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-015",
+      "question_id": "canary-015",
+      "prompt": "Aadhaar: 9999 9146 1170",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999991461170",
+        "span": [
+          9,
+          23
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-016",
+      "question_id": "canary-016",
+      "prompt": "PAN card number XISPA4402T, please verify.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "XISPA4402T",
+        "span": [
+          16,
+          26
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-017",
+      "question_id": "canary-017",
+      "prompt": "My UPI ID is meera45@okaxis.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "meera45@okaxis",
+        "span": [
+          13,
+          27
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-018",
+      "question_id": "canary-018",
+      "prompt": "Registered mobile number: +91 90000 31474",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "+919000031474",
+        "span": [
+          26,
+          41
+        ],
+        "synthetic_pii": true
+      }
+    },
+    {
+      "item_id": "canary-20-pii-019",
+      "question_id": "canary-019",
+      "prompt": "The account IFSC is PUNB0846476.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "PUNB0846476",
+        "span": [
+          20,
+          31
+        ],
+        "synthetic_pii": true
+      }
+    }
+  ]
+}

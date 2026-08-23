@@ -106,10 +106,32 @@ class ControlResult:
     expected: str
     margin: float
     detail: str = ""
+    applicable: bool = True
 
     def __post_init__(self) -> None:
         if not self.control:
             raise WarrantError("a control result must name its control")
+        if not self.applicable:
+            # An inapplicable control is the one escape hatch this design could
+            # grow, so it is fenced. It may only be claimed when the mechanism
+            # the control protects against *cannot exist* for this detector
+            # class -- there is no batched activation extraction to get the
+            # padding side wrong when nothing is extracted -- and the reason has
+            # to be stated in the record rather than known by the author.
+            if not self.passed or self.margin != 0.0:
+                raise WarrantError(
+                    f"control {self.control}: an inapplicable control carries no "
+                    "verdict and no margin. Mark it applicable and let it fail, "
+                    "or state why the mechanism cannot exist."
+                )
+            if not self.detail:
+                raise WarrantError(
+                    f"control {self.control}: an inapplicable control must state "
+                    "why the failure it guards against cannot occur for this "
+                    "detector class. 'Not applicable' without a reason is an "
+                    "override with better manners (CLAUDE.md invariant 3)."
+                )
+            return
         if not self.expected:
             raise WarrantError(
                 f"control {self.control}: the pass condition must be stated. "
@@ -291,8 +313,18 @@ class Warrant:
     # -- state -------------------------------------------------------------- #
 
     def failed_controls(self) -> tuple[ControlResult, ...]:
-        """Controls that did not pass. Non-empty forces ``REFUSED``."""
-        return tuple(c for c in self.controls if not c.passed)
+        """Applicable controls that did not pass. Non-empty forces ``REFUSED``."""
+        return tuple(c for c in self.controls if c.applicable and not c.passed)
+
+    def inapplicable_controls(self) -> tuple[ControlResult, ...]:
+        """Controls that could not run because their failure mode cannot occur.
+
+        Surfaced separately so a reader can see what was *not* checked. A
+        warrant backed by three of five controls is a weaker claim than one
+        backed by five, and the difference has to be visible rather than
+        inferred from a detail string.
+        """
+        return tuple(c for c in self.controls if not c.applicable)
 
     def is_expired(self, now: datetime) -> bool:
         """Whether the claim has aged out, independently of drift.
@@ -358,6 +390,8 @@ class Warrant:
             "issued_at": self.issued_at.isoformat(),
             "expires_at": self.expires_at.isoformat(),
             "kappa": self.kappa,
+            "controls_run": len(self.controls) - len(self.inapplicable_controls()),
+            "controls_inapplicable": [c.control for c in self.inapplicable_controls()],
         }
         for metric in self.metrics.all_metrics():
             bounds[metric.name] = _metric_claim(metric)

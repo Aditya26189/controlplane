@@ -473,4 +473,101 @@ Run `null_control_min_repeats` (8) draws, estimate the spread, continue to the i
 
 ---
 
+## 032 — A single-class envelope supports an FPR claim and nothing else
+**Status:** accepted
+
+**Context:** `hard-negatives-200` contains **no positives** by construction — every item is a benign boundary case that must be allowed. That makes AUROC, recall and precision undefined on it, while `SPEC.md` §3.1 shows it as a column in the warrant matrix with `VALID`/`REFUSED` cells, and §2.3's refusal criteria are keyed on an AUROC lower bound that cannot exist there.
+
+**Decision:** `WarrantMetrics.auroc`, `.recall` and `.precision` are optional, **all-or-nothing**. Either all three are present or none are; a warrant carrying AUROC without recall, or recall without precision, is unconstructible. Invariant 5 therefore survives intact — precision and recall are absent *together*, so there is still no way to claim one without the other.
+
+On a single-class envelope the refusal path substitutes the criterion: the AUROC bar is skipped, and a **declared `max_fpr_hard_negatives` becomes mandatory**. Without it there would be no bar at all, which is worse than refusing. `lift` raises rather than returning a number, because lift is `recall / flag_rate` and inventing the missing half is exactly the failure this project is about.
+
+**Alternatives rejected:** *Add synthetic positives so every metric is defined* — destroys what the set is. Its value comes from every item being one that must be allowed; a set with positives in it measures something else. *Refuse to warrant single-class envelopes* — then the FPR number a skeptic actually cares about carries no warrant, which inverts the priority.
+
+**Consequences:** the matrix has cells whose claim is narrower than others', and that narrowness is visible in the record rather than inferred. A reviewer could fairly object that `VALID` means different things in different columns — true, and the certificate names which metrics the warrant actually carries.
+
+---
+
+## 033 — `hinglish-pii-200` is balanced, and its precision is not a production precision
+**Status:** accepted
+
+**Context:** 51 hand-written scenarios × 3 disclosure forms gives 153 positives against 47 near-miss negatives — a base rate of 0.77. Precision measured on a set that enriched says nothing about precision on real traffic, and 47 negatives leave FPR with an interval too wide to report.
+
+**Decision:** two of the three disclosure forms per scenario, rotating, giving **102 positives and 98 negatives** at a base rate of 0.51, with every scenario present and each form covered 34 times. Per-form recall — the finding this set exists to produce — retains n=34 per form.
+
+**And the caveat is recorded in the set itself.** The `construction` block states that the set is enriched relative to real traffic, so precision measured here is not a production precision, and that FPR for a PII detector comes from the near-miss negatives while FPR for a *content* detector comes from `hard-negatives-200`. Both are hashed with the contents, so the caveat cannot be separated from the number.
+
+**Measured on our reference detector, which is the point of building it:** recall by disclosure form at threshold 0.35 — verbatim **1.000**, spaced **0.676**, obfuscated **0.706** (n=34 each). A detector purpose-built for these formats still loses roughly 30% on non-verbatim disclosure. That is the structure Presidio's published 0.07 comes from, reproduced on our own floor.
+
+---
+
+## 034 — A control may be inapplicable, and that is fenced three ways
+**Status:** accepted
+
+**Context:** Three of the five controls exist to catch faults in *fitting* — a padding side that makes activations meaningless, a split that leaks, features that carry the label. A stateless rule-based detector fits nothing, so those failure modes cannot occur for it. Reporting them as "passed" would claim checks that never ran; reporting them as "failed" would refuse every rule-based detector forever.
+
+**Decision:** `ControlResult.applicable`. An inapplicable control is recorded, with its reason, and does not refuse the warrant. The warrant then carries `controls_run: 2` where a probe's carries five, so a reader can see that a rule-based detector's warrant rests on less evidence.
+
+This is the one escape hatch the design could grow, so it is fenced:
+
+1. **Applicability is declared per detector class in code**, in `_STATELESS_INAPPLICABLE`, never as a runtime argument. A per-run flag is exactly how "not applicable" becomes "not checked, and nobody noticed".
+2. An inapplicable control must carry **no verdict and no margin** — `passed=True, margin=0.0` enforced in `__post_init__` — so it cannot masquerade as a pass with room to spare.
+3. It must **state why the mechanism cannot exist**. "Not applicable" without a reason is an override with better manners.
+
+**Alternatives rejected:** *Run the three controls anyway and let them trivially pass* — a control that cannot fail is worse than no control, and this repo's own README argues exactly that. *Refuse warrants to stateless detectors* — Presidio is a stateless detector and warranting it is a Phase 8 deliverable.
+
+**A reviewer could fairly object** that this is a hole in invariant 3. It is a *narrowing* of it: refusal still has no override, and what changed is which controls are in scope for which detector class — declared in code, visible in every warrant, and asserted by `test_inapplicable_controls_are_fenced`.
+
+---
+
+## 035 — Zero events do not mean zero rate: exact intervals at the boundary
+**Status:** accepted
+
+**Context:** The reference detector fired on **0 of 200** hard negatives. The percentile bootstrap returned `[0.0000, 0.0000]`, because every resample of a set with no events also has no events. A zero-width interval is a claim of *perfect certainty from 200 observations* — the loudest possible false claim in a project whose thesis is that unbacked claims are the problem, and it was produced by our own estimator without raising anything.
+
+**Decision:** when the bootstrap collapses to zero width on a proportion, fall back to the **Clopper–Pearson exact binomial interval**, computed from the event count and the trial count.
+
+```
+0 events in 200 trials, 95%:  [0, 0.0183]
+```
+
+which is the familiar rule of three — with no events in `n` trials the upper bound is about `3/n`. *"At most 1.8%, from 200 observations"* is both true and useful. *"0.0%"* is neither.
+
+Quantity: a binomial proportion. Propagation: Clopper–Pearson, inverting the binomial CDF through the Beta distribution, which has guaranteed coverage precisely where normal approximations and resampling both fail.
+
+**Alternatives rejected:** *Add a pseudo-count* — arbitrary, and shifts the point estimate away from the observed value. *Report the zero-width interval and let the reader interpret it* — the reader is a judge, and the interval says something false. *Use Wilson everywhere* — Wilson is better behaved than the normal approximation but still degenerate at exactly zero, which is the case that occurred.
+
+**Consequences:** `estimated()` accepts the event and trial counts for proportions and uses them only at the boundary; away from it the bootstrap is unchanged, so no existing number moves. The estimator string records which was used, so a reader can tell them apart.
+
+**Before:** `fpr_hard_negatives 0.0000 [0.0000, 0.0000]`.
+**After:** `fpr_hard_negatives 0.0000 [0.0000, 0.0183]`.
+
+---
+
+## 036 — Within-set FPR and hard-negative FPR are different claims
+**Status:** accepted
+
+**Context:** The first run of the Phase 3 script **refused** the reference detector a warrant on `hinglish-pii-200`, citing `fpr_hard_negatives_upper_ci 0.6339, required <= 0.02`. The detector had never been scored on the hard-negative set. What had been measured was its FPR against that set's *own* near-miss negatives — order ids and transaction references — and the number had been written into the field a profile declares its hard-negative maximum against.
+
+**Decision:** two fields, two meanings. `fpr` is the FPR within whatever set is being scored. `fpr_hard_negatives` is populated **only** when the eval set under test *is* the hard-negative set, and only that field faces a profile's declared maximum.
+
+**Why it matters beyond a naming tidy-up:** the refusal was *plausible*. A detector refused for a bar it failed is exactly what this system is supposed to produce, and nothing about the output looked wrong — the number was real, the criterion was real, and they were about different things. That is the shape of every failure mode in `CLAUDE.md`'s silent-failure list, arriving in our own refusal path.
+
+**Consequences:** `validate_text_detector` takes an explicit `is_hard_negative_set` flag rather than inferring it from the set's name, because a name is a string and someone will rename a set.
+
+---
+
+## 037 — `hinglish-pii-200-longctx` exists to show that a regex detector is length-invariant
+**Status:** accepted
+
+**Context:** `SPEC.md` §4 defines `triviaqa-longctx-600` as the drift trigger, and it cannot be built without model generations. Building the long-context transform against the Hinglish set instead gave a result worth keeping.
+
+**Measured:** the reference PII detector scores **identically** on `hinglish-pii-200` and `hinglish-pii-200-longctx` — AUROC 0.7734 on both, every metric equal to the last digit — despite mean prompt length rising from 71 characters to 39,402.
+
+**Why this is a finding and not a triviality:** it is the control case for Beat 4. When the mean-pooled probe collapses on long context and the matrix routes away from it, the obvious question is *"is this just what happens to everything on long inputs?"* The answer is no, and here is a detector on the same transform whose numbers do not move at all. A stateless pattern matcher has no pooling step to dilute, so context length is invisible to it. That makes the probe's collapse a property of **pooling**, not of long inputs in general — which is a much sharper claim.
+
+**Consequences:** the long-context transform is validated end to end before the TriviaQA sets exist, and the matrix gains a row whose length-invariance is measured rather than assumed. `build_longctx` preserves `question_id` from the base set so a split derived on either lands identically, and the padded set gets its own content hash and therefore its own envelope — it inherits no warrant from the base set, which is invariant 1 doing its job.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->

@@ -1,0 +1,347 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-23T12:12:08+00:00",
+    "git_commit": "2ed2a341208803afeb8a306af05bce94fa762706",
+    "git_branch": "phase/3-evaluation-sets",
+    "dirty": false,
+    "dirty_paths": [],
+    "dirty_excludes": "results",
+    "python": "3.12.10",
+    "libraries": {
+      "torch": "2.9.1+cpu",
+      "transformers": "5.8.0",
+      "scikit-learn": "1.7.2",
+      "numpy": "2.2.6",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "statsmodels": "0.14.6",
+      "presidio-analyzer": null,
+      "bitsandbytes": "0.49.2"
+    },
+    "device": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
+      "cuda_available": false,
+      "device_name": "cpu"
+    },
+    "config_hash": "c89257bc4adc10c2",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "workload": {
+        "name": "enterprise-3pct",
+        "monthly_interactions": 200000,
+        "base_error_rate": 0.03,
+        "review_minutes_per_item": 3.0,
+        "reviewer_monthly_cost_inr": 85000.0,
+        "reviewer_productive_hours": 160.0,
+        "measured_tpr": 0.1416,
+        "measured_fpr": 0.011
+      },
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ]
+      },
+      "probe": {
+        "aggregations": [
+          "mean_pool",
+          "max_rolling_means"
+        ],
+        "rolling_window": 64,
+        "rolling_stride": 32,
+        "standardize": true,
+        "class_weight": "balanced",
+        "C_grid": [
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "evalsets": [
+        {
+          "id": "triviaqa-600",
+          "pad_tokens": null
+        },
+        {
+          "id": "triviaqa-longctx-600",
+          "pad_tokens": [
+            4000,
+            16000
+          ]
+        },
+        {
+          "id": "hinglish-pii-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "hard-negatives-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "canary-20",
+          "pad_tokens": null
+        }
+      ],
+      "validation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_n_test": 200,
+        "min_auroc_lower_ci": 0.55,
+        "warrant_ttl_hours": 24,
+        "controls": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature",
+          "canary",
+          "determinism"
+        ],
+        "null_control_band": [
+          0.45,
+          0.55
+        ],
+        "null_control_min_repeats": 8,
+        "null_control_max_repeats": 200
+      },
+      "drift": {
+        "window_size": 200,
+        "psi_stable": 0.1,
+        "psi_significant": 0.25,
+        "mmd_permutations": 500,
+        "features": [
+          "token_length",
+          "script_mix",
+          "embedding_centroid_distance",
+          "reference_perplexity",
+          "category_mix"
+        ]
+      },
+      "sampling": {
+        "allocation_month_one": "proportional",
+        "allocation_thereafter": "neyman",
+        "expected_design_effect": 0.67,
+        "score_bands": 4,
+        "double_label_fraction": 0.1,
+        "recall_margin_tiers": [
+          0.05,
+          0.02
+        ],
+        "blind_queue": true
+      },
+      "policy": {
+        "engine": "opa",
+        "fail_closed_on_missing_warrant": true,
+        "weighted_error": {
+          "w_fpr_benign": 50.0,
+          "w_fnr": 5.0,
+          "w_fpr_hard_negative": 2.0
+        }
+      },
+      "profiles": {
+        "customer_support": {
+          "inline_budget_ms": 200,
+          "min_recall": 0.1,
+          "max_fpr": 0.02
+        },
+        "internal_knowledge": {
+          "inline_budget_ms": 500,
+          "min_recall": 0.25,
+          "max_fpr": 0.05
+        },
+        "decision_support": {
+          "inline_budget_ms": 2000,
+          "min_recall": 0.5,
+          "max_fpr": 0.1
+        }
+      },
+      "detectors": {
+        "presidio_configs": [
+          "stock",
+          "enabled",
+          "enabled_plus_custom"
+        ],
+        "qwen3guard": "Qwen/Qwen3Guard-Gen-0.6B"
+      },
+      "store": {
+        "path": "results/controlplane.db",
+        "retention_days": 400,
+        "hash_chain": true
+      },
+      "paths": {
+        "results_dir": "results",
+        "evalsets_dir": "evalsets",
+        "policies_dir": "policies"
+      }
+    }
+  },
+  "detector_id": "pii-reference",
+  "detector_version": "0.1.0",
+  "threshold": 0.35,
+  "note": "The reference PII detector is ours, not Presidio. It exists so these sets are measured rather than merely built, and so the Phase 8 Presidio comparison has an honest floor to sit against.",
+  "runs": [
+    {
+      "eval_set_id": "hinglish-pii-200",
+      "envelope_id": "sha256:39b541efa4299f4d",
+      "n_items": 200,
+      "base_rate": 0.51,
+      "warrant_status": "VALID",
+      "status_reason": null,
+      "metrics": {
+        "auroc": {
+          "value": 0.7734093637454982,
+          "ci_low": 0.6899960007440477,
+          "ci_high": 0.8561364695334656,
+          "kind": "ESTIMATED",
+          "n": 200
+        },
+        "recall": {
+          "value": 0.7941176470588235,
+          "ci_low": 0.6980623381428043,
+          "ci_high": 0.8846153846153846,
+          "kind": "ESTIMATED",
+          "n": 200
+        },
+        "precision": {
+          "value": 0.6532258064516129,
+          "ci_low": 0.5114227428270598,
+          "ci_high": 0.8099524403555278,
+          "kind": "ESTIMATED",
+          "n": 200
+        },
+        "flag_rate": {
+          "value": 0.62,
+          "ci_low": 0.514282345013477,
+          "ci_high": 0.7350238764044944,
+          "kind": "ESTIMATED",
+          "n": 200
+        },
+        "confirmed_errors": {
+          "value": 81.0,
+          "ci_low": null,
+          "ci_high": null,
+          "kind": "EXACT",
+          "n": 124
+        },
+        "fpr": {
+          "value": 0.4387755102040816,
+          "ci_low": 0.2475824175824176,
+          "ci_high": 0.6339340156794425,
+          "kind": "ESTIMATED",
+          "n": 200
+        }
+      },
+      "controls_run": 2,
+      "controls_inapplicable": [
+        "padding_fault",
+        "label_shuffle",
+        "null_feature"
+      ]
+    },
+    {
+      "eval_set_id": "hinglish-pii-200-longctx",
+      "envelope_id": "sha256:1d3bf295e9c30341",
+      "n_items": 200,
+      "base_rate": 0.51,
+      "warrant_status": "VALID",
+      "status_reason": null,
+      "metrics": {
+        "auroc": {
+          "value": 0.7734093637454982,
+          "ci_low": 0.6899960007440477,
+          "ci_high": 0.8561364695334656,
+          "kind": "ESTIMATED",
+          "n": 200
+        },
+        "recall": {
+          "value": 0.7941176470588235,
+          "ci_low": 0.6980623381428043,
+          "ci_high": 0.8846153846153846,
+          "kind": "ESTIMATED",
+          "n": 200
+        },
+        "precision": {
+          "value": 0.6532258064516129,
+          "ci_low": 0.5114227428270598,
+          "ci_high": 0.8099524403555278,
+          "kind": "ESTIMATED",
+          "n": 200
+        },
+        "flag_rate": {
+          "value": 0.62,
+          "ci_low": 0.514282345013477,
+          "ci_high": 0.7350238764044944,
+          "kind": "ESTIMATED",
+          "n": 200
+        },
+        "confirmed_errors": {
+          "value": 81.0,
+          "ci_low": null,
+          "ci_high": null,
+          "kind": "EXACT",
+          "n": 124
+        },
+        "fpr": {
+          "value": 0.4387755102040816,
+          "ci_low": 0.2475824175824176,
+          "ci_high": 0.6339340156794425,
+          "kind": "ESTIMATED",
+          "n": 200
+        }
+      },
+      "controls_run": 2,
+      "controls_inapplicable": [
+        "padding_fault",
+        "label_shuffle",
+        "null_feature"
+      ]
+    },
+    {
+      "eval_set_id": "hard-negatives-200",
+      "envelope_id": "sha256:d28e4de2024de10d",
+      "n_items": 200,
+      "base_rate": 0.0,
+      "warrant_status": "VALID",
+      "status_reason": null,
+      "metrics": {
+        "flag_rate": {
+          "value": 0.0,
+          "ci_low": 0.0,
+          "ci_high": 0.018275340355136237,
+          "kind": "ESTIMATED",
+          "n": 200
+        },
+        "confirmed_errors": {
+          "value": 0.0,
+          "ci_low": null,
+          "ci_high": null,
+          "kind": "EXACT",
+          "n": 0
+        },
+        "fpr_hard_negatives": {
+          "value": 0.0,
+          "ci_low": 0.0,
+          "ci_high": 0.018275340355136237,
+          "kind": "ESTIMATED",
+          "n": 200
+        }
+      },
+      "controls_run": 2,
+      "controls_inapplicable": [
+        "padding_fault",
+        "label_shuffle",
+        "null_feature"
+      ]
+    }
+  ]
+}

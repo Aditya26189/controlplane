@@ -157,17 +157,42 @@ def issue_or_refuse(
             )
         )
 
-    auroc_lower = metrics.auroc.ci_low
-    if auroc_lower is None or auroc_lower <= config.validation.min_auroc_lower_ci:
+    if metrics.auroc is None:
+        # A single-class envelope supports no ranking claim, so the AUROC bar
+        # cannot be applied. The warrant is then a claim about FPR alone, and
+        # max_fpr_hard_negatives becomes the criterion that must be supplied --
+        # without it there would be no bar at all, which is worse than refusing.
+        if max_fpr_hard_negatives is None:
+            reasons.append(
+                RefusalReason(
+                    criterion="single_class_envelope",
+                    measured="no positives in this eval set, so AUROC is undefined",
+                    required=(
+                        "a declared max_fpr_hard_negatives, since FPR is the only "
+                        "claim a single-class envelope can support"
+                    ),
+                )
+            )
+    else:
+        auroc_lower = metrics.auroc.ci_low
+        if auroc_lower is None or auroc_lower <= config.validation.min_auroc_lower_ci:
+            reasons.append(
+                RefusalReason(
+                    criterion="auroc_lower_ci",
+                    measured="none" if auroc_lower is None else f"{auroc_lower:.4f}",
+                    required=f"> {config.validation.min_auroc_lower_ci}",
+                )
+            )
+
+    if min_recall is not None and metrics.recall is None:
         reasons.append(
             RefusalReason(
-                criterion="auroc_lower_ci",
-                measured="none" if auroc_lower is None else f"{auroc_lower:.4f}",
-                required=f"> {config.validation.min_auroc_lower_ci}",
+                criterion="recall_undefined",
+                measured="no positives in this eval set",
+                required=f">= {min_recall} (profile minimum)",
             )
         )
-
-    if min_recall is not None:
+    elif min_recall is not None:
         # Compared against the interval's lower bound, not the point estimate.
         # A profile declaring "at least 10% recall" is asking for a guarantee,
         # and a point estimate of 0.11 with a lower bound of 0.06 does not
@@ -218,11 +243,13 @@ def issue_or_refuse(
         )
     else:
         _LOG.info(
-            "issued %s for %s on %s (AUROC lower CI %.4f, n_test %d)",
+            "issued %s for %s on %s (AUROC lower CI %s, n_test %d)",
             warrant_id,
             key.detector_id,
             key.eval_set_id,
-            auroc_lower,
+            "n/a (single-class envelope)"
+            if metrics.auroc is None
+            else f"{metrics.auroc.ci_low:.4f}",
             n_test,
         )
 
