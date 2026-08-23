@@ -78,7 +78,12 @@ scripts/
   build_notebooks.py regenerates both notebooks from source
 tests/
 docs/
+  README.md          index: which document answers which question
   HANDOVER.md        generated orientation doc for someone joining cold
+  ARCHITECTURE.md    stage boundaries, artifact contracts, invariant enforcement map
+  SETUP.md           running it: laptop, Kaggle T4, offline cluster, failure modes
+  FAQ.md             reviewer questions, each answered with the artifact that settles it
+  GLOSSARY.md        lift, f, R, polarity, positive control — defined once, precisely
 notebooks/
   cascade_economics.ipynb   thin presentation wrapper over src/, no logic
   run_on_kaggle.ipynb       GPU runner: stage gates, pre-flight, full run
@@ -122,7 +127,9 @@ Three tiers, three rules.
 
 **Rationale** (`DECISIONS.md`) — append-only. Log every methodological choice a reviewer could challenge: dataset, split strategy, label rule, selection procedure, metric choice. Never edit or delete an entry; supersede it with a new one. This is the direct answer to "why did you do it that way?", which is most of what a technical judge asks.
 
-**Generated** (`README.md`, `results/RESULTS.md`) — **never hand-edit a number.** If a number is wrong, the pipeline is wrong. Fix it and regenerate. Prose can be edited; numbers cannot.
+**Generated** (`README.md`, `results/RESULTS.md`, `docs/HANDOVER.md`) — **never hand-edit a number.** If a number is wrong, the pipeline is wrong. Fix it and regenerate. Prose can be edited; numbers cannot.
+
+**Orientation** (`docs/ARCHITECTURE.md`, `docs/SETUP.md`, `docs/FAQ.md`, `docs/GLOSSARY.md`, indexed by `docs/README.md`) — hand-written, and deliberately carrying **no measured numbers**: they point at the generated documents instead, so a re-run cannot leave them stating a stale figure. They describe structure, procedure and vocabulary, all of which change with the code rather than with the run.
 
 Docstrings say *why*, not what. Where code enforces an invariant from this file, name the invariant in the docstring.
 
