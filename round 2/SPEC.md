@@ -64,6 +64,8 @@ class Warrant:
 
 **The key is `(detector_id, operating_point_id, eval_set_id)`.** Not detector alone. This is invariant 1 and the entire matrix depends on it.
 
+`status` on a *record* is one of `VALID`, `STALE`, `REVOKED`, `REFUSED`. **`UNVALIDATED` is a property of a matrix cell, not of a warrant**, and a `Warrant` cannot be constructed carrying it: an unvalidated cell has no metrics, no envelope and no controls, so building a record for one would mean inventing all three. The matrix reports `UNVALIDATED` for a cell holding no warrant. See `DECISIONS.md` 024.
+
 ### 1.4 Certificate
 
 ```python
@@ -179,6 +181,8 @@ def route(envelope_id: str, profile: Profile) -> RoutingDecision:
 | `UNVALIDATED` | Never tested here | **Modal state in production.** No claim available → conservative action, enqueue for validation, log |
 
 Collapsing `UNVALIDATED` into `REFUSED` makes the system unusable on day one. Collapsing it into `VALID` is the failure the whole product argues against.
+
+These are **cell** states. `VALID`, `STALE`, `REVOKED` and `REFUSED` are carried on the warrant record occupying the cell; `UNVALIDATED` is the state of a cell with no record in it. Representing it as a record would require fabricating the metrics that make a record a claim, which is the failure mode the state exists to prevent.
 
 ---
 
