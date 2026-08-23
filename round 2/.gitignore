@@ -36,3 +36,7 @@ labels/
 # Model and dataset caches
 .cache/
 hf_home/
+
+# Demo scratch: a fresh chain per run, so the trace on screen is legible.
+results/demo.db
+results/demo_stream.json
