@@ -50,7 +50,7 @@ from .issuance import issue_or_refuse
 from .metrics_builder import build_warrant_metrics
 from .stats import flag_rate_at, threshold_for_flag_rate
 
-__all__ = ["ValidationRun", "build_envelope", "validate"]
+__all__ = ["ValidationRun", "build_envelope", "validate", "validate_transferred"]
 
 _LOG = logging.getLogger(__name__)
 
@@ -416,6 +416,168 @@ def validate(
         warrant=warrant,
         splits={name: int(idx.size) for name, idx in splits.items()},
         base_rate=float(test_labels.mean()),
+        data_source=cache.data_source,
+        test_scored=1,
+        provenance=provenance(config),
+    )
+
+
+def validate_transferred(
+    config: Config,
+    evalset: EvalSet,
+    cache: ExtractionCache,
+    *,
+    source: ValidationRun,
+    probe,
+    variant: Optional[str] = None,
+    min_recall: Optional[float] = None,
+    max_fpr_hard_negatives: Optional[float] = None,
+    is_hard_negative_set: bool = False,
+    progress: Optional[Callable[[str], None]] = None,
+) -> ValidationRun:
+    """Score an **already-fitted** probe on a different envelope.
+
+    This is the drift measurement, and it is a different experiment from
+    :func:`validate`. ``validate`` fits a probe on the envelope it then scores,
+    which answers *"how well can a probe do on this distribution?"*.
+    ``validate_transferred`` takes the probe that was fitted somewhere else and
+    asks *"what is **this** probe worth here?"* — which is the question a
+    production system faces when its traffic moves, and the question Beat 4 is
+    about.
+
+    The distinction matters enough to be a separate function rather than a flag.
+    Refitting on long context would produce a *better* number and a *weaker*
+    claim: nobody retrains between one request and the next, so a refitted
+    number describes a system that does not exist.
+
+    Nothing is selected here. The threshold and the regularisation both come
+    from the source run, which chose them on its own validation split, so no
+    selection touches this envelope at all. ``operating_point`` is carried over
+    unchanged and still records the split it was selected on.
+
+    Args:
+        config: Resolved config.
+        evalset: The envelope to score on. Its whole content is treated as test
+            — there is no split to derive, because nothing is being fitted.
+        cache: Its extraction.
+        source: The completed run whose probe and operating point are being
+            transferred.
+        probe: The fitted probe from that run.
+        variant: Feature variant to score. Defaults to the source's.
+        min_recall: Profile minimum to check against.
+        max_fpr_hard_negatives: Declared maximum, where applicable.
+        is_hard_negative_set: Whether this set is the hard-negative set.
+        progress: Optional streaming callback.
+
+    Returns:
+        A :class:`ValidationRun` whose warrant is keyed to the **new** envelope
+        and whose detector id is the source's, so the matrix cell is
+        (same detector, new envelope) — which is exactly invariant 1's point.
+    """
+    started = utc_now()
+    clock = time.perf_counter()
+
+    def say(message: str) -> None:
+        _LOG.info(message)
+        if progress is not None:
+            progress(message)
+
+    chosen = variant or source.variant
+    if cache.eval_set_hash != evalset.content_hash:
+        raise ValueError(
+            f"cache for {cache.eval_set_id} does not match the eval set's current "
+            "contents; re-extract rather than scoring a stale cache"
+        )
+
+    say(
+        f"transferring {source.detector_id} (fitted on {source.eval_set_id}) "
+        f"to {evalset.eval_set_id} — nothing is refitted or reselected"
+    )
+    features = cache.matrix(chosen)
+    labels = cache.labels
+    groups = cache.question_ids
+    threshold = source.operating_point.threshold
+    scores = probe.score(features)
+
+    say("running controls")
+    # The whole set is test here, so the negative controls have no separate
+    # holdout to score against and the padding evidence belongs to the source
+    # extraction. Rather than inventing a split, the controls that need one are
+    # carried from the source run: they describe the probe, and the probe is
+    # unchanged. What is NOT carried is anything describing this envelope.
+    controls = tuple(
+        dataclasses.replace(
+            control,
+            detail=(
+                f"{control.detail} [carried from the source validation on "
+                f"{source.eval_set_id}: this control describes the fitted probe, "
+                "which is unchanged by the transfer]"
+            ),
+        )
+        for control in source.controls
+    )
+
+    say("scoring (once)")
+    metrics = build_warrant_metrics(
+        config,
+        labels,
+        scores,
+        threshold,
+        groups=groups,
+        is_hard_negative_set=is_hard_negative_set,
+    )
+
+    envelope = build_envelope(evalset, cache)
+    key = WarrantKey(
+        source.detector_id, source.operating_point.operating_point_id, evalset.eval_set_id
+    )
+    run_id = "run-" + content_hash(
+        {
+            "key": key.as_string(),
+            "variant": chosen,
+            "envelope": evalset.envelope_id,
+            "transferred_from": source.run_id,
+            "config": config.config_hash,
+        }
+    )[:12]
+
+    warrant = issue_or_refuse(
+        config,
+        key=key,
+        detector_version=source.warrant.detector_version,
+        operating_point=source.operating_point,
+        metrics=metrics,
+        envelope=envelope,
+        controls=controls,
+        access_tier=source.warrant.access_tier,
+        n_test=len(evalset),
+        base_rate=float(labels.mean()),
+        validation_run_id=run_id,
+        min_recall=min_recall,
+        max_fpr_hard_negatives=max_fpr_hard_negatives,
+        issued_at=started,
+    )
+
+    completed = utc_now()
+    duration = time.perf_counter() - clock
+    say(f"{warrant.status.value} in {duration:.2f}s")
+
+    return ValidationRun(
+        run_id=run_id,
+        detector_id=source.detector_id,
+        variant=chosen,
+        eval_set_id=evalset.eval_set_id,
+        envelope_id=evalset.envelope_id,
+        started_at=started,
+        completed_at=completed,
+        duration_seconds=duration,
+        probe_fit=source.probe_fit,
+        operating_point=source.operating_point,
+        metrics=metrics,
+        controls=controls,
+        warrant=warrant,
+        splits={"train": 0, "validation": 0, "test": len(evalset)},
+        base_rate=float(labels.mean()),
         data_source=cache.data_source,
         test_scored=1,
         provenance=provenance(config),

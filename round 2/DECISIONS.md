@@ -820,4 +820,59 @@ On `hinglish-pii-200`: base rate 0.51, measured flag rate 0.62, so the ceiling i
 
 ---
 
+## 050 — The failure class: absence reading as presence
+**Status:** accepted · **names the class behind 024, 032, 035, 046 and others**
+
+**Context:** The same bug has now appeared four times in four costumes, and each time it was caught by a different accident. Naming the instances is not enough, because the fifth occurrence will look like none of them. Naming the *class* is the only thing that generalises.
+
+**The class:** *a missing value silently rendering as a positive one.* Not a wrong value — a **missing** one, converted into a claim by a default, a fallback, or a collapsed state. It is the exact inverse of what this product sells, which is why it keeps appearing here specifically: every layer of this system exists to distinguish "we measured this" from "we did not", and every layer therefore has a place where that distinction can be quietly lost.
+
+**The four instances so far:**
+
+| where | the absence | what it silently became |
+|---|---|---|
+| `WarrantStatus` (024) | never validated on this envelope | `VALID`, if `UNVALIDATED` collapsed into it |
+| single-class envelopes (032) | no positives, so no recall | a recall number computed from an empty denominator |
+| boundary intervals (035) | zero events observed | `[0.0000, 0.0000]` — perfect certainty |
+| `data_source` (046) | field not declared | `"measured"`, via a `getattr` default |
+
+The fourth is the instructive one: **it appeared inside the guard built to prevent the class.** `getattr(envelope, "data_source", "measured")` was written while implementing the refusal, and it made an undeclared envelope print its numbers. It was caught only because the test was written for the legacy-record case rather than the happy path.
+
+**Decision — three rules, applied wherever a value can be missing:**
+
+1. **Default to the refusing value, never the permissive one.** `getattr(x, "field", None) != "measured"` rather than `getattr(x, "field", "measured") != "measured"`. If the answer is unknown, the answer is no.
+2. **Represent absence as absence, not as a record with empty fields.** `UNVALIDATED` is a cell with no warrant, not a warrant with `None` metrics; a single-class envelope has `recall=None`, not `recall=0`. An absence cannot be dereferenced into a number by accident; a zero can.
+3. **Write the test for the absent case first.** The happy path is what gets written by default and the absent path is what gets forgotten, so the test for "what happens when this is missing?" is the one that finds anything.
+
+**A checklist for review**, since this is the shape to look for rather than a specific line:
+
+* any `getattr(..., default)` or `dict.get(..., default)` where the default is the permissive branch;
+* any `or` fallback on a value that could legitimately be zero, empty or `False`;
+* any place a `None` is coerced to a number before being rendered;
+* any enum where one member means "no information" and is compared with `!=` against a specific other member rather than `is` against itself;
+* any interval, count or rate produced from an empty or single-class sample.
+
+**A reviewer could fairly object** that three of the four instances were caught, so the existing controls work. Two were caught by tests written for them; one was caught by a hunch about an unrelated symptom; one was caught by a test written for a case that seemed unlikely. That is not a control, it is a hit rate, and the point of naming the class is to convert the hit rate into a thing to look for.
+
+---
+
+## 051 — The long-context envelope covers the test split only
+**Status:** accepted
+
+**Context:** `triviaqa-longctx-600` is what Beat 4 turns on. The obvious implementation extracts long-context activations for all 2,400 items so `run_ablation` can fit a fresh probe per envelope, exactly as it does for every other cell.
+
+**Decision:** extract long-context activations for the **600 test questions only**, and score them with the probe fitted on short context via `validate_transferred`.
+
+**This is a measurement decision, not a saving.** Refitting on long context answers *"how well can a probe do on long-context data?"*. Beat 4 asks *"what happens to **this** probe when the traffic changes underneath it?"* Those are different experiments, and only the second is the drift story — nobody retrains between one request and the next, so a refitted number describes a system that does not exist.
+
+The cost difference is real and secondary: 2,400 sequences at 4–16k tokens against 600, roughly four hours against one on a T4, on a card where a 16k-token sequence at 7B NF4 does not batch at all. Had the cheaper option also been the wrong measurement, we would have paid for the right one.
+
+**What the matrix cell means as a result.** `(probe-T1-mean_pool, triviaqa-longctx-600)` is now *"the probe fitted on short context, evaluated on long-context traffic"*, which is what a production envelope violation looks like. That is a narrower claim than the other cells in the same row and the warrant records it: `validate_transferred` carries the source run's controls with their detail amended to say they were established on the source extraction, and the split counts read `train: 0, validation: 0`.
+
+**Alternatives rejected:** *Extract both and report both* — defensible, twice the GPU cost, and it invites the reader to compare a transferred number with a refitted one as though they were the same quantity. *Refit only* — measures the wrong thing at four times the price.
+
+**A reviewer could fairly object** that a transferred warrant rests on controls that were not re-run on the new envelope. Correct, and it is stated in the record rather than glossed: the negative controls and the padding evidence describe the *fitted probe and the extraction that produced it*, both of which are unchanged by the transfer. What is not carried is anything describing the new distribution — the envelope, the metrics and the base rate are all measured on long context.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->
