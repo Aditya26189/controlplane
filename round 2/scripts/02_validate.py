@@ -22,7 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
 from src.report.plots import plot_tier_ladder
-from src.store import Ledger
+from src.store import Ledger, RecordKind
 from src.validation.ablation import run_ablation
 from src.validation.evalsets import ExtractionCache
 from src.validation.synthetic import synthetic_cache, synthetic_evalset
@@ -154,7 +154,8 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     ledger = Ledger(
-        PROJECT_ROOT / config.store.path, retention_days=config.store.retention_days
+        results_dir / Path(config.store.path).name,
+        retention_days=config.store.retention_days,
     )
     try:
         for run in ladder.runs:

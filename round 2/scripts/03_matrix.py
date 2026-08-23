@@ -106,8 +106,12 @@ def main(argv: list[str] | None = None) -> int:
     hard_negatives = build_hard_negatives(seed=config.seed)
     pii_canary = build_canary_pii(seed=config.seed)
 
+    # The ledger follows the results directory, so a smoke run with --out cannot
+    # append to the real audit store. A test that pollutes the artifact it is
+    # checking is worse than no test.
     ledger = Ledger(
-        PROJECT_ROOT / config.store.path, retention_days=config.store.retention_days
+        results_dir / Path(config.store.path).name,
+        retention_days=config.store.retention_days,
     )
     ladders = []
     try:

@@ -54,6 +54,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="build and register without scoring the reference detector",
     )
+    parser.add_argument("--out", default=None, help="results directory override")
+    parser.add_argument(
+        "--evalsets-out",
+        default=None,
+        help="evalsets directory override, so a smoke run cannot clobber the "
+        "registered sets",
+    )
     return parser.parse_args(argv)
 
 
@@ -63,8 +70,13 @@ def main(argv: list[str] | None = None) -> int:
     config = load_config(args.config)
     set_seeds(config.seed)
 
-    evalsets_dir = PROJECT_ROOT / config.paths.evalsets_dir
-    results_dir = PROJECT_ROOT / config.paths.results_dir
+    evalsets_dir = (
+        Path(args.evalsets_out)
+        if args.evalsets_out
+        else PROJECT_ROOT / config.paths.evalsets_dir
+    )
+    results_dir = Path(args.out) if args.out else PROJECT_ROOT / config.paths.results_dir
+    results_dir.mkdir(parents=True, exist_ok=True)
 
     if args.verify_only:
         problems = verify_manifest(evalsets_dir)
@@ -143,7 +155,8 @@ def main(argv: list[str] | None = None) -> int:
     detector = ReferencePiiDetector()
     threshold = detector.min_confidence
     ledger = Ledger(
-        PROJECT_ROOT / config.store.path, retention_days=config.store.retention_days
+        results_dir / Path(config.store.path).name,
+        retention_days=config.store.retention_days,
     )
     summaries = []
     try:
