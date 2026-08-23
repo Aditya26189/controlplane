@@ -40,3 +40,9 @@ hf_home/
 # Demo scratch: a fresh chain per run, so the trace on screen is legible.
 results/demo.db
 results/demo_stream.json
+
+# Derived eval sets are regenerable and large: build_longctx pads each prompt to
+# 4-16k tokens, so hinglish-pii-200-longctx.json is ~8 MB. The manifest records
+# its content hash, so its identity is committed and checkable after a rebuild
+# even though the expansion is not. See DECISIONS.md 037.
+evalsets/*-longctx.json
