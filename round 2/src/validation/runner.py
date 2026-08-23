@@ -47,16 +47,8 @@ from .controls import run_controls
 from .evalsets import TEST, TRAIN, VALIDATION, ExtractionCache, split_by_question
 from .evalsets import EvalSet
 from .issuance import issue_or_refuse
-from .stats import (
-    auroc,
-    estimated,
-    exact_count,
-    false_positive_rate_at,
-    flag_rate_at,
-    precision_at,
-    recall_at,
-    threshold_for_flag_rate,
-)
+from .metrics_builder import build_warrant_metrics
+from .stats import flag_rate_at, threshold_for_flag_rate
 
 __all__ = ["ValidationRun", "build_envelope", "validate"]
 
@@ -368,49 +360,13 @@ def validate(
     ci = config.validation.ci
     seed = config.seed
 
-    n_negative = int(np.sum(test_labels == 0))
-    false_positives = int(np.sum((test_scores >= threshold) & (test_labels == 0)))
-    within_set_fpr = estimated(
-        "fpr_hard_negatives" if is_hard_negative_set else "fpr",
-        lambda y, s: false_positive_rate_at(y, s, threshold),
-        test_labels, test_scores,
-        n_resamples=boot, ci=ci, seed=seed, groups=test_groups,
-        binomial_events=false_positives, binomial_trials=n_negative,
-    )
-
-    metrics = WarrantMetrics(
-        auroc=estimated(
-            "auroc", auroc, test_labels, test_scores,
-            n_resamples=boot, ci=ci, seed=seed, groups=test_groups, unit="ratio",
-        ),
-        recall=estimated(
-            "recall", lambda y, s: recall_at(y, s, threshold), test_labels, test_scores,
-            n_resamples=boot, ci=ci, seed=seed, groups=test_groups,
-        ),
-        precision=estimated(
-            "precision", lambda y, s: precision_at(y, s, threshold), test_labels, test_scores,
-            n_resamples=boot, ci=ci, seed=seed, groups=test_groups,
-        ),
-        flag_rate=estimated(
-            "flag_rate", lambda y, s: flag_rate_at(s, threshold), test_labels, test_scores,
-            n_resamples=boot, ci=ci, seed=seed, groups=test_groups,
-            binomial_events=int(np.sum(test_scores >= threshold)),
-            binomial_trials=int(test_index.size),
-        ),
-        confirmed_errors=exact_count(
-            "confirmed_errors",
-            int(np.sum((test_scores >= threshold) & (test_labels == 1))),
-            n=int(np.sum(test_scores >= threshold)),
-        ),
-        # Within-set FPR is NOT hard-negative FPR. The same conflation was fixed
-        # on the text path in DECISIONS.md 036 and left here, which suspended
-        # every profile on every envelope: the probe's own within-set FPR upper
-        # bound (0.029) was being judged against customer_support's declared
-        # hard-negative maximum (0.02), a bar that had never been measured for
-        # this detector. `fpr_hard_negatives` is populated only when the set
-        # under test IS the hard-negative set.
-        fpr_hard_negatives=within_set_fpr if is_hard_negative_set else None,
-        extra=() if is_hard_negative_set else (within_set_fpr,),
+    metrics = build_warrant_metrics(
+        config,
+        test_labels,
+        test_scores,
+        threshold,
+        groups=test_groups,
+        is_hard_negative_set=is_hard_negative_set,
     )
 
     envelope = build_envelope(evalset, cache)

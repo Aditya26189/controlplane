@@ -48,17 +48,9 @@ from .controls import CANARY, DETERMINISM, LABEL_SHUFFLE, NULL_FEATURE, PADDING_
 from .controls import canary_control, determinism_control
 from .evalsets import EvalSet
 from .issuance import issue_or_refuse
+from .metrics_builder import build_warrant_metrics
 from .runner import ValidationRun, build_envelope
-from .stats import (
-    MeasurementError,
-    auroc,
-    estimated,
-    exact_count,
-    false_positive_rate_at,
-    flag_rate_at,
-    precision_at,
-    recall_at,
-)
+
 
 __all__ = ["TextDetector", "validate_text_detector"]
 
@@ -192,74 +184,20 @@ def validate_text_detector(
             f" {control.control}"
         )
 
-    boot = config.validation.bootstrap_samples
-    ci = config.validation.ci
-    seed = config.seed
-
     say("scoring test (once)")
-    if single_class:
+    metrics = build_warrant_metrics(
+        config,
+        labels,
+        scores,
+        threshold,
+        groups=groups,
+        is_hard_negative_set=is_hard_negative_set,
+    )
+    if metrics.recall is None:
         say(
             "single-class envelope: AUROC, recall and precision are undefined "
             "here, so this warrant claims FPR only"
         )
-        ranking = {"auroc": None, "recall": None, "precision": None}
-    else:
-        ranking = {
-            "auroc": estimated(
-                "auroc", auroc, labels, scores,
-                n_resamples=boot, ci=ci, seed=seed, groups=groups, unit="ratio",
-            ),
-            "recall": estimated(
-                "recall", lambda y, s: recall_at(y, s, threshold), labels, scores,
-                n_resamples=boot, ci=ci, seed=seed, groups=groups,
-            ),
-            "precision": estimated(
-                "precision", lambda y, s: precision_at(y, s, threshold), labels, scores,
-                n_resamples=boot, ci=ci, seed=seed, groups=groups,
-            ),
-        }
-
-    # Within-set FPR and hard-negative FPR are different claims and must not
-    # share a field. `fpr_hard_negatives` is the criterion a profile declares a
-    # maximum against, and it means "FPR on the set built from boundary cases
-    # that must be allowed". Populating it from whatever negatives happen to sit
-    # inside the set under test makes a profile's declared maximum apply to a
-    # number it was never about -- which refused this detector on the Hinglish
-    # set for failing a hard-negative bar that had not been measured.
-    within_set_fpr = None
-    hard_negative_fpr = None
-    if (labels == 0).any():
-        n_negative = int(np.sum(labels == 0))
-        false_positives = int(np.sum((scores >= threshold) & (labels == 0)))
-        metric = estimated(
-            "fpr" if not is_hard_negative_set else "fpr_hard_negatives",
-            lambda y, s: false_positive_rate_at(y, s, threshold),
-            labels, scores,
-            n_resamples=boot, ci=ci, seed=seed, groups=groups,
-            binomial_events=false_positives, binomial_trials=n_negative,
-        )
-        if is_hard_negative_set:
-            hard_negative_fpr = metric
-        else:
-            within_set_fpr = metric
-
-    metrics = WarrantMetrics(
-        auroc=ranking["auroc"],
-        recall=ranking["recall"],
-        precision=ranking["precision"],
-        flag_rate=estimated(
-            "flag_rate", lambda y, s: flag_rate_at(s, threshold), labels, scores,
-            n_resamples=boot, ci=ci, seed=seed, groups=groups,
-            binomial_events=int(np.sum(scores >= threshold)), binomial_trials=len(labels),
-        ),
-        confirmed_errors=exact_count(
-            "confirmed_errors",
-            int(np.sum((scores >= threshold) & (labels == 1))),
-            n=int(np.sum(scores >= threshold)),
-        ),
-        fpr_hard_negatives=hard_negative_fpr,
-        extra=(within_set_fpr,) if within_set_fpr is not None else (),
-    )
 
     envelope = build_envelope_from_text(evalset)
     key = WarrantKey(detector.detector_id, operating_point_id, evalset.eval_set_id)

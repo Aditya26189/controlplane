@@ -646,4 +646,111 @@ customer_support (recall >= 0.10)  long context   -> SUSPENDED
 
 ---
 
+## 042 — Routing ranks by recall lower bound, not interval width
+**Status:** accepted · **corrects the ranking rule introduced in Phase 4**
+
+**Context:** The first ranking rule ordered eligible warrants by interval width, tightest first, on the reasoning that a narrow claim is more useful than a wide one. The Phase 4 report described the resulting choice as the rule working as designed. It was not.
+
+**What it actually did:** on short context it preferred mean-pool (recall 0.216 [0.129, 0.306], width 0.177) over max-of-rolling-means (0.250 [0.163, 0.345], width 0.182). Width differed by 3%; the midpoint differed by 16%, and the lower bound by 26%. Generalised, width-first prefers recall `[0.10, 0.11]` over `[0.30, 0.45]`, which is plainly wrong.
+
+**Decision:** rank by the **recall lower confidence bound**, descending. Ties break on width (between two equally provable claims, prefer the better-measured one) and then on detector id, so routing stays deterministic.
+
+**Why the lower bound specifically:** it is what the detector can be *shown* to deliver, and claiming what you can prove is the entire product thesis. Width-first optimises for confidence in a claim rather than the size of it — a subtly different objective that happens to coincide with the right answer often enough to look correct.
+
+**Why this mattered more than a cosmetic ordering:** Phase 5's route-on-revocation calls the same function. A wrong ranking rule would have propagated directly into Beat 4's fallback selection, where the system picks the detector it falls back *to* in front of an audience.
+
+**Consequences:** re-running Phase 4 with the corrected rule routes `max_rolling_means` on short context, which is the answer the thesis implies. `test_routing_ranks_by_lower_bound_not_width` pins the generalised case that made the error obvious.
+
+---
+
+## 043 — Refuse a warrant whose lift lower bound does not exceed 1.0
+**Status:** accepted · **found by Phase 4 measurement, not designed in**
+
+**Context, and the provenance matters more than the criterion:** this was not in the spec and was not anticipated. Phase 4 populated the matrix and produced a warrant issued **VALID** on recall `0.034 [0.000, 0.077]`. Its AUROC lower bound was 0.560 against a declared bar of 0.55, so every stated refusal criterion passed. The first response was to report it as measured and let the profile minimum catch it — which was right as far as it went, and left a real gap.
+
+**The gap:** the refusal bar is AUROC-based, and AUROC is a **ranking-quality** measure. The product's claim is about **usefulness at a budget**. Those are different quantities and they come apart exactly where this was found. A detector can rank slightly better than chance and still be worthless at any operating point you would actually run.
+
+**The derivation.** Lift is `R / f` — how many more errors the detector surfaces than random sampling of the same number of items. `f` is the *measured* flag rate (invariant 6). Random sampling at budget `f` yields recall `f` in expectation, so lift 1.0 is the null: *no better than spending the same money at random*. Measured on the offending cell:
+
+```
+recall 0.034 [0.000, 0.077]  at  f = 0.0250
+lift    1.36 [ 0.00,  3.08]
+```
+
+The point estimate is above 1, and the lower bound is **zero**. The system could not show the detector beat random sampling, and issued a warrant saying it was fine.
+
+**Decision:** refuse when the **lower bound** on lift does not exceed 1.0. `MIN_LIFT_LOWER_BOUND = 1.0` is a constant in code, not a config value, because 1.0 is the *definition* of "no better than chance at this cost" rather than a threshold anyone chose. Wanting a higher bar is a policy judgement and belongs in a profile's declared minimum.
+
+**Measured effect across the whole matrix** — it refuses two cells and touches nothing else:
+
+| cell | lift | verdict |
+|---|---|---|
+| `T1-max_rolling_means` short | 5.00 [3.27, 6.90] | VALID |
+| `T1-max_rolling_means` long | 3.41 [1.88, 5.14] | VALID |
+| `T1-mean_pool` short | 4.63 [2.76, 6.56] | VALID |
+| `T1-mean_pool` long | 1.36 [**0.00**, 3.08] | **REFUSED** |
+| `T2-logprob` long | 2.56 [1.35, 3.95] | VALID |
+| `T3-judge` long | 1.18 [**0.56**, 1.96] | **REFUSED** |
+
+**Both mechanisms are kept.** Refusal and profile suspension answer different questions and both fire here for different reasons. Refusal says *the warrant is worthless to anyone*. Suspension says *the warrant is sound and insufficient for this profile* — `customer_support` at recall ≥ 0.10 suspends on long context even where warrants remain valid. Replacing one with the other would lose a distinction the demo turns on.
+
+**A reviewer could fairly object** that the Phase 4 gate now reads as the spec scripted it — mean-pool REFUSED on long context — after a report that made a point of not engineering that outcome. The order of events is the answer, and it is in the git history: the gate was reported with mean-pool VALID and the discrepancy stated; the criterion was derived afterwards from the product's own definition of usefulness; and it was checked against every other cell to confirm it refuses two and spares six. A criterion chosen to produce a demo would not have refused `T3-judge` as well.
+
+**Caveat worth stating:** on an enriched eval set, lift is compressed toward 1 because random sampling does well when positives are common. `hinglish-pii-200` has a base rate of 0.51, so its lift is 1.28 [1.13, 1.43] — genuinely modest, correctly reported, and a reminder that lift is only interpretable against the base rate it was measured at.
+
+---
+
+## 044 — A metric computed twice is a metric that will drift; there is now one implementation
+**Status:** accepted · **replaces the mitigation proposed in 040**
+
+**Context:** Entry 040 recorded that the `fpr_hard_negatives` conflation recurred on a second code path, and proposed that the next instance "gets found by reading". That is not a control. It is what every team has, and this repo's entire claim is to be different from that.
+
+**What the failure class actually is:** *the same quantity, two implementations, one drifts*. `WarrantMetrics` was constructed in two places with five `estimated()` calls each. The bug shipped in one, was fixed in one, and survived in the other through 193 passing tests. It was caught by a hunch about an unrelated symptom.
+
+**Decision:** eliminate the duplication rather than test that two copies agree. `src/validation/metrics_builder.py` is the single place a `WarrantMetrics` is constructed; both runners call it and neither computes a metric itself. Two controls guard it:
+
+1. **`test_warrant_metrics_has_exactly_one_construction_site`** parses every module with `ast` and asserts exactly one `WarrantMetrics(...)` call exists. Parsed rather than grepped so a construction inside a docstring cannot register. `test_estimated_is_called_from_one_module` does the same one level down, for the function that decides bootstrap count, coverage, resampling unit and boundary fallback.
+2. **`test_metric_paths_agree`** asserts identical input produces identical metrics. One construction site is not sufficient on its own: two callers could still pass different seeds or different resampling units.
+
+**And a routing positive control**, for the second shape the bug took. The symptom was *universal suspension* — every profile suspended on every envelope — which is indistinguishable on screen from a conservative system working correctly. `test_routing_positive_control` asserts that a detector with recall 0.40 [0.30, 0.50] **routes** rather than suspending. This is the null-feature control's reasoning applied to routing: a system that cannot produce the non-null outcome cannot be trusted when it produces the null one.
+
+**Grep pass for other dual-path metrics**, done and recorded: `WarrantMetrics` had two construction sites (now one), `estimated()` had two calling modules (now one), and no other quantity in `src/` is computed in more than one place.
+
+---
+
+## 045 — Contamination scope from the fixture generator fix, measured rather than assumed
+**Status:** accepted
+
+**Context:** Entry 038 superseded 028 on the grounds that its numbers predated a fix to the synthetic generator. That raises a scope question the report treated as settled: **which other artifacts are contaminated?**
+
+**Two things changed between 028's measurement and Phase 4's**, and 038 attributed the reversal to only one of them without testing:
+
+* (a) the generator fix — `direction_seed` shared across caches, and sorted variant iteration, which changes the whole RNG stream;
+* (b) sample size — 600 items with derived splits (train 300, test 150) became 2,400 with declared splits (train 1,200, test 600).
+
+**Measured, under the current generator, at both sizes:**
+
+| condition | mean-pool long | max-rolling long | winner |
+|---|---|---|---|
+| 028's size (n=600, derived splits) | 0.565 | 0.706 | max-rolling |
+| Phase 4's size (n=2400, declared) | 0.629 | 0.724 | max-rolling |
+
+At 028's *own* sample size the current generator still reverses its result. So the reversal is attributable to the generator change, and 038's causal story holds — now tested rather than asserted.
+
+**Scope, established from `provenance()` git stamps rather than by inspection.** The generator fix landed in `db11799`. Every committed `exp:` commit in Round 2 postdates it:
+
+```
+31310c3  exp(validation): tier ladder ...          after
+589e6e6  exp(evalsets): register four sets ...     after
+2ed2a34  exp(evalsets): regenerate registry ...    after
+55237f0  exp(evalsets): regenerate from clean ...  after
+6133ef7  exp(matrix): populate every cell ...      after
+```
+
+**Conclusion: zero committed artifacts are contaminated.** The contamination is confined to prose — 028's inline numbers, recorded in a `feat:` commit and already superseded. Phase 3's results use no synthetic generator at all (the eval sets are hand-built), so they are unaffected by construction.
+
+**What made this answerable in one command** is that every artifact carries the commit it was generated from. That is the provenance discipline paying for itself, and it is worth noting that the question *"what else is wrong?"* is normally unanswerable.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->

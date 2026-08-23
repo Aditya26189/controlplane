@@ -15,9 +15,18 @@ Refusal criteria, all of them:
 
 * any control failed;
 * AUROC lower CI bound ≤ ``config.validation.min_auroc_lower_ci``;
+* **lift lower CI bound ≤ 1.0** — the detector is not demonstrably better than
+  random sampling at the same budget (``DECISIONS.md`` 043);
 * recall below the profile's declared minimum at this operating point;
 * FPR on the hard-negative set above the declared maximum;
 * ``n_test`` < ``config.validation.min_n_test``.
+
+The lift criterion was **found by measurement, not designed in**. Phase 4
+produced a warrant issued ``VALID`` on recall ``0.034 [0.000, 0.077]``: its
+AUROC lower bound cleared the bar, because AUROC is a *ranking-quality* bar
+while the product's claim is about *usefulness at a budget*, and those come
+apart exactly there. See ``DECISIONS.md`` 043 for the derivation, and for why
+profile suspension is kept alongside this rather than replaced by it.
 
 A refused warrant is **stored**, not discarded. A log recording only the
 warrants that were granted would let a refusal be retried quietly until it
@@ -45,7 +54,14 @@ from ..model import (
     utc_now,
 )
 
-__all__ = ["RefusalReason", "issue_or_refuse"]
+__all__ = ["MIN_LIFT_LOWER_BOUND", "RefusalReason", "issue_or_refuse"]
+
+#: A warrant must be demonstrably better than random sampling at the same
+#: budget. Not a tunable: 1.0 is the definition of "no better than chance at
+#: this cost" rather than a threshold anyone chose, which is why it is a
+#: constant here and not a value in config.yaml. Wanting a *higher* bar is a
+#: policy judgement and belongs in a profile's declared minimum.
+MIN_LIFT_LOWER_BOUND = 1.0
 
 _LOG = logging.getLogger(__name__)
 
@@ -181,6 +197,30 @@ def issue_or_refuse(
                     criterion="auroc_lower_ci",
                     measured="none" if auroc_lower is None else f"{auroc_lower:.4f}",
                     required=f"> {config.validation.min_auroc_lower_ci}",
+                )
+            )
+
+    # Lift is recall over the measured flag rate: how many more errors this
+    # finds than random sampling at the same cost. A lower bound at or below
+    # 1.0 means the detector cannot be shown to beat drawing the same number of
+    # items at random, which is the null the whole product is measured against.
+    # Undefined on a single-class envelope, where there is no recall and the
+    # warrant claims FPR only.
+    if metrics.recall is not None and metrics.flag_rate.value > 0:
+        lift = metrics.lift
+        lift_lower = lift.ci_low if lift.ci_low is not None else lift.value
+        if lift_lower <= MIN_LIFT_LOWER_BOUND:
+            reasons.append(
+                RefusalReason(
+                    criterion="lift_lower_ci",
+                    measured=(
+                        f"{lift.value:.3f} [{lift.ci_low:.3f}, {lift.ci_high:.3f}] "
+                        f"at measured flag rate {metrics.flag_rate.value:.4f}"
+                    ),
+                    required=(
+                        f"> {MIN_LIFT_LOWER_BOUND} — otherwise not demonstrably "
+                        "better than random sampling at the same budget"
+                    ),
                 )
             )
 
