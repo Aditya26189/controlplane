@@ -1,8 +1,8 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-23T14:43:31+00:00",
-    "git_commit": "16644b76e7b67ae089a8faf09951cc3b85f7f252",
-    "git_branch": "phase/4.5-review-fixes",
+    "timestamp_utc": "2026-08-23T15:27:07+00:00",
+    "git_commit": "a5a40e1bd77a337a8981d8ecf7697d0070c731ad",
+    "git_branch": "phase/4.6-fixture-guards",
     "dirty": false,
     "dirty_paths": [],
     "dirty_excludes": "results",
@@ -850,7 +850,7 @@
         }
       }
     ],
-    "rendered_at": "2026-08-23T14:43:31+00:00"
+    "rendered_at": "2026-08-23T15:27:07+00:00"
   },
   "routing": [
     {
@@ -891,8 +891,8 @@
         "status": "VALID",
         "n_test": 600,
         "base_rate": 0.14666666666666667,
-        "issued_at": "2026-08-23T14:42:15+00:00",
-        "expires_at": "2026-08-24T14:42:15+00:00",
+        "issued_at": "2026-08-23T15:25:52+00:00",
+        "expires_at": "2026-08-24T15:25:52+00:00",
         "kappa": null,
         "controls_run": 5,
         "controls_inapplicable": [],
@@ -1013,8 +1013,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-23T14:43:11+00:00",
-        "expires_at": "2026-08-24T14:43:11+00:00",
+        "issued_at": "2026-08-23T15:26:47+00:00",
+        "expires_at": "2026-08-24T15:26:47+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1109,8 +1109,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-23T14:43:12+00:00",
-        "expires_at": "2026-08-24T14:43:12+00:00",
+        "issued_at": "2026-08-23T15:26:48+00:00",
+        "expires_at": "2026-08-24T15:26:48+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1320,8 +1320,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-23T14:43:11+00:00",
-        "expires_at": "2026-08-24T14:43:11+00:00",
+        "issued_at": "2026-08-23T15:26:47+00:00",
+        "expires_at": "2026-08-24T15:26:47+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1416,8 +1416,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-23T14:43:12+00:00",
-        "expires_at": "2026-08-24T14:43:12+00:00",
+        "issued_at": "2026-08-23T15:26:48+00:00",
+        "expires_at": "2026-08-24T15:26:48+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1627,8 +1627,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-23T14:43:11+00:00",
-        "expires_at": "2026-08-24T14:43:11+00:00",
+        "issued_at": "2026-08-23T15:26:47+00:00",
+        "expires_at": "2026-08-24T15:26:47+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1723,8 +1723,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-23T14:43:12+00:00",
-        "expires_at": "2026-08-24T14:43:12+00:00",
+        "issued_at": "2026-08-23T15:26:48+00:00",
+        "expires_at": "2026-08-24T15:26:48+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
