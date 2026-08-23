@@ -1,11 +1,11 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-23T12:01:03+00:00",
-    "git_commit": "15e96d9458928fe37a2efa71c7b2382c38ac3fe4",
+    "timestamp_utc": "2026-08-23T12:09:57+00:00",
+    "git_commit": "950365e3a671d36c7b489a1a0b5a790de22d4177",
     "git_branch": "phase/3-evaluation-sets",
     "dirty": true,
     "dirty_paths": [
-      "round 2/evalsets"
+      "round 2/evalsets/manifest.json"
     ],
     "dirty_excludes": "results",
     "python": "3.12.10",
@@ -193,9 +193,9 @@
   "eval_set_id": "hard-negatives-200",
   "envelope_id": "sha256:d28e4de2024de10d",
   "data_source": "measured",
-  "started_at": "2026-08-23T12:01:02+00:00",
-  "completed_at": "2026-08-23T12:01:03+00:00",
-  "duration_seconds": 0.44585879996884614,
+  "started_at": "2026-08-23T12:09:57+00:00",
+  "completed_at": "2026-08-23T12:09:57+00:00",
+  "duration_seconds": 0.3852684999583289,
   "splits": {
     "train": 0,
     "validation": 0,
@@ -320,8 +320,8 @@
     },
     "eval_set_id": "hard-negatives-200",
     "validation_run_id": "run-3607cee06b12",
-    "issued_at": "2026-08-23T12:01:02+00:00",
-    "expires_at": "2026-08-24T12:01:02+00:00",
+    "issued_at": "2026-08-23T12:09:57+00:00",
+    "expires_at": "2026-08-24T12:09:57+00:00",
     "metrics": {
       "auroc": null,
       "recall": null,

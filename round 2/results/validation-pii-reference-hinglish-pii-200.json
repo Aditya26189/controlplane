@@ -1,11 +1,11 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-23T12:00:36+00:00",
-    "git_commit": "15e96d9458928fe37a2efa71c7b2382c38ac3fe4",
+    "timestamp_utc": "2026-08-23T12:09:31+00:00",
+    "git_commit": "950365e3a671d36c7b489a1a0b5a790de22d4177",
     "git_branch": "phase/3-evaluation-sets",
     "dirty": true,
     "dirty_paths": [
-      "round 2/evalsets"
+      "round 2/evalsets/manifest.json"
     ],
     "dirty_excludes": "results",
     "python": "3.12.10",
@@ -193,9 +193,9 @@
   "eval_set_id": "hinglish-pii-200",
   "envelope_id": "sha256:39b541efa4299f4d",
   "data_source": "measured",
-  "started_at": "2026-08-23T12:00:34+00:00",
-  "completed_at": "2026-08-23T12:00:36+00:00",
-  "duration_seconds": 1.5524063999764621,
+  "started_at": "2026-08-23T12:09:29+00:00",
+  "completed_at": "2026-08-23T12:09:30+00:00",
+  "duration_seconds": 1.6180626000277698,
   "splits": {
     "train": 0,
     "validation": 0,
@@ -352,8 +352,8 @@
     },
     "eval_set_id": "hinglish-pii-200",
     "validation_run_id": "run-c9c31d965ce8",
-    "issued_at": "2026-08-23T12:00:34+00:00",
-    "expires_at": "2026-08-24T12:00:34+00:00",
+    "issued_at": "2026-08-23T12:09:29+00:00",
+    "expires_at": "2026-08-24T12:09:29+00:00",
     "metrics": {
       "auroc": {
         "name": "auroc",

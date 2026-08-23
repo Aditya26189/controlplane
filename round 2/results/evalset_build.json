@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-23T12:09:58+00:00",
+    "timestamp_utc": "2026-08-23T12:09:29+00:00",
     "git_commit": "950365e3a671d36c7b489a1a0b5a790de22d4177",
     "git_branch": "phase/3-evaluation-sets",
     "dirty": true,
@@ -187,163 +187,34 @@
       }
     }
   },
-  "detector_id": "pii-reference",
-  "detector_version": "0.1.0",
-  "threshold": 0.35,
-  "note": "The reference PII detector is ours, not Presidio. It exists so these sets are measured rather than merely built, and so the Phase 8 Presidio comparison has an honest floor to sit against.",
-  "runs": [
+  "sets": [
     {
       "eval_set_id": "hinglish-pii-200",
+      "content_hash": "39b541efa4299f4db51fb955d16f3a74f78079c93d0f69a86570983bf6d6a639",
       "envelope_id": "sha256:39b541efa4299f4d",
       "n_items": 200,
-      "base_rate": 0.51,
-      "warrant_status": "VALID",
-      "status_reason": null,
-      "metrics": {
-        "auroc": {
-          "value": 0.7734093637454982,
-          "ci_low": 0.6899960007440477,
-          "ci_high": 0.8561364695334656,
-          "kind": "ESTIMATED",
-          "n": 200
-        },
-        "recall": {
-          "value": 0.7941176470588235,
-          "ci_low": 0.6980623381428043,
-          "ci_high": 0.8846153846153846,
-          "kind": "ESTIMATED",
-          "n": 200
-        },
-        "precision": {
-          "value": 0.6532258064516129,
-          "ci_low": 0.5114227428270598,
-          "ci_high": 0.8099524403555278,
-          "kind": "ESTIMATED",
-          "n": 200
-        },
-        "flag_rate": {
-          "value": 0.62,
-          "ci_low": 0.514282345013477,
-          "ci_high": 0.7350238764044944,
-          "kind": "ESTIMATED",
-          "n": 200
-        },
-        "confirmed_errors": {
-          "value": 81.0,
-          "ci_low": null,
-          "ci_high": null,
-          "kind": "EXACT",
-          "n": 124
-        },
-        "fpr": {
-          "value": 0.4387755102040816,
-          "ci_low": 0.2475824175824176,
-          "ci_high": 0.6339340156794425,
-          "kind": "ESTIMATED",
-          "n": 200
-        }
-      },
-      "controls_run": 2,
-      "controls_inapplicable": [
-        "padding_fault",
-        "label_shuffle",
-        "null_feature"
-      ]
+      "base_rate": 0.51
     },
     {
       "eval_set_id": "hinglish-pii-200-longctx",
+      "content_hash": "1d3bf295e9c3034121d77ee657e244c28e498d2749e7df8d7fe27fa0c2526d03",
       "envelope_id": "sha256:1d3bf295e9c30341",
       "n_items": 200,
-      "base_rate": 0.51,
-      "warrant_status": "VALID",
-      "status_reason": null,
-      "metrics": {
-        "auroc": {
-          "value": 0.7734093637454982,
-          "ci_low": 0.6899960007440477,
-          "ci_high": 0.8561364695334656,
-          "kind": "ESTIMATED",
-          "n": 200
-        },
-        "recall": {
-          "value": 0.7941176470588235,
-          "ci_low": 0.6980623381428043,
-          "ci_high": 0.8846153846153846,
-          "kind": "ESTIMATED",
-          "n": 200
-        },
-        "precision": {
-          "value": 0.6532258064516129,
-          "ci_low": 0.5114227428270598,
-          "ci_high": 0.8099524403555278,
-          "kind": "ESTIMATED",
-          "n": 200
-        },
-        "flag_rate": {
-          "value": 0.62,
-          "ci_low": 0.514282345013477,
-          "ci_high": 0.7350238764044944,
-          "kind": "ESTIMATED",
-          "n": 200
-        },
-        "confirmed_errors": {
-          "value": 81.0,
-          "ci_low": null,
-          "ci_high": null,
-          "kind": "EXACT",
-          "n": 124
-        },
-        "fpr": {
-          "value": 0.4387755102040816,
-          "ci_low": 0.2475824175824176,
-          "ci_high": 0.6339340156794425,
-          "kind": "ESTIMATED",
-          "n": 200
-        }
-      },
-      "controls_run": 2,
-      "controls_inapplicable": [
-        "padding_fault",
-        "label_shuffle",
-        "null_feature"
-      ]
+      "base_rate": 0.51
     },
     {
       "eval_set_id": "hard-negatives-200",
+      "content_hash": "d28e4de2024de10d1e4be564f9bd361175399eac23735a7bef6540386029854c",
       "envelope_id": "sha256:d28e4de2024de10d",
       "n_items": 200,
-      "base_rate": 0.0,
-      "warrant_status": "VALID",
-      "status_reason": null,
-      "metrics": {
-        "flag_rate": {
-          "value": 0.0,
-          "ci_low": 0.0,
-          "ci_high": 0.018275340355136237,
-          "kind": "ESTIMATED",
-          "n": 200
-        },
-        "confirmed_errors": {
-          "value": 0.0,
-          "ci_low": null,
-          "ci_high": null,
-          "kind": "EXACT",
-          "n": 0
-        },
-        "fpr_hard_negatives": {
-          "value": 0.0,
-          "ci_low": 0.0,
-          "ci_high": 0.018275340355136237,
-          "kind": "ESTIMATED",
-          "n": 200
-        }
-      },
-      "controls_run": 2,
-      "controls_inapplicable": [
-        "padding_fault",
-        "label_shuffle",
-        "null_feature"
-      ]
+      "base_rate": 0.0
+    },
+    {
+      "eval_set_id": "canary-20-pii",
+      "content_hash": "9a843e2565ef0afb5215d367591b727a9e8eff9e2b1ec9e78a8ae7c8fba5ff19",
+      "envelope_id": "sha256:9a843e2565ef0afb",
+      "n_items": 20,
+      "base_rate": 1.0
     }
   ]
 }
