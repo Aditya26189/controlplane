@@ -1,0 +1,258 @@
+{
+  "written_at": "2026-08-23T12:00:33+00:00",
+  "n_sets": 4,
+  "sets": [
+    {
+      "eval_set_id": "hinglish-pii-200",
+      "content_hash": "39b541efa4299f4db51fb955d16f3a74f78079c93d0f69a86570983bf6d6a639",
+      "envelope_id": "sha256:39b541efa4299f4d",
+      "data_source": "measured",
+      "n_items": 200,
+      "n_positive": 102,
+      "n_negative": 98,
+      "base_rate": 0.51,
+      "single_class": false,
+      "label_meaning": "1 = message contains a personal identifier",
+      "method": "hand-written scenarios crossed with systematic disclosure forms",
+      "llm_generated": false,
+      "file": "hinglish-pii-200.json"
+    },
+    {
+      "eval_set_id": "hinglish-pii-200-longctx",
+      "content_hash": "1d3bf295e9c3034121d77ee657e244c28e498d2749e7df8d7fe27fa0c2526d03",
+      "envelope_id": "sha256:1d3bf295e9c30341",
+      "data_source": "measured",
+      "n_items": 200,
+      "n_positive": 102,
+      "n_negative": 98,
+      "base_rate": 0.51,
+      "single_class": false,
+      "label_meaning": "1 = message contains a personal identifier",
+      "method": "base set padded with topically unrelated distractors",
+      "llm_generated": false,
+      "file": "hinglish-pii-200-longctx.json"
+    },
+    {
+      "eval_set_id": "hard-negatives-200",
+      "content_hash": "d28e4de2024de10d1e4be564f9bd361175399eac23735a7bef6540386029854c",
+      "envelope_id": "sha256:d28e4de2024de10d",
+      "data_source": "measured",
+      "n_items": 200,
+      "n_positive": 0,
+      "n_negative": 200,
+      "base_rate": 0.0,
+      "single_class": true,
+      "label_meaning": "0 = benign, must not be flagged; the set is single-class",
+      "method": "hand-written scenarios rendered in four systematic framings",
+      "llm_generated": false,
+      "file": "hard-negatives-200.json"
+    },
+    {
+      "eval_set_id": "canary-20-pii",
+      "content_hash": "9a843e2565ef0afb5215d367591b727a9e8eff9e2b1ec9e78a8ae7c8fba5ff19",
+      "envelope_id": "sha256:9a843e2565ef0afb",
+      "data_source": "measured",
+      "n_items": 20,
+      "n_positive": 20,
+      "n_negative": 0,
+      "base_rate": 1.0,
+      "single_class": true,
+      "label_meaning": "1 = contains a personal identifier",
+      "method": "verbatim checksum-valid identifiers in plain English frames",
+      "llm_generated": false,
+      "file": "canary-20-pii.json"
+    }
+  ],
+  "provenance": {
+    "timestamp_utc": "2026-08-23T12:00:33+00:00",
+    "git_commit": "15e96d9458928fe37a2efa71c7b2382c38ac3fe4",
+    "git_branch": "phase/3-evaluation-sets",
+    "dirty": true,
+    "dirty_paths": [
+      "round 2/evalsets"
+    ],
+    "dirty_excludes": "results",
+    "python": "3.12.10",
+    "libraries": {
+      "torch": "2.9.1+cpu",
+      "transformers": "5.8.0",
+      "scikit-learn": "1.7.2",
+      "numpy": "2.2.6",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "statsmodels": "0.14.6",
+      "presidio-analyzer": null,
+      "bitsandbytes": "0.49.2"
+    },
+    "device": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
+      "cuda_available": false,
+      "device_name": "cpu"
+    },
+    "config_hash": "c89257bc4adc10c2",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "workload": {
+        "name": "enterprise-3pct",
+        "monthly_interactions": 200000,
+        "base_error_rate": 0.03,
+        "review_minutes_per_item": 3.0,
+        "reviewer_monthly_cost_inr": 85000.0,
+        "reviewer_productive_hours": 160.0,
+        "measured_tpr": 0.1416,
+        "measured_fpr": 0.011
+      },
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ]
+      },
+      "probe": {
+        "aggregations": [
+          "mean_pool",
+          "max_rolling_means"
+        ],
+        "rolling_window": 64,
+        "rolling_stride": 32,
+        "standardize": true,
+        "class_weight": "balanced",
+        "C_grid": [
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "evalsets": [
+        {
+          "id": "triviaqa-600",
+          "pad_tokens": null
+        },
+        {
+          "id": "triviaqa-longctx-600",
+          "pad_tokens": [
+            4000,
+            16000
+          ]
+        },
+        {
+          "id": "hinglish-pii-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "hard-negatives-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "canary-20",
+          "pad_tokens": null
+        }
+      ],
+      "validation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_n_test": 200,
+        "min_auroc_lower_ci": 0.55,
+        "warrant_ttl_hours": 24,
+        "controls": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature",
+          "canary",
+          "determinism"
+        ],
+        "null_control_band": [
+          0.45,
+          0.55
+        ],
+        "null_control_min_repeats": 8,
+        "null_control_max_repeats": 200
+      },
+      "drift": {
+        "window_size": 200,
+        "psi_stable": 0.1,
+        "psi_significant": 0.25,
+        "mmd_permutations": 500,
+        "features": [
+          "token_length",
+          "script_mix",
+          "embedding_centroid_distance",
+          "reference_perplexity",
+          "category_mix"
+        ]
+      },
+      "sampling": {
+        "allocation_month_one": "proportional",
+        "allocation_thereafter": "neyman",
+        "expected_design_effect": 0.67,
+        "score_bands": 4,
+        "double_label_fraction": 0.1,
+        "recall_margin_tiers": [
+          0.05,
+          0.02
+        ],
+        "blind_queue": true
+      },
+      "policy": {
+        "engine": "opa",
+        "fail_closed_on_missing_warrant": true,
+        "weighted_error": {
+          "w_fpr_benign": 50.0,
+          "w_fnr": 5.0,
+          "w_fpr_hard_negative": 2.0
+        }
+      },
+      "profiles": {
+        "customer_support": {
+          "inline_budget_ms": 200,
+          "min_recall": 0.1,
+          "max_fpr": 0.02
+        },
+        "internal_knowledge": {
+          "inline_budget_ms": 500,
+          "min_recall": 0.25,
+          "max_fpr": 0.05
+        },
+        "decision_support": {
+          "inline_budget_ms": 2000,
+          "min_recall": 0.5,
+          "max_fpr": 0.1
+        }
+      },
+      "detectors": {
+        "presidio_configs": [
+          "stock",
+          "enabled",
+          "enabled_plus_custom"
+        ],
+        "qwen3guard": "Qwen/Qwen3Guard-Gen-0.6B"
+      },
+      "store": {
+        "path": "results/controlplane.db",
+        "retention_days": 400,
+        "hash_chain": true
+      },
+      "paths": {
+        "results_dir": "results",
+        "evalsets_dir": "evalsets",
+        "policies_dir": "policies"
+      }
+    }
+  },
+  "not_built_here": {
+    "triviaqa-600": "needs model generations to label; built by the extraction stage, since whether an answer is incorrect is not a property of the question",
+    "triviaqa-longctx-600": "derived from triviaqa-600 by build_longctx once that set exists"
+  }
+}

@@ -1,0 +1,518 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-23T12:01:02+00:00",
+    "git_commit": "15e96d9458928fe37a2efa71c7b2382c38ac3fe4",
+    "git_branch": "phase/3-evaluation-sets",
+    "dirty": true,
+    "dirty_paths": [
+      "round 2/evalsets"
+    ],
+    "dirty_excludes": "results",
+    "python": "3.12.10",
+    "libraries": {
+      "torch": "2.9.1+cpu",
+      "transformers": "5.8.0",
+      "scikit-learn": "1.7.2",
+      "numpy": "2.2.6",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "statsmodels": "0.14.6",
+      "presidio-analyzer": null,
+      "bitsandbytes": "0.49.2"
+    },
+    "device": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
+      "cuda_available": false,
+      "device_name": "cpu"
+    },
+    "config_hash": "c89257bc4adc10c2",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "workload": {
+        "name": "enterprise-3pct",
+        "monthly_interactions": 200000,
+        "base_error_rate": 0.03,
+        "review_minutes_per_item": 3.0,
+        "reviewer_monthly_cost_inr": 85000.0,
+        "reviewer_productive_hours": 160.0,
+        "measured_tpr": 0.1416,
+        "measured_fpr": 0.011
+      },
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ]
+      },
+      "probe": {
+        "aggregations": [
+          "mean_pool",
+          "max_rolling_means"
+        ],
+        "rolling_window": 64,
+        "rolling_stride": 32,
+        "standardize": true,
+        "class_weight": "balanced",
+        "C_grid": [
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "evalsets": [
+        {
+          "id": "triviaqa-600",
+          "pad_tokens": null
+        },
+        {
+          "id": "triviaqa-longctx-600",
+          "pad_tokens": [
+            4000,
+            16000
+          ]
+        },
+        {
+          "id": "hinglish-pii-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "hard-negatives-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "canary-20",
+          "pad_tokens": null
+        }
+      ],
+      "validation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_n_test": 200,
+        "min_auroc_lower_ci": 0.55,
+        "warrant_ttl_hours": 24,
+        "controls": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature",
+          "canary",
+          "determinism"
+        ],
+        "null_control_band": [
+          0.45,
+          0.55
+        ],
+        "null_control_min_repeats": 8,
+        "null_control_max_repeats": 200
+      },
+      "drift": {
+        "window_size": 200,
+        "psi_stable": 0.1,
+        "psi_significant": 0.25,
+        "mmd_permutations": 500,
+        "features": [
+          "token_length",
+          "script_mix",
+          "embedding_centroid_distance",
+          "reference_perplexity",
+          "category_mix"
+        ]
+      },
+      "sampling": {
+        "allocation_month_one": "proportional",
+        "allocation_thereafter": "neyman",
+        "expected_design_effect": 0.67,
+        "score_bands": 4,
+        "double_label_fraction": 0.1,
+        "recall_margin_tiers": [
+          0.05,
+          0.02
+        ],
+        "blind_queue": true
+      },
+      "policy": {
+        "engine": "opa",
+        "fail_closed_on_missing_warrant": true,
+        "weighted_error": {
+          "w_fpr_benign": 50.0,
+          "w_fnr": 5.0,
+          "w_fpr_hard_negative": 2.0
+        }
+      },
+      "profiles": {
+        "customer_support": {
+          "inline_budget_ms": 200,
+          "min_recall": 0.1,
+          "max_fpr": 0.02
+        },
+        "internal_knowledge": {
+          "inline_budget_ms": 500,
+          "min_recall": 0.25,
+          "max_fpr": 0.05
+        },
+        "decision_support": {
+          "inline_budget_ms": 2000,
+          "min_recall": 0.5,
+          "max_fpr": 0.1
+        }
+      },
+      "detectors": {
+        "presidio_configs": [
+          "stock",
+          "enabled",
+          "enabled_plus_custom"
+        ],
+        "qwen3guard": "Qwen/Qwen3Guard-Gen-0.6B"
+      },
+      "store": {
+        "path": "results/controlplane.db",
+        "retention_days": 400,
+        "hash_chain": true
+      },
+      "paths": {
+        "results_dir": "results",
+        "evalsets_dir": "evalsets",
+        "policies_dir": "policies"
+      }
+    }
+  },
+  "run_id": "run-f279b10978f9",
+  "detector_id": "pii-reference",
+  "variant": "text",
+  "eval_set_id": "hinglish-pii-200-longctx",
+  "envelope_id": "sha256:1d3bf295e9c30341",
+  "data_source": "measured",
+  "started_at": "2026-08-23T12:00:36+00:00",
+  "completed_at": "2026-08-23T12:01:01+00:00",
+  "duration_seconds": 25.425266699981876,
+  "splits": {
+    "train": 0,
+    "validation": 0,
+    "test": 200
+  },
+  "base_rate": 0.51,
+  "test_scored": 1,
+  "probe_fit": {
+    "C": 1.0,
+    "selected_on": "calibration",
+    "selection_scores": {},
+    "n_train": 0,
+    "n_features": 0,
+    "class_weight": "none",
+    "base_rate_train": 0.51
+  },
+  "operating_point": {
+    "operating_point_id": "P-declared",
+    "detector_id": "pii-reference",
+    "threshold": 0.35,
+    "selected_on": "calibration",
+    "objective": "declared detector confidence floor; not fitted to any eval set",
+    "target_flag_rate": null
+  },
+  "metrics": {
+    "auroc": {
+      "name": "auroc",
+      "value": 0.7734093637454982,
+      "kind": "ESTIMATED",
+      "n": 200,
+      "ci_low": 0.6899960007440477,
+      "ci_high": 0.8561364695334656,
+      "ci_level": 0.95,
+      "unit": "ratio",
+      "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+    },
+    "recall": {
+      "name": "recall",
+      "value": 0.7941176470588235,
+      "kind": "ESTIMATED",
+      "n": 200,
+      "ci_low": 0.6980623381428043,
+      "ci_high": 0.8846153846153846,
+      "ci_level": 0.95,
+      "unit": "rate",
+      "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+    },
+    "precision": {
+      "name": "precision",
+      "value": 0.6532258064516129,
+      "kind": "ESTIMATED",
+      "n": 200,
+      "ci_low": 0.5114227428270598,
+      "ci_high": 0.8099524403555278,
+      "ci_level": 0.95,
+      "unit": "rate",
+      "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+    },
+    "flag_rate": {
+      "name": "flag_rate",
+      "value": 0.62,
+      "kind": "ESTIMATED",
+      "n": 200,
+      "ci_low": 0.514282345013477,
+      "ci_high": 0.7350238764044944,
+      "ci_level": 0.95,
+      "unit": "rate",
+      "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+    },
+    "confirmed_errors": {
+      "name": "confirmed_errors",
+      "value": 81.0,
+      "kind": "EXACT",
+      "n": 124,
+      "ci_low": null,
+      "ci_high": null,
+      "ci_level": null,
+      "unit": "count",
+      "estimator": null
+    },
+    "fpr_hard_negatives": null,
+    "extra": [
+      {
+        "name": "fpr",
+        "value": 0.4387755102040816,
+        "kind": "ESTIMATED",
+        "n": 200,
+        "ci_low": 0.2475824175824176,
+        "ci_high": 0.6339340156794425,
+        "ci_level": 0.95,
+        "unit": "rate",
+        "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+      }
+    ]
+  },
+  "controls": [
+    {
+      "control": "padding_fault",
+      "passed": true,
+      "measured": 0.0,
+      "expected": "not applicable to a stateless detector",
+      "margin": 0.0,
+      "detail": "no activations are extracted for a rule-based detector, so there is no batched forward pass whose padding side could be wrong. The fault this control injects cannot exist here.",
+      "applicable": false
+    },
+    {
+      "control": "label_shuffle",
+      "passed": true,
+      "measured": 0.0,
+      "expected": "not applicable to a stateless detector",
+      "margin": 0.0,
+      "detail": "nothing is fitted, so there are no training labels to permute. A rule-based detector's output does not depend on any label, which is the condition this control exists to verify by permutation.",
+      "applicable": false
+    },
+    {
+      "control": "null_feature",
+      "passed": true,
+      "measured": 0.0,
+      "expected": "not applicable to a stateless detector",
+      "margin": 0.0,
+      "detail": "there is no learned feature representation to replace with noise. The detector reads the text directly, so the failure mode -- a probe scoring above chance on features carrying no signal -- has no analogue.",
+      "applicable": false
+    },
+    {
+      "control": "canary",
+      "passed": true,
+      "measured": 1.0,
+      "expected": "recall == 1.0",
+      "margin": 0.0,
+      "detail": "20/20 canary positives caught at threshold 0.350000",
+      "applicable": true
+    },
+    {
+      "control": "determinism",
+      "passed": true,
+      "measured": 0.0,
+      "expected": "bit-identical scores across two runs at one seed",
+      "margin": 0.0,
+      "detail": "max |difference| = 0.000e+00 over 200 scores",
+      "applicable": true
+    }
+  ],
+  "warrant": {
+    "warrant_id": "W-4844e507cf642e26",
+    "detector_id": "pii-reference",
+    "detector_version": "0.1.0",
+    "operating_point": {
+      "operating_point_id": "P-declared",
+      "detector_id": "pii-reference",
+      "threshold": 0.35,
+      "selected_on": "calibration",
+      "objective": "declared detector confidence floor; not fitted to any eval set",
+      "target_flag_rate": null
+    },
+    "eval_set_id": "hinglish-pii-200-longctx",
+    "validation_run_id": "run-f279b10978f9",
+    "issued_at": "2026-08-23T12:00:36+00:00",
+    "expires_at": "2026-08-24T12:00:36+00:00",
+    "metrics": {
+      "auroc": {
+        "name": "auroc",
+        "value": 0.7734093637454982,
+        "kind": "ESTIMATED",
+        "n": 200,
+        "ci_low": 0.6899960007440477,
+        "ci_high": 0.8561364695334656,
+        "ci_level": 0.95,
+        "unit": "ratio",
+        "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+      },
+      "recall": {
+        "name": "recall",
+        "value": 0.7941176470588235,
+        "kind": "ESTIMATED",
+        "n": 200,
+        "ci_low": 0.6980623381428043,
+        "ci_high": 0.8846153846153846,
+        "ci_level": 0.95,
+        "unit": "rate",
+        "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+      },
+      "precision": {
+        "name": "precision",
+        "value": 0.6532258064516129,
+        "kind": "ESTIMATED",
+        "n": 200,
+        "ci_low": 0.5114227428270598,
+        "ci_high": 0.8099524403555278,
+        "ci_level": 0.95,
+        "unit": "rate",
+        "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+      },
+      "flag_rate": {
+        "name": "flag_rate",
+        "value": 0.62,
+        "kind": "ESTIMATED",
+        "n": 200,
+        "ci_low": 0.514282345013477,
+        "ci_high": 0.7350238764044944,
+        "ci_level": 0.95,
+        "unit": "rate",
+        "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+      },
+      "confirmed_errors": {
+        "name": "confirmed_errors",
+        "value": 81.0,
+        "kind": "EXACT",
+        "n": 124,
+        "ci_low": null,
+        "ci_high": null,
+        "ci_level": null,
+        "unit": "count",
+        "estimator": null
+      },
+      "fpr_hard_negatives": null,
+      "extra": [
+        {
+          "name": "fpr",
+          "value": 0.4387755102040816,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "ci_low": 0.2475824175824176,
+          "ci_high": 0.6339340156794425,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        }
+      ]
+    },
+    "n_test": 200,
+    "base_rate": 0.51,
+    "envelope": {
+      "envelope_id": "sha256:1d3bf295e9c30341",
+      "eval_set_id": "hinglish-pii-200-longctx",
+      "n_reference": 200,
+      "features": [
+        {
+          "name": "token_length",
+          "bin_edges": [
+            16289.0,
+            22474.625,
+            27491.0,
+            32820.0,
+            38466.0,
+            45118.0,
+            51615.25,
+            58109.5,
+            64051.0
+          ],
+          "bin_probabilities": [
+            0.125,
+            0.125,
+            0.125,
+            0.125,
+            0.125,
+            0.125,
+            0.125,
+            0.125
+          ],
+          "mean": 39402.48,
+          "std": 13771.52212682389
+        }
+      ]
+    },
+    "controls": [
+      {
+        "control": "padding_fault",
+        "passed": true,
+        "measured": 0.0,
+        "expected": "not applicable to a stateless detector",
+        "margin": 0.0,
+        "detail": "no activations are extracted for a rule-based detector, so there is no batched forward pass whose padding side could be wrong. The fault this control injects cannot exist here.",
+        "applicable": false
+      },
+      {
+        "control": "label_shuffle",
+        "passed": true,
+        "measured": 0.0,
+        "expected": "not applicable to a stateless detector",
+        "margin": 0.0,
+        "detail": "nothing is fitted, so there are no training labels to permute. A rule-based detector's output does not depend on any label, which is the condition this control exists to verify by permutation.",
+        "applicable": false
+      },
+      {
+        "control": "null_feature",
+        "passed": true,
+        "measured": 0.0,
+        "expected": "not applicable to a stateless detector",
+        "margin": 0.0,
+        "detail": "there is no learned feature representation to replace with noise. The detector reads the text directly, so the failure mode -- a probe scoring above chance on features carrying no signal -- has no analogue.",
+        "applicable": false
+      },
+      {
+        "control": "canary",
+        "passed": true,
+        "measured": 1.0,
+        "expected": "recall == 1.0",
+        "margin": 0.0,
+        "detail": "20/20 canary positives caught at threshold 0.350000",
+        "applicable": true
+      },
+      {
+        "control": "determinism",
+        "passed": true,
+        "measured": 0.0,
+        "expected": "bit-identical scores across two runs at one seed",
+        "margin": 0.0,
+        "detail": "max |difference| = 0.000e+00 over 200 scores",
+        "applicable": true
+      }
+    ],
+    "access_tier": 3,
+    "status": "VALID",
+    "kappa": null,
+    "status_reason": null,
+    "superseded_by": null
+  },
+  "warrant_status": "VALID",
+  "status_reason": null
+}
