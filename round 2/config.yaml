@@ -88,3 +88,8 @@ store:
   path: "results/controlplane.db"
   retention_days: 400                    # DPDP Rule 6 minimum is 1 year
   hash_chain: true
+
+paths:
+  results_dir: "results"
+  evalsets_dir: "evalsets"
+  policies_dir: "policies"
