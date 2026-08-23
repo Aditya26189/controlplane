@@ -10,10 +10,20 @@ part of what the log has to establish: that a warrant was issued before the
 certificate that cited it, and that neither was inserted afterwards. Two chains
 could each verify while telling inconsistent stories about the same afternoon.
 
-Tamper-evidence is the point. Editing any row changes its own hash, so every
-row after it no longer matches the ``prev_hash`` stored beside it, and
-:meth:`Ledger.verify_chain` reports *where* the break is, not merely that one
-exists. ``test_hash_chain`` mutates a row with raw SQL and asserts exactly that.
+Tamper-evidence is the point, and it works in two directions. Editing a row's
+body breaks that row's own hash. Editing the body *and* recomputing its hash
+breaks the next row's ``prev_hash`` instead. Either way
+:meth:`Ledger.verify_chain` reports *where*, not merely that.
+``test_hash_chain`` performs both attacks with raw SQL and asserts each is
+caught at the row it should be.
+
+**What this does not defend against, stated plainly:** an attacker who can
+delete every row can also delete the retention event that would have declared
+the deletion, and an empty ledger verifies. No self-contained log can do better
+— detecting total erasure requires an anchor outside the file (a published head
+hash, a second store, a notary). We have not built one, so the honest claim is
+tamper-*evidence* against edits and partial deletions, not tamper-proofing.
+``DECISIONS.md`` 025.
 
 DPDP Rule 6 shapes the schema: at least one year of retention, and queryable by
 session, time range, policy version, detector version, warrant status and
@@ -30,7 +40,7 @@ import logging
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from ..model import (
     Certificate,
@@ -173,9 +183,17 @@ class Ledger:
         retention_days: Minimum retention, from ``config.store.retention_days``.
             Enforced as a floor by :meth:`purge_older_than`, which refuses to
             delete anything younger.
+        clock: Source of the current time. Injectable because retention is
+            time-dependent behaviour and the alternative way to test a
+            400-day floor is to wait 400 days.
     """
 
-    def __init__(self, path: str | Path, retention_days: int) -> None:
+    def __init__(
+        self,
+        path: str | Path,
+        retention_days: int,
+        clock: Callable[[], datetime] = utc_now,
+    ) -> None:
         if retention_days < 365:
             raise LedgerError(
                 f"retention_days must be at least 365 (DPDP Rule 6), got "
@@ -183,6 +201,7 @@ class Ledger:
             )
         self.path = str(path)
         self.retention_days = retention_days
+        self._clock = clock
         if self.path != ":memory:":
             Path(self.path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self.path)
@@ -306,7 +325,7 @@ class Ledger:
             )
         prev = self.head_hash()
         self_hash = chain_hash(prev, body)
-        created_at = utc_now()
+        created_at = _as_utc(self._clock())
         payload = canonical_json(body)
         cols = columns or {}
         with self._conn:
@@ -701,7 +720,7 @@ class Ledger:
         not a schedule for it. Nothing older is deleted automatically either —
         purging is an explicit, logged act.
         """
-        return _as_utc(now or utc_now()) - timedelta(days=self.retention_days)
+        return _as_utc(now or self._clock()) - timedelta(days=self.retention_days)
 
     def purge_older_than(
         self, cutoff: datetime, *, now: Optional[datetime] = None, dry_run: bool = True
