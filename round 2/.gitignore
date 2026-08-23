@@ -46,3 +46,7 @@ results/demo_stream.json
 # its content hash, so its identity is committed and checkable after a rebuild
 # even though the expansion is not. See DECISIONS.md 037.
 evalsets/*-longctx.json
+
+# Extraction caches: large, regenerable on a GPU, and the evidence they support
+# is the validation run rather than the activations themselves.
+results/cache-*.npz

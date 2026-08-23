@@ -820,4 +820,40 @@ On `hinglish-pii-200`: base rate 0.51, measured flag rate 0.62, so the ceiling i
 
 ---
 
+## 050 — The failure class: absence reading as presence
+**Status:** accepted · **names the class behind 024, 032, 035, 046 and others**
+
+**Context:** The same bug has now appeared four times in four costumes, and each time it was caught by a different accident. Naming the instances is not enough, because the fifth occurrence will look like none of them. Naming the *class* is the only thing that generalises.
+
+**The class:** *a missing value silently rendering as a positive one.* Not a wrong value — a **missing** one, converted into a claim by a default, a fallback, or a collapsed state. It is the exact inverse of what this product sells, which is why it keeps appearing here specifically: every layer of this system exists to distinguish "we measured this" from "we did not", and every layer therefore has a place where that distinction can be quietly lost.
+
+**The four instances so far:**
+
+| where | the absence | what it silently became |
+|---|---|---|
+| `WarrantStatus` (024) | never validated on this envelope | `VALID`, if `UNVALIDATED` collapsed into it |
+| single-class envelopes (032) | no positives, so no recall | a recall number computed from an empty denominator |
+| boundary intervals (035) | zero events observed | `[0.0000, 0.0000]` — perfect certainty |
+| `data_source` (046) | field not declared | `"measured"`, via a `getattr` default |
+
+The fourth is the instructive one: **it appeared inside the guard built to prevent the class.** `getattr(envelope, "data_source", "measured")` was written while implementing the refusal, and it made an undeclared envelope print its numbers. It was caught only because the test was written for the legacy-record case rather than the happy path.
+
+**Decision — three rules, applied wherever a value can be missing:**
+
+1. **Default to the refusing value, never the permissive one.** `getattr(x, "field", None) != "measured"` rather than `getattr(x, "field", "measured") != "measured"`. If the answer is unknown, the answer is no.
+2. **Represent absence as absence, not as a record with empty fields.** `UNVALIDATED` is a cell with no warrant, not a warrant with `None` metrics; a single-class envelope has `recall=None`, not `recall=0`. An absence cannot be dereferenced into a number by accident; a zero can.
+3. **Write the test for the absent case first.** The happy path is what gets written by default and the absent path is what gets forgotten, so the test for "what happens when this is missing?" is the one that finds anything.
+
+**A checklist for review**, since this is the shape to look for rather than a specific line:
+
+* any `getattr(..., default)` or `dict.get(..., default)` where the default is the permissive branch;
+* any `or` fallback on a value that could legitimately be zero, empty or `False`;
+* any place a `None` is coerced to a number before being rendered;
+* any enum where one member means "no information" and is compared with `!=` against a specific other member rather than `is` against itself;
+* any interval, count or rate produced from an empty or single-class sample.
+
+**A reviewer could fairly object** that three of the four instances were caught, so the existing controls work. Two were caught by tests written for them; one was caught by a hunch about an unrelated symptom; one was caught by a test written for a case that seemed unlikely. That is not a control, it is a hit rate, and the point of naming the class is to convert the hit rate into a thing to look for.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->
