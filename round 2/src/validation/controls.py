@@ -272,11 +272,16 @@ def label_shuffle_control(
 ) -> ControlResult:
     """Retrain on permuted labels; the mean over repeats must land at chance.
 
-    A **negative control**. If a probe fitted on shuffled labels still scores
-    above the band, the pipeline is reading something it should not — leakage
-    between splits, an index misalignment, or a feature that encodes the label
-    directly. Each of those produces a *good-looking* result on real labels, so
-    this is one of the few checks that catches them.
+    A **negative control**. If a probe fitted on shuffled labels does not land
+    at chance, the pipeline is reading something it should not — leakage between
+    splits, an index misalignment, or a feature that encodes the label directly.
+    Each of those produces a *good-looking* result on real labels, so this is one
+    of the few checks that catches them.
+
+    **The departure is two-sided.** A fault does not have to inflate AUROC:
+    fitting against permuted labels on data that overlaps the holdout pushes the
+    score systematically *below* 0.5, which a one-sided check would wave through.
+    Measured on a deliberately label-leaking fixture: 0.40.
 
     **The repeat count is sized from the measured spread**, not fixed. A single
     permutation is one draw from a distribution whose width depends on the
