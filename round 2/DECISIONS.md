@@ -343,4 +343,134 @@ So precision is free *and* estimated. The 850 confirmed errors are a fact about 
 
 ---
 
+## 027 — Synthetic fixtures cannot masquerade as measured eval sets, structurally
+**Status:** accepted
+
+**Context:** The harness has to be buildable and testable on a laptop, but the numbers it produces must come from a real extraction on a real model. The obvious risk is a synthetic fixture's numbers ending up in `RESULTS.md` — either by a script defaulting to the fixture, or by someone reading a plot six weeks later and forgetting which run produced it. Labelling by convention fails exactly when it matters.
+
+**Decision:** `data_source` (`"measured"` | `"synthetic"`) is part of an eval set's **hashed identity**, alongside its items and construction notes. Since the content hash *is* the envelope id, and the envelope id is the third element of the warrant key (invariant 1), a synthetic set occupies a **different cell in the warrant matrix** from the real set of the same name. Numbers measured on a fixture are filed under `sha256:…` for the fixture and can never be read as numbers for `triviaqa-600`.
+
+Three further guards fall out of the same mechanism:
+- `synthetic_cache()` **refuses** to attach generated features to a set marked `measured`, because the cache would then carry the real set's hash.
+- `ExtractionCache.load()` takes the eval set's current hash and refuses a cache whose hash disagrees — a set edited after extraction makes its cache stale, and validating against it files numbers under an envelope that no longer describes the data.
+- Both the set's `construction` block and the cache's `extra` block carry an explicit warning string, and both are hashed, so the warning cannot be stripped without changing the identity.
+
+**Alternatives rejected:** *A boolean flag checked by the report writer* — one `if` between a fixture and a published number, and the failure is silent when someone adds a second code path. *Keep fixtures only in `tests/`* — attractive, but the smoke test, the CPU development path and the demo's rehearsal fallback all need them, and copies of a generator drift.
+
+**Consequences:** The synthetic signal strengths in `synthetic_cache` are **parameters, not findings**, and a tier ladder computed from them is a picture of that function. This is stated in the module docstring, in the cache's `extra` block, and on any plot generated from a synthetic run. The real ladder requires the real extraction.
+
+**What the fixtures do reproduce honestly** is mechanism rather than magnitude: sequences carry a localised signal and are pooled through the real `aggregate()` code, so mean pooling's collapse on long context is arithmetic we can observe, not a value we typed. Measured on the fixture generator: a 32-position signal in 96 tokens versus the same signal in 1,536 tokens.
+
+**A reviewer could fairly object** that a repo containing a synthetic-data generator invites suspicion about which numbers are real. Fair — the answer is that every artifact carries `data_source` in its provenance, every warrant is keyed by a hash that differs between the two, and `test_synthetic_cannot_masquerade` asserts the separation rather than describing it.
+
+---
+
+## 028 — Max-of-rolling-means carries an extreme-value bias that grows with context
+**Status:** accepted · **flagged for the real ablation, not resolved here**
+
+**Context:** `SPEC.md` §3.1 and the Phase 4 gate anticipate that mean pooling is **REFUSED** on `triviaqa-longctx-600` while max-of-rolling-means holds a valid warrant at wider bounds. Building the synthetic fixture produced the opposite ordering, and the reason is structural enough to write down before the real run rather than after.
+
+**What happened:** on the fixture, short context gives mean-pool 0.703 and max-rolling 0.770 — the expected direction. At 16× the context length, mean-pool reads 0.600 and max-rolling **0.545**, i.e. max-rolling degrades *further and faster*.
+
+**Why, and why it is not a bug in either implementation:**
+
+Max-of-rolling-means takes an element-wise maximum over `W` window means. Under the null — a window containing only noise — each window mean is approximately `N(0, σ²/w)`, and the maximum of `W` such draws has expectation growing like `σ/√w · √(2 ln W)`. That is a **positive bias that depends only on how many windows there are**, not on whether any signal is present. As context grows, `W` grows, the bias grows for *every* item regardless of label, and it grows with variance attached. Meanwhile the true signal contributes to exactly one window and does not grow at all.
+
+So the strategy has two competing effects as context lengthens: it protects the signal from dilution (the reason it exists), and it accumulates an extreme-value pedestal that adds label-independent variance (the reason it can lose anyway). Which effect wins depends on the ratio of signal span to window length and on `W`. On the fixture, with a 32-position signal inside a 64-token window, the signal is already halved within its own window before the pedestal is added, and the pedestal wins.
+
+**Decision:** change nothing to make the fixture produce the anticipated ordering. Two reasons. First, `KICKOFF.md` is explicit — *"do not manufacture a failure to fill a beat"* — and manufacturing the *success* half of the same beat is the same offence. Second, this is a real property of the estimator and the real ablation needs to be read with it in mind.
+
+**What this changes for Phase 4:** the matrix cell for max-of-rolling-means on long context is genuinely open, and both outcomes are reportable. If it holds a warrant, Beat 4 runs as scripted. If it is refused alongside mean-pool, the honest finding is that **no activation-tier aggregation we tested survives the envelope shift**, the matrix routes to T2 or T3, and Beat 4 is *stronger*, not weaker: the system refuses to certify at the tier it prefers and says why.
+
+**Worth testing at the real run, cheaply:** the pedestal scales with `√(2 ln W)`, so a window sized to the signal span rather than fixed at 64 tokens would reduce both the in-window dilution and `W`. `probe.rolling_window` is a config knob and the sweep is a validation-set decision, so it can be done without touching test.
+
+---
+
+## 029 — Negative controls average over repeats, and their band is noise-aware
+**Status:** accepted · **changes a pass condition in `SPEC.md` §2.1; spec updated in the same commit**
+
+**Context:** `SPEC.md` §2.1 specifies label-shuffle and null-feature as passing when AUROC lands in `[0.45, 0.55]`. Implemented literally — one permutation, one fixed band — the control failed on the first clean run at 0.4375, and again at 0.5684 after an unrelated fix. Neither failure indicated a fault. That is the worst possible behaviour for a control: it refuses warrants at random, and a suite that cries wolf gets switched off.
+
+**The derivation.** A negative control asserts *"AUROC is consistent with 0.5"*. Whether an observed value is consistent with 0.5 depends on sampling noise, which depends on `n` — so a **fixed** band is only a valid test at one particular holdout size. Under H₀ the Hanley–McNeil standard error is
+
+```
+SE = sqrt((n_pos + n_neg + 1) / (12 · n_pos · n_neg))
+```
+
+At base rate 0.152, the configured ±0.05 band measures:
+
+| holdout n | null SE | band width | P(fails with no fault) |
+|---|---|---|---|
+| 150 | 0.0656 | ±0.76 SE | **44.6%** |
+| 300 | 0.0463 | ±1.08 SE | 28.1% |
+| 600 | 0.0329 | ±1.52 SE | **12.8%** |
+| 1200 | 0.0232 | ±2.15 SE | 3.1% |
+| 2400 | 0.0164 | ±3.05 SE | 0.2% |
+
+At the sizes this project works with, the spec's control as written refuses roughly **one warrant in eight for no reason but noise**.
+
+**Decision — two changes, in order of importance.**
+
+1. **Average over repeats.** Both negative controls now run `validation.null_control_repeats` (5) independent draws — permutations for label shuffle, noise draws for null feature — and test the **mean**. The SE of the mean falls as `1/√repeats`, so at n=600 the effective SE drops from 0.0329 to 0.0147 and the configured ±0.05 band becomes ±3.45 SE: a real bar. Observed per-permutation values on one run were `[0.5684, 0.5954, 0.4169, 0.5336, 0.5997]`, spanning 0.18 — which is precisely why a single draw could never carry this.
+
+2. **Floor the band at ±2 SE of the mean.** Retained as a backstop for holdouts small enough that repeats cannot rescue them. It only ever *widens*, never tightens, so the declared bar is honoured wherever it is statistically meaningful. Each control reports the band it actually applied and why.
+
+**Power against real faults is essentially unchanged.** The faults these controls exist to catch — split leakage, index misalignment, a feature encoding the label — do not produce an AUROC of 0.56. They produce one far outside any band under discussion. What was lost is the ability to detect a leak worth ~0.01 AUROC, which was never detectable at this `n` anyway; the previous configuration only appeared to detect it.
+
+**Alternatives rejected:** *Widen the configured band to ±0.10* — hides the `n`-dependence instead of addressing it, and at n=2400 it would be a needlessly weak bar. *Report the failure and refuse* — correct in the literal reading of the spec and operationally useless, since the refusal carries no information. *Drop the negative controls* — they are two of the five and the reason the suite means anything.
+
+**Consequences:** `config.yaml` gains `validation.null_control_repeats`. Both controls report the mean, the standard deviation, every per-run value, and the applied band, so a reader can audit the decision rather than take the pass on trust. Cost is 5× the probe fits for two controls, which is a few seconds.
+
+**A reviewer could fairly object** that averaging permutations makes the control easier to pass, and that we changed a pass condition after seeing it fail. Both are true and neither is hidden: the numbers that prompted the change are in the table above, the change was made on the *distribution* of the statistic rather than on the threshold, and it was made before any measured result existed to be flattered by it — every run so far is synthetic fixture data, which cannot reach `RESULTS.md` by construction (`DECISIONS.md` 027).
+
+---
+
+## 030 — An eval set is sized by its test split, not by its total
+**Status:** accepted
+
+**Context:** `SPEC.md` §4 names `triviaqa-600` and §2.3 refuses any warrant with `n_test < 200`. Splitting 600 items three ways at (0.5, 0.25, 0.25) yields a test split of 150 — below the refusal bar, so the set named in the spec could never produce a warrant.
+
+**Decision:** An eval set may **declare** a split per item, and a declared split is honoured rather than re-derived. `triviaqa-600` means *600 held-out test items* — the Round 1 anchor, which was a held-out set — with train and validation rows supplied from a separate extraction. Sets that declare no splits still get the derived question-level split, which is what the hand-built Phase 3 sets will use.
+
+Two guards: a partial declaration (some items only) is an error rather than a silent mix of declared and derived; and declared splits are checked for question overlap exactly as derived ones are, since a hand-written split is at least as likely to put one question on both sides.
+
+**Consequences, and this is the operationally important part:** the real extraction must cover roughly **2,400 TriviaQA items**, not 600 — 1,200 train, 600 validation, 600 test — for the anchor set to clear both `min_n_test` and the negative-control power floor from `DECISIONS.md` 029. That is a four-fold increase in GPU time over the naive reading of the spec, and it is better discovered now than during the run.
+
+---
+
+## 031 — Negative controls size their repeats from their own measured null
+**Status:** accepted · **supersedes the sizing half of 029**, whose reference distribution was wrong
+
+**Context:** Entry 029 fixed a real problem — a fixed `[0.45, 0.55]` band is only valid at one holdout size — but fixed it against the **wrong reference distribution**. It used the Hanley–McNeil null SE and concluded that 5 repeats made the band a ±3.45 SE bar at n=600. Running the ablation, label-shuffle then failed at 0.5546, which that model says is a 3.8 SE event. Three-sigma events do not happen on the second run, so the model was wrong.
+
+**What we measured.** 200 permutations per variant on the fixture, holdout n=600, base rate 0.152:
+
+| variant | features | empirical null mean | empirical null sd | Hanley–McNeil SE | ratio |
+|---|---|---|---|---|---|
+| `T1-max_rolling_means` | 32 | 0.4982 | 0.0684 | 0.0324 | **2.11×** |
+| `T3-judge` | 1 | 0.4754 | 0.2706 | 0.0324 | **8.34×** |
+
+The null is centred correctly — there is no leak — but it is far wider than the closed form, and the width depends on the **feature dimensionality**.
+
+**Why.** Hanley–McNeil gives the variance of AUROC when the score vector is an exchangeable random permutation of ranks. A fitted probe's scores are not exchangeable: they are a smooth function of the features, so similar items receive similar scores and the effective number of independent draws is far below `n`. In the limit that makes the failure obvious, a **one-dimensional** feature gives a probe that is essentially ±(that feature), so a label shuffle picks a *sign* and AUROC lands near `A` or `1 − A`. That is a two-point distribution with sd ≈ 0.27, and no amount of reasoning about `n` predicts it.
+
+**Decision:** stop using a closed form. Each negative control **measures its own null** and sizes its repeat count from it:
+
+```
+SE(mean) = spread / sqrt(k)          band is meaningful when band_half >= 2 * SE(mean)
+                                     => k >= (2 * spread / band_half)^2
+```
+
+Run `null_control_min_repeats` (8) draws, estimate the spread, continue to the implied `k`, capped at `null_control_max_repeats` (200). Passing now requires **two** things: the mean lies inside the configured band, *and* the SE of that mean is at most half the band's half-width. Failing the second is reported as a **failure**, not a pass — a control whose job is to demonstrate that the pipeline can produce a null result, and which lacks the power to demonstrate it, has demonstrated nothing.
+
+**Measured repeat counts on the fixture**, sized automatically: 8 at 32 features, 22 at 4 features, **125 at 1 feature**. The last matches the analytic estimate of ≈117 from the observed spread, which is the check that the sizing rule is doing what it claims.
+
+**What survives from 029:** the diagnosis that a fixed band is `n`-dependent and the false-failure table, both correct. **What does not:** the claim that 5 repeats suffice, and the ±2 SE floor computed from the closed form. Both are replaced by the empirical rule above.
+
+**Alternatives rejected:** *Use the closed form and widen the band* — the direction of the error varies by 4× between variants, so any fixed widening is simultaneously too loose for T1 and far too tight for T3. *Drop the control on low-dimensional features* — T3 is the tier the whole ladder is compared against, and having no negative control on it is precisely where a fault would hide. *Fix repeats at 200 for everything* — wasteful at T1 and still arbitrary; the measured spread is available for free and is the honest input.
+
+**A reviewer could fairly object** that we have now revised a control's pass condition twice. Correct, and both revisions are recorded with the numbers that forced them. The first was right about the problem and wrong about the reference; the second measured the reference instead of assuming it. No measured result existed at either point — every run so far is synthetic fixture data, which cannot reach `RESULTS.md` by construction (`DECISIONS.md` 027) — so nothing was tuned against a number we wanted.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->

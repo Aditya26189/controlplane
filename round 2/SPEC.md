@@ -107,12 +107,16 @@ All five run on every validation. **A failed control fails the run and refuses t
 | Control | Method | Pass condition |
 |---|---|---|
 | **Padding fault injection** | Score one batch with correct left padding and with deliberately broken right padding | Correct: rel-L2 ≤ 0.1, cosine ≥ 0.999. Broken: **must be rejected** |
-| **Label shuffle** | Retrain on permuted labels, score held-out | AUROC ∈ [0.45, 0.55] |
-| **Null feature** | Replace activations with Gaussian noise matched in mean/variance | AUROC ∈ [0.45, 0.55] |
+| **Label shuffle** | Retrain on permuted labels, score held-out. Repeated until the null is resolved | **Mean** AUROC ∈ [0.45, 0.55] **and** SE(mean) ≤ ¼ of the band width |
+| **Null feature** | Replace activations with Gaussian noise matched in mean/variance. Same repeat rule | **Mean** AUROC ∈ [0.45, 0.55], same power condition |
 | **Canary recall** | Score `canary-20` | Recall == 1.0 |
 | **Determinism** | Re-run scoring twice at fixed seed | Bit-identical |
 
 Label-shuffle and null-feature are **negative controls**: they assert the pipeline can produce a null result when there is no signal. A pipeline that cannot fail cannot be trusted when it succeeds. That sentence is the thesis applied to our own code and it belongs in the README.
+
+Both are repeated rather than run once, and **each sizes its own repeat count from its own measured null spread**. A single draw is unusable: at a holdout of 600 the null spread is 0.068 for a 32-feature probe and 0.271 for a single-feature one, because a fitted probe's scores are not exchangeable and a one-dimensional probe's shuffle merely picks a sign. No closed form predicts that — the Hanley–McNeil SE understates it by 2.1× and 8.3× respectively — so the spread is measured and `k ≥ (2·spread / band_half)²` repeats are run, capped by `validation.null_control_max_repeats`. Measured counts: 8 repeats at 32 features, 22 at 4, 125 at 1.
+
+A control that reaches the cap without resolving its null **fails as underpowered** rather than passing. Its job is to show the pipeline *can* produce a null result; without the power to show it, it has shown nothing. Derivation, the measured null distributions and the rejected alternatives are in `DECISIONS.md` 029 and 031.
 
 ### 2.2 `/validate`
 
@@ -133,6 +137,8 @@ Under one minute from cached activations. Streams progress. **Displays the delib
 ### 2.3 Refusal criteria
 
 Refuse if any control fails; or AUROC lower CI bound ≤ 0.55; or recall below the policy's declared minimum at the operating point; or FPR on the hard-negative set above the declared maximum; or `n_test` < 200.
+
+Recall and hard-negative FPR are compared at the **interval bound**, not the point estimate — a profile declaring "at least 10% recall" is asking for a guarantee, and a point estimate of 0.11 whose lower bound is 0.06 does not supply one. `n_test` counts the **test split**, so an eval set is sized by that split rather than by its total; see `DECISIONS.md` 030.
 
 **No override path exists.** Not a flag, not an env var.
 

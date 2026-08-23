@@ -188,6 +188,8 @@ class ProbeConfig:
     """
 
     aggregations: tuple[str, ...]
+    rolling_window: int
+    rolling_stride: int
     standardize: bool
     class_weight: str
     C_grid: tuple[float, ...]
@@ -225,6 +227,18 @@ class ProbeConfig:
                 "probe.standardize must be true. Residual-stream vectors have "
                 "large, layer-varying magnitudes; unstandardised features make "
                 "the regularisation path meaningless (CLAUDE.md, 'Silent failures')."
+            )
+        if self.rolling_window <= 0 or self.rolling_stride <= 0:
+            raise ConfigError(
+                "probe.rolling_window and probe.rolling_stride must be positive, "
+                f"got window={self.rolling_window}, stride={self.rolling_stride}"
+            )
+        if self.rolling_stride > self.rolling_window:
+            raise ConfigError(
+                f"probe.rolling_stride ({self.rolling_stride}) must not exceed "
+                f"probe.rolling_window ({self.rolling_window}). A larger stride "
+                "leaves positions in no window at all, and a signal landing in "
+                "the gap is invisible to the probe."
             )
 
 
@@ -273,6 +287,8 @@ class ValidationConfig:
     warrant_ttl_hours: int
     controls: tuple[str, ...]
     null_control_band: tuple[float, ...]
+    null_control_min_repeats: int
+    null_control_max_repeats: int
 
     #: The five controls of SPEC.md §2.1. All five run on every validation and
     #: any failure refuses the warrant, so the set is fixed rather than a subset
@@ -318,6 +334,18 @@ class ValidationConfig:
             raise ConfigError(
                 "validation.null_control_band must be a [low, high] pair, got "
                 f"{list(self.null_control_band)}"
+            )
+        if self.null_control_min_repeats < 2:
+            raise ConfigError(
+                "validation.null_control_min_repeats must be >= 2; a spread "
+                "cannot be estimated from one draw, and the repeat count is "
+                f"sized from that spread. Got {self.null_control_min_repeats}"
+            )
+        if self.null_control_max_repeats < self.null_control_min_repeats:
+            raise ConfigError(
+                f"validation.null_control_max_repeats "
+                f"({self.null_control_max_repeats}) must be >= min_repeats "
+                f"({self.null_control_min_repeats})"
             )
         low, high = self.null_control_band
         if not 0.0 < low < 0.5 < high < 1.0:
