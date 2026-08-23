@@ -753,4 +753,71 @@ At 028's *own* sample size the current generator still reverses its result. So t
 
 ---
 
+## 046 — `RESULTS.md` refuses to print a number from a synthetic envelope
+**Status:** accepted
+
+**Context:** A consequence of the Phase 2 disclosure that the report did not draw. There are no measured TriviaQA numbers anywhere in this repo, so **the entire warrant matrix is currently fixture data** — the tier ladder, the lift criterion's two refusals and six sparings, and 038's reversal are all properties of a generator we wrote. Each is internally valid and none is evidence about a language model.
+
+Until that changes, the only thing standing between a fixture number and a slide is somebody remembering. That is precisely the control this project argues is insufficient, applied to itself.
+
+**Decision:** `DistributionEnvelope` carries `data_source`, and the `RESULTS.md` renderer **refuses to print any number** from an envelope that is not explicitly `measured`. The cell renders `FIXTURE — NOT MEASURED` and the value is absent — not greyed, not footnoted. A number that is not on the page cannot be read off it.
+
+Carried on the envelope rather than looked up in a registry because `SPEC.md` §1.5 requires records be self-describing enough to interpret a year later without this codebase, and *"was this a real distribution or a generator?"* is the first question a reader of an old warrant needs answered.
+
+**Fail-closed in both directions.** An envelope that does not declare a `data_source` at all is refused too, because the realistic failure is a new code path that forgets the field rather than one that sets it wrong. The first implementation defaulted the matrix table to `"measured"` when the attribute was absent, which meant a legacy record printed its numbers — caught by `test_an_envelope_without_a_declared_source_is_refused`, which is the test existing precisely because the guard's own default was the hole.
+
+**Also structural:** `REQUIRED_EXTRACTIONS` lists `triviaqa-600` and `triviaqa-longctx-600` with what each blocks, and the renderer prints an **Outstanding measurement** section until they land. A hard dependency tracked only in a plan is a dependency that slips; this one is in the artifact a reader opens first, and the section disappears by itself once the extraction exists.
+
+**Consequences:** `RESULTS.md` currently opens with a warning that 8 of 11 populated cells are fixtures and prints three real rows — the `pii-reference` measurements on the hand-built sets. That is an accurate description of where the project is, and it will improve by measurement rather than by editing.
+
+---
+
+## 047 — Lift is reported with its ceiling, because 1.0 is a base-rate-dependent bar
+**Status:** accepted · **refines 043**
+
+**Context:** Entry 043 introduced `MIN_LIFT_LOWER_BOUND = 1.0` and noted in passing that lift compresses toward 1 on enriched eval sets. That caveat is more consequential than a note: it means the criterion is stated as absolute and behaves as **base-rate-dependent**, so a genuinely strong detector on an enriched envelope can sit near the floor.
+
+**The derivation.** Flagging a fraction `f` of items when a fraction `b` are positive caps true positives at `min(f, b)`, so
+
+```
+R    <= min(f, b) / b
+lift  = R / f  <=  min(1/b, 1/f)  =  1 / max(b, f)
+```
+
+On `hinglish-pii-200`: base rate 0.51, measured flag rate 0.62, so the ceiling is **1.61**. The measured lift of 1.28 is therefore **79% of everything achievable**, not "barely better than chance" — which is how 1.28 reads with no ceiling beside it.
+
+**Decision:** `WarrantMetrics` carries `base_rate`, and `lift` reports its ceiling and its fraction of that ceiling. The renderer prints them together, the same way precision and recall travel together (invariant 5) and for the same reason: each is misleading alone.
+
+**Alternatives rejected:** *Make the bar base-rate-relative — refuse below some fraction of the ceiling* — attractive, and it would replace a criterion derived from a definition with one derived from a taste. 1.0 remains the definition of "no better than chance at this cost"; how far above it you require is a policy judgement and belongs in a profile's declared minimum. *Leave it as a caveat in prose* — the number that needs the caveat is printed in a table, and prose three sections away is not attached to it.
+
+**Consequences:** every rendered lift now carries `— N% of the X ceiling at base rate Y`. A reviewer comparing lift across envelopes with different base rates gets the comparable number rather than the raw one.
+
+---
+
+## 048 — Shape compatibility between the fixture path and the real extraction
+**Status:** accepted · **the check is written; it runs when the GPU extraction lands**
+
+**Context:** Removing the duplicate metrics implementation (044) closed the "two implementations of one quantity" risk. A different one remains and the grep pass could not have found it: the fixture path and the real extraction path will produce metrics that *should* be comparable and might silently not be, because they differ in normalisation, split derivation, or label polarity. Values must differ. **Shape must not.**
+
+**Decision:** `assert_metric_shape_compatible(first, second)` asserts the same metrics are present and the same ones absent, that each shared metric has identical `kind` and `unit`, and that every estimated metric carries an interval on both sides. It says nothing about values. Run it on the same eval set id through both paths when the extraction lands; a mismatch means the two are not measuring the same thing and every fixture-versus-measured comparison is void.
+
+**Exercised now, on the two paths that exist**, so it is known to work before it is needed.
+
+**One finding from writing it:** the kind-flip axis — an `EXACT` count on one path and an `ESTIMATED` one on the other, which is the yield/rate confusion arriving through the back door — turns out to be **unconstructible** through the real types. `WarrantMetrics.__post_init__` already refuses it. The assertion's kind check is belt-and-braces, and the test records that the failure cannot be built rather than merely that it would be caught. That is the stronger position and worth knowing about explicitly.
+
+---
+
+## 049 — The routing tiebreak is stated in code, not left to the sort
+**Status:** accepted
+
+**Context:** Ranking by recall lower bound (042) leaves ties, and Phase 5 calls `route()` under revocation to choose the detector the system falls back **to**, live, in front of an audience.
+
+**Decision:** the sort key is `(has_recall, -lower_bound, width, detector_id)`. The final key is explicit. Python's sort is stable, so without it the winner would depend on the order the matrix yielded cells, which depends on dictionary insertion order, which depends on the order warrants were appended to the ledger. "Whatever the sort does" is not a specification.
+
+`test_routing_tiebreak_is_stated_not_incidental` builds the same two warrants in both orders and asserts the same winner.
+
+**And `UNVALIDATED` cells never reach the ranking at all.** They hold no warrant, so `valid_warrants()` cannot return one, and a cell with no measurement can never outrank one with a measurement however promising it looks. That is invariant 2 at the ranking layer: an absence is not a weak positive. `test_an_unvalidated_cell_never_outranks_a_measured_one` pins it, including that the unmeasured cell is still enqueued for validation rather than ignored.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->
