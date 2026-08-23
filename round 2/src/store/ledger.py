@@ -282,6 +282,26 @@ class Ledger:
         ).fetchone()
         return row["self_hash"] if row else GENESIS_HASH
 
+    def contains(self, kind: str, record_id: str) -> bool:
+        """Whether this exact record is already in the ledger.
+
+        Exists because determinism and append-only pull against each other in a
+        way that is easy to misread. Warrant ids are content-derived, so a
+        re-run of the same validation on the same code produces the *same* id --
+        which is the property ``test_determinism`` checks. Appending it again
+        would record the same fact twice under two sequence numbers, so callers
+        check first and skip.
+
+        The alternative, making append idempotent, would hide the difference
+        between "already recorded" and "recorded again", and the second is what
+        a re-validation after a code change looks like.
+        """
+        row = self._conn.execute(
+            "SELECT 1 FROM ledger WHERE kind = ? AND record_id = ? LIMIT 1",
+            (kind, record_id),
+        ).fetchone()
+        return row is not None
+
     def count(self, kind: Optional[str] = None) -> int:
         """Number of records, optionally of one kind."""
         if kind is None:

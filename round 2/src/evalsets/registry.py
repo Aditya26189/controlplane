@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -126,7 +125,8 @@ def write_manifest(
     Args:
         evalsets: The sets to register.
         directory: Where the manifest and the sets live.
-        extra: Anything else worth recording, e.g. the git commit.
+        extra: Anything else worth recording. Must itself be deterministic --
+            anything carrying a timestamp or a run id belongs in ``results/``.
 
     Returns:
         The manifest path.
@@ -153,8 +153,13 @@ def write_manifest(
                 "file": f"{evalset.eval_set_id}.json",
             }
         )
+    # Deterministic by construction: no timestamp, no provenance block, nothing
+    # that changes between two runs at one seed. The manifest is a registry of
+    # *content*, and a registry that rewrites itself on every build makes the
+    # working tree permanently dirty -- which drains the dirty flag of meaning
+    # and breaks the clean-clone reproduction the definition of done requires.
+    # When the run happened belongs in results/, not in the frozen registry.
     manifest = {
-        "written_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "n_sets": len(entries),
         "sets": entries,
     }

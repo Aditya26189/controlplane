@@ -35,7 +35,7 @@ from src.evalsets import (
     verify_manifest,
     write_manifest,
 )
-from src.store import Ledger
+from src.store import Ledger, RecordKind
 from src.validation.text_runner import validate_text_detector
 
 _LOG = logging.getLogger("scripts.01_build_evalsets")
@@ -97,7 +97,6 @@ def main(argv: list[str] | None = None) -> int:
         built,
         evalsets_dir,
         extra={
-            "provenance": provenance(config),
             "not_built_here": {
                 "triviaqa-600": (
                     "needs model generations to label; built by the extraction "
@@ -118,6 +117,25 @@ def main(argv: list[str] | None = None) -> int:
             _LOG.error("%s", problem)
         return 1
     _LOG.info("registered %d sets, all hashes verified", len(built))
+
+    # Build provenance goes to results/, not into the manifest. The manifest has
+    # to be byte-identical across runs or the tree is never clean.
+    write_json_artifact(
+        results_dir / "evalset_build.json",
+        {
+            "sets": [
+                {
+                    "eval_set_id": e.eval_set_id,
+                    "content_hash": e.content_hash,
+                    "envelope_id": e.envelope_id,
+                    "n_items": len(e),
+                    "base_rate": e.base_rate,
+                }
+                for e in built
+            ]
+        },
+        config,
+    )
 
     if args.skip_validation:
         return 0
@@ -144,7 +162,18 @@ def main(argv: list[str] | None = None) -> int:
                 max_fpr_hard_negatives=0.02 if is_hard_negatives else None,
                 is_hard_negative_set=is_hard_negatives,
             )
-            ledger.append_warrant(run.warrant)
+            # A re-run at the same seed on the same code produces the same
+            # content-derived warrant id. That is determinism working, not a
+            # new fact, so it is not appended twice.
+            if ledger.contains(RecordKind.WARRANT, run.warrant.warrant_id):
+                _LOG.info(
+                    "warrant %s already recorded for %s; not appending a "
+                    "duplicate of an identical validation",
+                    run.warrant.warrant_id,
+                    evalset.eval_set_id,
+                )
+            else:
+                ledger.append_warrant(run.warrant)
             write_json_artifact(
                 results_dir / f"validation-{detector.detector_id}-{evalset.eval_set_id}.json",
                 run.to_payload(),
