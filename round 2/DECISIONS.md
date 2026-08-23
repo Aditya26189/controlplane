@@ -386,4 +386,56 @@ So the strategy has two competing effects as context lengthens: it protects the 
 
 ---
 
+## 029 — Negative controls average over repeats, and their band is noise-aware
+**Status:** accepted · **changes a pass condition in `SPEC.md` §2.1; spec updated in the same commit**
+
+**Context:** `SPEC.md` §2.1 specifies label-shuffle and null-feature as passing when AUROC lands in `[0.45, 0.55]`. Implemented literally — one permutation, one fixed band — the control failed on the first clean run at 0.4375, and again at 0.5684 after an unrelated fix. Neither failure indicated a fault. That is the worst possible behaviour for a control: it refuses warrants at random, and a suite that cries wolf gets switched off.
+
+**The derivation.** A negative control asserts *"AUROC is consistent with 0.5"*. Whether an observed value is consistent with 0.5 depends on sampling noise, which depends on `n` — so a **fixed** band is only a valid test at one particular holdout size. Under H₀ the Hanley–McNeil standard error is
+
+```
+SE = sqrt((n_pos + n_neg + 1) / (12 · n_pos · n_neg))
+```
+
+At base rate 0.152, the configured ±0.05 band measures:
+
+| holdout n | null SE | band width | P(fails with no fault) |
+|---|---|---|---|
+| 150 | 0.0656 | ±0.76 SE | **44.6%** |
+| 300 | 0.0463 | ±1.08 SE | 28.1% |
+| 600 | 0.0329 | ±1.52 SE | **12.8%** |
+| 1200 | 0.0232 | ±2.15 SE | 3.1% |
+| 2400 | 0.0164 | ±3.05 SE | 0.2% |
+
+At the sizes this project works with, the spec's control as written refuses roughly **one warrant in eight for no reason but noise**.
+
+**Decision — two changes, in order of importance.**
+
+1. **Average over repeats.** Both negative controls now run `validation.null_control_repeats` (5) independent draws — permutations for label shuffle, noise draws for null feature — and test the **mean**. The SE of the mean falls as `1/√repeats`, so at n=600 the effective SE drops from 0.0329 to 0.0147 and the configured ±0.05 band becomes ±3.45 SE: a real bar. Observed per-permutation values on one run were `[0.5684, 0.5954, 0.4169, 0.5336, 0.5997]`, spanning 0.18 — which is precisely why a single draw could never carry this.
+
+2. **Floor the band at ±2 SE of the mean.** Retained as a backstop for holdouts small enough that repeats cannot rescue them. It only ever *widens*, never tightens, so the declared bar is honoured wherever it is statistically meaningful. Each control reports the band it actually applied and why.
+
+**Power against real faults is essentially unchanged.** The faults these controls exist to catch — split leakage, index misalignment, a feature encoding the label — do not produce an AUROC of 0.56. They produce one far outside any band under discussion. What was lost is the ability to detect a leak worth ~0.01 AUROC, which was never detectable at this `n` anyway; the previous configuration only appeared to detect it.
+
+**Alternatives rejected:** *Widen the configured band to ±0.10* — hides the `n`-dependence instead of addressing it, and at n=2400 it would be a needlessly weak bar. *Report the failure and refuse* — correct in the literal reading of the spec and operationally useless, since the refusal carries no information. *Drop the negative controls* — they are two of the five and the reason the suite means anything.
+
+**Consequences:** `config.yaml` gains `validation.null_control_repeats`. Both controls report the mean, the standard deviation, every per-run value, and the applied band, so a reader can audit the decision rather than take the pass on trust. Cost is 5× the probe fits for two controls, which is a few seconds.
+
+**A reviewer could fairly object** that averaging permutations makes the control easier to pass, and that we changed a pass condition after seeing it fail. Both are true and neither is hidden: the numbers that prompted the change are in the table above, the change was made on the *distribution* of the statistic rather than on the threshold, and it was made before any measured result existed to be flattered by it — every run so far is synthetic fixture data, which cannot reach `RESULTS.md` by construction (`DECISIONS.md` 027).
+
+---
+
+## 030 — An eval set is sized by its test split, not by its total
+**Status:** accepted
+
+**Context:** `SPEC.md` §4 names `triviaqa-600` and §2.3 refuses any warrant with `n_test < 200`. Splitting 600 items three ways at (0.5, 0.25, 0.25) yields a test split of 150 — below the refusal bar, so the set named in the spec could never produce a warrant.
+
+**Decision:** An eval set may **declare** a split per item, and a declared split is honoured rather than re-derived. `triviaqa-600` means *600 held-out test items* — the Round 1 anchor, which was a held-out set — with train and validation rows supplied from a separate extraction. Sets that declare no splits still get the derived question-level split, which is what the hand-built Phase 3 sets will use.
+
+Two guards: a partial declaration (some items only) is an error rather than a silent mix of declared and derived; and declared splits are checked for question overlap exactly as derived ones are, since a hand-written split is at least as likely to put one question on both sides.
+
+**Consequences, and this is the operationally important part:** the real extraction must cover roughly **2,400 TriviaQA items**, not 600 — 1,200 train, 600 validation, 600 test — for the anchor set to clear both `min_n_test` and the negative-control power floor from `DECISIONS.md` 029. That is a four-fold increase in GPU time over the naive reading of the spec, and it is better discovered now than during the run.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->

@@ -107,12 +107,14 @@ All five run on every validation. **A failed control fails the run and refuses t
 | Control | Method | Pass condition |
 |---|---|---|
 | **Padding fault injection** | Score one batch with correct left padding and with deliberately broken right padding | Correct: rel-L2 ≤ 0.1, cosine ≥ 0.999. Broken: **must be rejected** |
-| **Label shuffle** | Retrain on permuted labels, score held-out | AUROC ∈ [0.45, 0.55] |
-| **Null feature** | Replace activations with Gaussian noise matched in mean/variance | AUROC ∈ [0.45, 0.55] |
+| **Label shuffle** | Retrain on permuted labels, score held-out. Averaged over `validation.null_control_repeats` permutations | **Mean** AUROC ∈ [0.45, 0.55], band floored at ±2 SE of the mean |
+| **Null feature** | Replace activations with Gaussian noise matched in mean/variance. Averaged over the same number of draws | **Mean** AUROC ∈ [0.45, 0.55], same floor |
 | **Canary recall** | Score `canary-20` | Recall == 1.0 |
 | **Determinism** | Re-run scoring twice at fixed seed | Bit-identical |
 
 Label-shuffle and null-feature are **negative controls**: they assert the pipeline can produce a null result when there is no signal. A pipeline that cannot fail cannot be trusted when it succeeds. That sentence is the thesis applied to our own code and it belongs in the README.
+
+Both are averaged over repeats rather than run once. A single permutation has a null SE of ≈0.033 at a holdout of 600, so a fixed ±0.05 band fails on noise alone about 13% of the time — a control that refuses one warrant in eight for no reason gets switched off, and a suite nobody believes protects nothing. Averaging shrinks the SE by `√repeats`. Derivation, measured false-failure rates by holdout size, and the rejected alternatives are in `DECISIONS.md` 029.
 
 ### 2.2 `/validate`
 
@@ -133,6 +135,8 @@ Under one minute from cached activations. Streams progress. **Displays the delib
 ### 2.3 Refusal criteria
 
 Refuse if any control fails; or AUROC lower CI bound ≤ 0.55; or recall below the policy's declared minimum at the operating point; or FPR on the hard-negative set above the declared maximum; or `n_test` < 200.
+
+Recall and hard-negative FPR are compared at the **interval bound**, not the point estimate — a profile declaring "at least 10% recall" is asking for a guarantee, and a point estimate of 0.11 whose lower bound is 0.06 does not supply one. `n_test` counts the **test split**, so an eval set is sized by that split rather than by its total; see `DECISIONS.md` 030.
 
 **No override path exists.** Not a flag, not an env var.
 

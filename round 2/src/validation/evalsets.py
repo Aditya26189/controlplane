@@ -88,6 +88,11 @@ class EvalItem:
         prompt: What the model was asked.
         response: What it answered. Empty for sets scored on the prompt alone.
         label: 1 means *incorrect* — the positive class. See ``stats.py``.
+        split: Declared split, when the set ships one. A frozen eval set built as
+            a held-out sample — ``triviaqa-600`` is exactly that — declares every
+            item ``"test"`` and draws train and validation rows from a separate
+            set, rather than being cut to a third of its size by a derived split.
+            When no item declares one, splits are derived by question.
         meta: Anything a detector or an eval needs, e.g. gold aliases, PII spans,
             or the reason an item is a hard negative.
     """
@@ -97,11 +102,17 @@ class EvalItem:
     prompt: str
     response: str
     label: int
+    split: Optional[str] = None
     meta: dict[str, Any] = dataclasses.field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.item_id or not self.question_id:
             raise EvalSetError("item_id and question_id are required")
+        if self.split is not None and self.split not in SPLITS:
+            raise EvalSetError(
+                f"{self.item_id}: split must be one of {list(SPLITS)}, got "
+                f"{self.split!r}"
+            )
         if self.label not in (0, 1):
             raise EvalSetError(
                 f"{self.item_id}: label must be 0 or 1 with 1 meaning 'incorrect', "
@@ -160,6 +171,7 @@ class EvalSet:
                         "prompt": i.prompt,
                         "response": i.response,
                         "label": i.label,
+                        "split": i.split,
                         "meta": i.meta,
                     }
                     for i in self.items
@@ -217,18 +229,54 @@ def split_by_question(
     Asserts the result rather than trusting the construction: overlapping splits
     inflate every downstream number and produce no error of their own.
 
+    A set that **declares** its splits is honoured rather than re-split. A frozen
+    held-out sample is a decision already made; re-deriving it would both shrink
+    it and silently disagree with whatever the declaration was for.
+
     Args:
         evalset: The set to split.
-        fractions: Train, validation, test proportions of *questions*.
+        fractions: Train, validation, test proportions of *questions*. Used only
+            when the set declares no splits of its own.
         seed: Shuffling seed.
 
     Returns:
-        Mapping of split name to row indices.
+        Mapping of split name to row indices. A declared-split set may legally
+        return an empty array for a split it does not contain — a pure test set
+        has no train rows, and the caller supplies those from elsewhere.
 
     Raises:
-        EvalSetError: If the fractions are invalid, a split is empty, or any
-            question appears in two splits.
+        EvalSetError: If the fractions are invalid, a derived split is empty, or
+            any question appears in two splits.
     """
+    declared = [item.split for item in evalset.items]
+    if all(s is not None for s in declared):
+        indices = {
+            name: np.flatnonzero([s == name for s in declared]) for name in SPLITS
+        }
+        groups = evalset.question_ids
+        for a in SPLITS:
+            for b in SPLITS:
+                if a < b and set(groups[indices[a]]) & set(groups[indices[b]]):
+                    raise EvalSetError(
+                        f"{evalset.eval_set_id}: declared splits put the same "
+                        f"question in both {a} and {b}. Splits are by question, "
+                        "never by example (CLAUDE.md); an overlap lets the probe "
+                        "score itself on what it was fitted on."
+                    )
+        _LOG.info(
+            "%s: using declared splits %s",
+            evalset.eval_set_id,
+            {k: int(v.size) for k, v in indices.items()},
+        )
+        return indices
+    if any(s is not None for s in declared):
+        raise EvalSetError(
+            f"{evalset.eval_set_id}: {sum(s is not None for s in declared)} of "
+            f"{len(declared)} items declare a split. Either all do or none do; a "
+            "partial declaration would silently mix a declared holdout with a "
+            "derived one."
+        )
+
     if len(fractions) != 3 or abs(sum(fractions) - 1.0) > 1e-9:
         raise EvalSetError(f"fractions must be three values summing to 1, got {fractions}")
     if any(f <= 0 for f in fractions):

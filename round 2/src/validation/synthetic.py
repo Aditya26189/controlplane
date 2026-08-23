@@ -42,6 +42,9 @@ import numpy as np
 from ..detectors.aggregation import aggregate
 from .evalsets import (
     SOURCE_SYNTHETIC,
+    TEST,
+    TRAIN,
+    VALIDATION,
     EvalItem,
     EvalSet,
     ExtractionCache,
@@ -80,6 +83,8 @@ def synthetic_evalset(
     seed: int,
     items_per_question: int = 1,
     long_context: bool = False,
+    declare_splits: bool = False,
+    split_fractions: tuple[float, float, float] = (0.5, 0.25, 0.25),
 ) -> EvalSet:
     """Build a synthetic eval set with a declared base rate.
 
@@ -93,6 +98,9 @@ def synthetic_evalset(
             bootstrap and the question-level split have something to group.
         long_context: Whether prompts are long. Recorded in ``construction`` and
             used by :func:`synthetic_cache` to choose sequence lengths.
+        declare_splits: Whether to stamp a split on every item, as a real frozen
+            eval set does. Assigned by question, so no question spans two splits.
+        split_fractions: Train/validation/test proportions when declaring.
 
     Returns:
         A frozen :class:`EvalSet` marked synthetic.
@@ -103,6 +111,17 @@ def synthetic_evalset(
     n_positive = int(round(base_rate * n_items))
     labels = np.zeros(n_items, dtype=int)
     labels[rng.choice(n_items, size=n_positive, replace=False)] = 1
+
+    n_questions = (n_items + items_per_question - 1) // max(1, items_per_question)
+    split_of_question: dict[int, Optional[str]] = {}
+    if declare_splits:
+        order = np.random.default_rng(seed + 1).permutation(n_questions)
+        n_tr = int(round(split_fractions[0] * n_questions))
+        n_va = int(round(split_fractions[1] * n_questions))
+        for rank, question in enumerate(order):
+            split_of_question[int(question)] = (
+                TRAIN if rank < n_tr else VALIDATION if rank < n_tr + n_va else TEST
+            )
 
     items = []
     for i in range(n_items):
@@ -117,6 +136,7 @@ def synthetic_evalset(
                 prompt=f"{filler}synthetic question {question_index} variant {i}?",
                 response=f"synthetic response {i}",
                 label=int(labels[i]),
+                split=split_of_question.get(question_index),
                 meta={"synthetic": True},
             )
         )
@@ -131,6 +151,7 @@ def synthetic_evalset(
             "requested_base_rate": base_rate,
             "items_per_question": items_per_question,
             "long_context": long_context,
+            "declared_splits": declare_splits,
             "warning": (
                 "Synthetic fixture. Exercises the harness; is not a measurement. "
                 "Numbers from this set must not reach RESULTS.md or the README."
@@ -152,6 +173,7 @@ def synthetic_cache(
     signal_span: int = 32,
     signal_dims: int = 4,
     amplitude_spread: float = 0.75,
+    direction_seed: int = 20260823,
 ) -> ExtractionCache:
     """Generate a cache by pooling synthetic sequences through the real code.
 
@@ -183,6 +205,11 @@ def synthetic_cache(
             Controls how much the classes overlap, and therefore where AUROC
             lands. Without overlap every tier scores 1.0 and the fixture
             exercises none of the paths that matter.
+        direction_seed: Seed for the readable direction, shared across caches by
+            default. Two caches standing in for the same model must agree on it,
+            or a probe fitted on one scores noise on the other — which is not
+            what a real probe does, and would make the canary control fail for a
+            reason unrelated to the detector.
 
     Returns:
         An :class:`ExtractionCache` marked synthetic.
@@ -212,9 +239,16 @@ def synthetic_cache(
     # trivially separable however diluted, which is not the situation a probe is
     # in: the readable direction is a small subspace of the residual stream and
     # the probe has to find it.
+    #
+    # Drawn from `direction_seed`, NOT from `seed`. Every cache standing in for
+    # the same model must share the readable direction, or a probe fitted on one
+    # set scores noise on another -- which is what a real probe transferring to
+    # a new eval set does NOT do, and it would make the canary control fail for
+    # a reason that has nothing to do with the detector.
+    direction_rng = np.random.default_rng(direction_seed)
     directions = {}
-    for variant in signal_by_tier:
-        raw = rng.normal(0.0, 1.0, size=hidden_dim)
+    for variant in sorted(signal_by_tier):
+        raw = direction_rng.normal(0.0, 1.0, size=hidden_dim)
         raw[signal_dims:] = 0.0
         directions[variant] = raw / np.linalg.norm(raw)
 
@@ -285,6 +319,7 @@ def synthetic_cache(
             "signal_by_tier": dict(signal_by_tier),
             "sequence_length": seq_len,
             "signal_span": signal_span,
+            "direction_seed": direction_seed,
             "warning": (
                 "Synthetic fixture. Signal strengths are parameters chosen by us, "
                 "not measurements. A tier ladder computed from this cache "

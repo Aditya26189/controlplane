@@ -50,6 +50,8 @@ validation:
   warrant_ttl_hours: 24
   controls: ["padding_fault", "label_shuffle", "null_feature", "canary", "determinism"]
   null_control_band: [0.45, 0.55]
+  null_control_repeats: 5        # a negative control averages over repeats; one draw
+                                 # has SE ~0.032 at n=600 and fails ~13% on noise alone
 
 drift:
   window_size: 200               # minimum requests before any verdict
