@@ -158,18 +158,32 @@ class RoutingDecision:
 
 
 def _rank(warrant: Warrant) -> tuple:
-    """Order eligible warrants: tighter recall interval first, then higher recall.
+    """Order eligible warrants by **recall lower confidence bound**, descending.
 
-    Tighter first because the point of routing is to keep making a *defensible*
-    claim, and a narrow interval is a more useful claim than a high midpoint
-    with a wide one. Recall breaks ties, and the detector id makes the order
-    total so routing is deterministic.
+    The lower bound is what the detector can be shown to deliver, and claiming
+    what you can prove is the entire thesis. Ranking by anything else optimises
+    for the wrong thing.
+
+    This was originally width-first — tightest interval wins — on the reasoning
+    that a narrow claim is more useful than a wide one. That is wrong, and the
+    first real comparison showed why: mean-pool won short context on a 3%
+    tighter interval despite a 16% lower midpoint. Generalised, width-first
+    prefers recall ``[0.10, 0.11]`` over ``[0.30, 0.45]``, which is plainly
+    absurd — it optimises for *confidence in a claim* rather than the *size* of
+    it. ``DECISIONS.md`` 042.
+
+    Ties break on interval width (narrower first, since between two equally
+    provable claims the better-measured one is preferable) and then on detector
+    id, so routing is deterministic.
     """
     recall = warrant.metrics.recall
     if recall is None:
+        # No recall claim available. Sorts last; a profile requiring recall will
+        # have rejected it already, and this keeps the order total.
         return (1, 0.0, 0.0, warrant.detector_id)
+    lower = recall.ci_low if recall.ci_low is not None else recall.value
     width = (recall.ci_high or 0.0) - (recall.ci_low or 0.0)
-    return (0, width, -recall.value, warrant.detector_id)
+    return (0, -lower, width, warrant.detector_id)
 
 
 def route(
