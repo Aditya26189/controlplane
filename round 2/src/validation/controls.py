@@ -37,7 +37,6 @@ __all__ = [
     "LABEL_SHUFFLE",
     "NULL_FEATURE",
     "PADDING_FAULT",
-    "effective_null_band",
     "run_controls",
 ]
 
@@ -65,16 +64,19 @@ _PADDING_MIN_COSINE = 0.999
 _MIN_BAND_IN_NULL_SE = 2.0
 
 
-def _null_auroc_se(labels: np.ndarray) -> float:
-    """Standard error of AUROC under the null, by Hanley-McNeil.
+def _null_auroc_se_closed_form(labels: np.ndarray) -> float:
+    """Hanley-McNeil SE of AUROC under H0, kept only for reporting.
 
-    ``SE = sqrt((n_pos + n_neg + 1) / (12 * n_pos * n_neg))`` at AUC = 0.5. Used
-    to say how many standard errors wide the configured band is, so a reader can
-    tell a real control failure from a small holdout.
+    ``SE = sqrt((n_pos + n_neg + 1) / (12 * n_pos * n_neg))`` at AUC = 0.5.
 
-    Quantity estimated: the sampling standard deviation of AUROC when there is
-    no signal. Propagation: none -- this is the closed form at AUC = 0.5, which
-    is exactly the hypothesis a negative control is testing.
+    **Not used as the control's reference distribution**, and the reason is
+    worth stating where someone might reach for it. That formula is the variance
+    of AUROC when the score vector is an exchangeable random permutation of
+    ranks. A fitted probe's scores are not exchangeable — they are a smooth
+    function of the features, so similar items get similar scores and the
+    effective number of independent draws is far below ``n``. Measured against
+    200 permutations on the fixture, the true null spread is **2.1x** this
+    formula at 32 features and **8.3x** at one feature. ``DECISIONS.md`` 031.
     """
     labels = np.asarray(labels)
     n_pos = int(labels.sum())
@@ -84,68 +86,75 @@ def _null_auroc_se(labels: np.ndarray) -> float:
     return math.sqrt((n_pos + n_neg + 1) / (12.0 * n_pos * n_neg))
 
 
-def effective_null_band(
-    labels: np.ndarray, band: tuple[float, float], repeats: int = 1
-) -> tuple[tuple[float, float], str]:
-    """Widen the configured null band to at least 2 null standard errors.
+def _repeats_needed(spread: float, band_half_width: float) -> int:
+    """How many repeats make the band at least two standard errors wide.
 
-    A negative control asserts *"AUROC is consistent with 0.5"*. Whether an
-    observed value is consistent with 0.5 depends on the sampling noise, and
-    that depends on ``n`` — so a **fixed** band is only a valid test at one
-    particular holdout size. Measured against the Hanley-McNeil null SE, the
-    configured band of +/-0.05 is:
+    ``SE(mean) = spread / sqrt(k)``, and the band is meaningful when
+    ``band_half_width >= 2 * SE(mean)``, so
+    ``k >= (2 * spread / band_half_width)^2``.
 
-        n =  150  ->  +/-0.76 SE  ->  ~45% chance of failing with no fault present
-        n =  600  ->  +/-1.52 SE  ->  ~13%
-        n = 1200  ->  +/-2.15 SE  ->  ~3%
-
-    At the sizes this project works with, the declared band would refuse roughly
-    one warrant in eight for no reason but noise. That is not a conservative
-    error: a control that cries wolf gets switched off, and a suite nobody
-    believes protects nothing.
-
-    So the effective band is the **wider** of the configured band and
-    +/-2 null SE. It never becomes stricter than declared, and it never becomes
-    looser than the noise floor. Power against a real fault is essentially
-    unaffected, because leakage does not produce an AUROC of 0.56 — it produces
-    one far outside any of these bands.
-
-    Quantity: the sampling standard deviation of AUROC under H0 (AUC = 0.5).
-    Propagation: Hanley-McNeil closed form,
-    ``SE = sqrt((n_pos + n_neg + 1) / (12 * n_pos * n_neg))``; band half-width
-    ``max(configured_half_width, 2 * SE)``. ``DECISIONS.md`` 029.
-
-    Args:
-        labels: Holdout labels the control is scored against.
-        band: The configured band from ``config.validation.null_control_band``.
-        repeats: How many independent draws the control averages. The SE of the
-            mean falls as ``1/sqrt(repeats)``, which is the primary fix; this
-            widening is the floor that remains when repeats cannot rescue a very
-            small holdout.
-
-    Returns:
-        ``((low, high), note)`` — the band actually applied, and a sentence
-        stating both it and the configured one, for the control's detail.
+    Sizing the repeat count from the measured spread is what makes this control
+    work at any feature dimensionality. A one-dimensional feature has a nearly
+    two-point null — the shuffle picks a sign — and needs a hundred-odd repeats;
+    a 32-dimensional one needs eight. Neither number is guessable in advance,
+    which is why it is measured.
     """
-    se = _null_auroc_se(labels) / math.sqrt(max(1, repeats))
-    configured_half = min(0.5 - band[0], band[1] - 0.5)
-    if not math.isfinite(se) or se == 0:
-        return band, "holdout has only one class; the null band is meaningless here"
-    floor_half = _MIN_BAND_IN_NULL_SE * se
-    if floor_half <= configured_half:
-        return (
-            band,
-            f"null SE {se:.4f} at n={labels.size}; configured band is "
-            f"+/-{configured_half / se:.2f} SE, which is adequate",
-        )
-    widened = (0.5 - floor_half, 0.5 + floor_half)
-    return (
-        widened,
-        f"null SE {se:.4f} at n={labels.size}; configured band +/-{configured_half:g} "
-        f"is only +/-{configured_half / se:.2f} SE, so the applied band is widened "
-        f"to +/-{floor_half:.4f} (2 SE) to keep the control from failing on noise "
-        f"(DECISIONS.md 029)"
+    if spread <= 0:
+        return 2
+    return int(math.ceil((2.0 * spread / band_half_width) ** 2))
+
+
+def _summarise_null(
+    values: list[float],
+    band: tuple[float, float],
+    labels: np.ndarray,
+    max_repeats: int,
+) -> tuple[bool, float, float, str]:
+    """Decide a negative control from its own measured null distribution.
+
+    Returns ``(passed, mean, margin, note)``. Passing requires **two** things:
+
+    * the mean lies inside the configured band — the substantive claim;
+    * the standard error of that mean is at most half the band's half-width —
+      the power claim, without which "inside the band" means nothing.
+
+    Failing the second is reported as a failure rather than a pass, because the
+    control's whole job is to demonstrate that the pipeline *can* produce a null
+    result, and an underpowered run has demonstrated nothing.
+    """
+    low, high = band
+    band_half = min(0.5 - low, high - 0.5)
+    array = np.asarray(values, dtype=float)
+    mean = float(array.mean())
+    spread = float(array.std(ddof=1)) if array.size > 1 else float("inf")
+    se_mean = spread / math.sqrt(array.size) if array.size else float("inf")
+    inside = low <= mean <= high
+    powered = math.isfinite(se_mean) and se_mean <= band_half / 2.0
+    margin = min(mean - low, high - mean)
+    if not powered:
+        margin = -abs(margin) if margin >= 0 else margin
+
+    closed_form = _null_auroc_se_closed_form(labels)
+    ratio = spread / closed_form if math.isfinite(closed_form) and closed_form else float("nan")
+    note = (
+        f"{array.size} repeats; null spread sd {spread:.4f}, SE of mean "
+        f"{se_mean:.4f}; band +/-{band_half:g} is +/-{band_half / se_mean:.2f} SE"
+        if math.isfinite(se_mean) and se_mean > 0
+        else f"{array.size} repeats; null spread undefined"
     )
+    note += (
+        f"; measured spread is {ratio:.1f}x the Hanley-McNeil closed form "
+        f"({closed_form:.4f}), which is why the closed form is not the reference "
+        "(DECISIONS.md 031)"
+    )
+    if not powered:
+        note += (
+            f". UNDERPOWERED: {max_repeats} repeats were not enough to bring the "
+            f"SE of the mean to {band_half / 2.0:.4f}. This run cannot demonstrate "
+            "a null result, so the control fails rather than passing on a number "
+            "it cannot support"
+        )
+    return (inside and powered), mean, margin, note
 
 
 def _cosine(a: np.ndarray, b: np.ndarray) -> float:
@@ -258,9 +267,10 @@ def label_shuffle_control(
     C: float,
     class_weight: str,
     seed: int,
-    repeats: int = 5,
+    min_repeats: int = 8,
+    max_repeats: int = 200,
 ) -> ControlResult:
-    """Retrain on permuted labels; mean AUROC over repeats must land at chance.
+    """Retrain on permuted labels; the mean over repeats must land at chance.
 
     A **negative control**. If a probe fitted on shuffled labels still scores
     above the band, the pipeline is reading something it should not — leakage
@@ -268,12 +278,14 @@ def label_shuffle_control(
     directly. Each of those produces a *good-looking* result on real labels, so
     this is one of the few checks that catches them.
 
-    **Averaged over ``repeats`` independent permutations.** A single permutation
-    is one draw from a distribution with SE ≈ 0.032 at a holdout of 600, so it
-    lands outside a ±0.05 band about 13% of the time with nothing wrong. A
-    control that cries wolf one run in eight gets switched off, and a suite
-    nobody believes protects nothing. Averaging shrinks the SE by
-    ``sqrt(repeats)`` and turns the band into a real bar. ``DECISIONS.md`` 029.
+    **The repeat count is sized from the measured spread**, not fixed. A single
+    permutation is one draw from a distribution whose width depends on the
+    feature dimensionality in a way no closed form captures: at one feature the
+    shuffle effectively picks a sign, giving a null spread of 0.27, while at 32
+    features it is 0.068. Repeats continue until the standard error of the mean
+    is at most half the band's half-width, or ``max_repeats`` is reached — in
+    which case the control **fails as underpowered**, because a run that cannot
+    demonstrate a null result has demonstrated nothing. ``DECISIONS.md`` 031.
 
     Labels are permuted **within the training split only** and the holdout keeps
     its true labels. Permuting everywhere would test nothing: a probe fitted on
@@ -290,14 +302,18 @@ def label_shuffle_control(
             shuffled run would be selecting for the noise this control measures.
         class_weight: Imbalance handling, matching the real fit.
         seed: Base seed; each repeat uses a distinct derived seed.
-        repeats: Number of independent permutations to average.
+        min_repeats: Draws before the spread is first estimated.
+        max_repeats: Cap, beyond which the control reports underpowered.
 
     Returns:
-        A :class:`ControlResult` reporting the mean AUROC across repeats and its
-        distance to the nearer band edge.
+        A :class:`ControlResult` reporting the mean, the measured spread, the
+        repeat count it needed, and its distance to the nearer band edge.
     """
+    band_half = min(0.5 - band[0], band[1] - 0.5)
     values: list[float] = []
-    for repeat in range(repeats):
+    target = min_repeats
+    repeat = 0
+    while repeat < target and repeat < max_repeats:
         rng = np.random.default_rng(seed + 1000 * repeat)
         shuffled = labels.copy()
         shuffled[train_index] = rng.permutation(shuffled[train_index])
@@ -313,33 +329,35 @@ def label_shuffle_control(
                 control=LABEL_SHUFFLE,
                 passed=False,
                 measured=0.0,
-                expected=f"mean AUROC over {repeats} permutations in "
-                f"[{band[0]}, {band[1]}]",
+                expected=f"mean AUROC over repeats in [{band[0]}, {band[1]}]",
                 margin=-1.0,
                 detail=f"control could not be run: {exc}",
             )
+        repeat += 1
+        if repeat >= min_repeats:
+            spread = float(np.std(values, ddof=1))
+            target = min(max_repeats, max(target, _repeats_needed(spread, band_half)))
 
-    value = float(np.mean(values))
-    spread = float(np.std(values))
-    (low, high), note = effective_null_band(labels[holdout_index], band, repeats)
-    inside = low <= value <= high
-    margin = min(value - low, high - value)
+    passed, mean, margin, note = _summarise_null(
+        values, band, labels[holdout_index], max_repeats
+    )
     return ControlResult(
         control=LABEL_SHUFFLE,
-        passed=inside,
-        measured=value,
-        expected=f"mean AUROC over {repeats} permutations in [{low:.4f}, {high:.4f}]",
+        passed=passed,
+        measured=mean,
+        expected=(
+            f"mean AUROC over repeats in [{band[0]}, {band[1]}], with SE of the "
+            f"mean <= {band_half / 2.0:.4f}"
+        ),
         margin=float(margin),
         detail=(
             f"train labels permuted (n={train_index.size}), holdout labels intact "
-            f"(n={holdout_index.size}); mean AUROC {value:.4f} over {repeats} "
-            f"permutations, sd {spread:.4f}, per-run values "
-            f"{[round(v, 4) for v in values]}. {note}. "
+            f"(n={holdout_index.size}); mean AUROC {mean:.4f}. {note}. "
             + (
-                "A probe fitted on shuffled labels scoring above the band means "
-                "the pipeline is reading something it should not."
-                if not inside
-                else "Pipeline produces a null result when there is no signal."
+                "Pipeline produces a null result when there is no signal."
+                if passed
+                else "A probe fitted on shuffled labels that does not land at "
+                "chance means the pipeline is reading something it should not."
             )
         ),
     )
@@ -355,7 +373,8 @@ def null_feature_control(
     C: float,
     class_weight: str,
     seed: int,
-    repeats: int = 5,
+    min_repeats: int = 8,
+    max_repeats: int = 200,
 ) -> ControlResult:
     """Replace features with mean/variance-matched Gaussian noise.
 
@@ -369,8 +388,8 @@ def null_feature_control(
     distinguishable from real features by scale alone, and a scaler fitted on it
     behaves differently, so the control would be testing the wrong thing.
 
-    Averaged over ``repeats`` independent noise draws, for the same reason the
-    label shuffle is. ``DECISIONS.md`` 029.
+    Repeats are sized from the measured spread, exactly as in
+    :func:`label_shuffle_control`, and for the same reason. ``DECISIONS.md`` 031.
 
     Args:
         features: Full feature matrix, used only for its moments.
@@ -381,19 +400,23 @@ def null_feature_control(
         C: Regularisation, fixed.
         class_weight: Imbalance handling.
         seed: Base seed; each repeat uses a distinct derived seed.
-        repeats: Number of independent noise draws to average.
+        min_repeats: Draws before the spread is first estimated.
+        max_repeats: Cap, beyond which the control reports underpowered.
 
     Returns:
         A :class:`ControlResult`.
     """
-    mean = features.mean(axis=0)
-    std = features.std(axis=0)
-    scale = np.where(std == 0, 1e-9, std)
+    band_half = min(0.5 - band[0], band[1] - 0.5)
+    mean_by_column = features.mean(axis=0)
+    std_by_column = features.std(axis=0)
+    scale = np.where(std_by_column == 0, 1e-9, std_by_column)
 
     values: list[float] = []
-    for repeat in range(repeats):
+    target = min_repeats
+    repeat = 0
+    while repeat < target and repeat < max_repeats:
         rng = np.random.default_rng(seed + 2000 * repeat)
-        noise = rng.normal(loc=mean, scale=scale, size=features.shape)
+        noise = rng.normal(loc=mean_by_column, scale=scale, size=features.shape)
         try:
             probe = LinearProbe(C, class_weight=class_weight, seed=seed).fit(
                 noise, labels, train_index
@@ -406,27 +429,30 @@ def null_feature_control(
                 control=NULL_FEATURE,
                 passed=False,
                 measured=0.0,
-                expected=f"mean AUROC over {repeats} noise draws in "
-                f"[{band[0]}, {band[1]}]",
+                expected=f"mean AUROC over repeats in [{band[0]}, {band[1]}]",
                 margin=-1.0,
                 detail=f"control could not be run: {exc}",
             )
+        repeat += 1
+        if repeat >= min_repeats:
+            spread = float(np.std(values, ddof=1))
+            target = min(max_repeats, max(target, _repeats_needed(spread, band_half)))
 
-    value = float(np.mean(values))
-    spread = float(np.std(values))
-    (low, high), note = effective_null_band(labels[holdout_index], band, repeats)
-    inside = low <= value <= high
-    margin = min(value - low, high - value)
+    passed, mean, margin, note = _summarise_null(
+        values, band, labels[holdout_index], max_repeats
+    )
     return ControlResult(
         control=NULL_FEATURE,
-        passed=inside,
-        measured=value,
-        expected=f"mean AUROC over {repeats} noise draws in [{low:.4f}, {high:.4f}]",
+        passed=passed,
+        measured=mean,
+        expected=(
+            f"mean AUROC over repeats in [{band[0]}, {band[1]}], with SE of the "
+            f"mean <= {band_half / 2.0:.4f}"
+        ),
         margin=float(margin),
         detail=(
             f"features replaced by Gaussian noise matched per column in mean and "
-            f"variance; labels intact; mean AUROC {value:.4f} over {repeats} draws, "
-            f"sd {spread:.4f}. {note}."
+            f"variance; labels intact; mean AUROC {mean:.4f}. {note}."
         ),
     )
 
@@ -621,12 +647,14 @@ def run_controls(
         LABEL_SHUFFLE: label_shuffle_control(
             features, labels, train, holdout,
             band=band, C=C, class_weight=class_weight, seed=seed,
-            repeats=config.validation.null_control_repeats,
+            min_repeats=config.validation.null_control_min_repeats,
+            max_repeats=config.validation.null_control_max_repeats,
         ),
         NULL_FEATURE: null_feature_control(
             features, labels, train, holdout,
             band=band, C=C, class_weight=class_weight, seed=seed,
-            repeats=config.validation.null_control_repeats,
+            min_repeats=config.validation.null_control_min_repeats,
+            max_repeats=config.validation.null_control_max_repeats,
         ),
         CANARY: canary_control(canary_scores, canary_labels, threshold),
         DETERMINISM: determinism_control(rescore, coefficients=coefficients),

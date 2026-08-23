@@ -50,8 +50,12 @@ validation:
   warrant_ttl_hours: 24
   controls: ["padding_fault", "label_shuffle", "null_feature", "canary", "determinism"]
   null_control_band: [0.45, 0.55]
-  null_control_repeats: 5        # a negative control averages over repeats; one draw
-                                 # has SE ~0.032 at n=600 and fails ~13% on noise alone
+  # A negative control averages over repeats and sizes that count from the
+  # MEASURED spread of its own null, not from a closed form. See DECISIONS.md 031:
+  # a fitted probe's scores are not exchangeable, so the Hanley-McNeil null SE
+  # understates the true spread by 2.1x at d=32 and 8.3x at d=1.
+  null_control_min_repeats: 8
+  null_control_max_repeats: 200
 
 drift:
   window_size: 200               # minimum requests before any verdict

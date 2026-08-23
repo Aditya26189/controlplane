@@ -287,7 +287,8 @@ class ValidationConfig:
     warrant_ttl_hours: int
     controls: tuple[str, ...]
     null_control_band: tuple[float, ...]
-    null_control_repeats: int
+    null_control_min_repeats: int
+    null_control_max_repeats: int
 
     #: The five controls of SPEC.md §2.1. All five run on every validation and
     #: any failure refuses the warrant, so the set is fixed rather than a subset
@@ -334,10 +335,17 @@ class ValidationConfig:
                 "validation.null_control_band must be a [low, high] pair, got "
                 f"{list(self.null_control_band)}"
             )
-        if self.null_control_repeats < 1:
+        if self.null_control_min_repeats < 2:
             raise ConfigError(
-                "validation.null_control_repeats must be >= 1, got "
-                f"{self.null_control_repeats}"
+                "validation.null_control_min_repeats must be >= 2; a spread "
+                "cannot be estimated from one draw, and the repeat count is "
+                f"sized from that spread. Got {self.null_control_min_repeats}"
+            )
+        if self.null_control_max_repeats < self.null_control_min_repeats:
+            raise ConfigError(
+                f"validation.null_control_max_repeats "
+                f"({self.null_control_max_repeats}) must be >= min_repeats "
+                f"({self.null_control_min_repeats})"
             )
         low, high = self.null_control_band
         if not 0.0 < low < 0.5 < high < 1.0:

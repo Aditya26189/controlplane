@@ -438,4 +438,39 @@ Two guards: a partial declaration (some items only) is an error rather than a si
 
 ---
 
+## 031 — Negative controls size their repeats from their own measured null
+**Status:** accepted · **supersedes the sizing half of 029**, whose reference distribution was wrong
+
+**Context:** Entry 029 fixed a real problem — a fixed `[0.45, 0.55]` band is only valid at one holdout size — but fixed it against the **wrong reference distribution**. It used the Hanley–McNeil null SE and concluded that 5 repeats made the band a ±3.45 SE bar at n=600. Running the ablation, label-shuffle then failed at 0.5546, which that model says is a 3.8 SE event. Three-sigma events do not happen on the second run, so the model was wrong.
+
+**What we measured.** 200 permutations per variant on the fixture, holdout n=600, base rate 0.152:
+
+| variant | features | empirical null mean | empirical null sd | Hanley–McNeil SE | ratio |
+|---|---|---|---|---|---|
+| `T1-max_rolling_means` | 32 | 0.4982 | 0.0684 | 0.0324 | **2.11×** |
+| `T3-judge` | 1 | 0.4754 | 0.2706 | 0.0324 | **8.34×** |
+
+The null is centred correctly — there is no leak — but it is far wider than the closed form, and the width depends on the **feature dimensionality**.
+
+**Why.** Hanley–McNeil gives the variance of AUROC when the score vector is an exchangeable random permutation of ranks. A fitted probe's scores are not exchangeable: they are a smooth function of the features, so similar items receive similar scores and the effective number of independent draws is far below `n`. In the limit that makes the failure obvious, a **one-dimensional** feature gives a probe that is essentially ±(that feature), so a label shuffle picks a *sign* and AUROC lands near `A` or `1 − A`. That is a two-point distribution with sd ≈ 0.27, and no amount of reasoning about `n` predicts it.
+
+**Decision:** stop using a closed form. Each negative control **measures its own null** and sizes its repeat count from it:
+
+```
+SE(mean) = spread / sqrt(k)          band is meaningful when band_half >= 2 * SE(mean)
+                                     => k >= (2 * spread / band_half)^2
+```
+
+Run `null_control_min_repeats` (8) draws, estimate the spread, continue to the implied `k`, capped at `null_control_max_repeats` (200). Passing now requires **two** things: the mean lies inside the configured band, *and* the SE of that mean is at most half the band's half-width. Failing the second is reported as a **failure**, not a pass — a control whose job is to demonstrate that the pipeline can produce a null result, and which lacks the power to demonstrate it, has demonstrated nothing.
+
+**Measured repeat counts on the fixture**, sized automatically: 8 at 32 features, 22 at 4 features, **125 at 1 feature**. The last matches the analytic estimate of ≈117 from the observed spread, which is the check that the sizing rule is doing what it claims.
+
+**What survives from 029:** the diagnosis that a fixed band is `n`-dependent and the false-failure table, both correct. **What does not:** the claim that 5 repeats suffice, and the ±2 SE floor computed from the closed form. Both are replaced by the empirical rule above.
+
+**Alternatives rejected:** *Use the closed form and widen the band* — the direction of the error varies by 4× between variants, so any fixed widening is simultaneously too loose for T1 and far too tight for T3. *Drop the control on low-dimensional features* — T3 is the tier the whole ladder is compared against, and having no negative control on it is precisely where a fault would hide. *Fix repeats at 200 for everything* — wasteful at T1 and still arbitrary; the measured spread is available for free and is the honest input.
+
+**A reviewer could fairly object** that we have now revised a control's pass condition twice. Correct, and both revisions are recorded with the numbers that forced them. The first was right about the problem and wrong about the reference; the second measured the reference instead of assuming it. No measured result existed at either point — every run so far is synthetic fixture data, which cannot reach `RESULTS.md` by construction (`DECISIONS.md` 027) — so nothing was tuned against a number we wanted.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->
