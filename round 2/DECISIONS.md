@@ -262,4 +262,85 @@ m_R = 0.02 → m_q = 0.00430 → n ≈ 5,292
 
 ---
 
+## 022 — "Free" and "exact" are different axes; precision is free but estimated
+**Status:** accepted
+
+**Context:** The price list (`SPEC.md` §6.4) marks precision, FPR and yield as **free** — zero extra labels, because stratum A is reviewed already. Invariant 4 says every *rate* carries a 95% interval. Read carelessly, those two sentences contradict: if precision is free, why does it have an interval?
+
+**Decision:** They are separate axes and the type system encodes only one of them.
+
+* `MetricKind.EXACT` means *a count of reviewed, confirmed items* — no inference about anything unreviewed. Only yield-type quantities qualify: confirmed errors surfaced, false positives seen. These carry no interval.
+* `MetricKind.ESTIMATED` covers every rate, including precision and FPR, and always carries an interval and an `n`.
+* **Free** is a statement about *label cost*, and it lives in the price list, not in `MetricKind`.
+
+So precision is free *and* estimated. The 850 confirmed errors are a fact about the month that happened; the precision figure is a claim about the process, and the flagged pool is a finite sample of the traffic distribution. A reviewer asking "what will precision be next month?" is asking for an estimate, and that is the question a warrant answers.
+
+**Alternatives rejected:** *Tag precision `EXACT` because it costs nothing* — conflates the two axes and would let a point estimate reach a user with no interval, violating invariant 4 for the sake of a word in a table. *Give exact counts intervals too, for consistency* — destroys the free claim, which is the basis of the whole price list, and is the exact error `CLAUDE.md` names as the most damaging available here.
+
+**Consequences:** `WarrantMetrics` requires `confirmed_errors` to be `EXACT` with unit `count`, and `auroc`/`recall`/`precision`/`flag_rate` to be `ESTIMATED`. `Metric.__post_init__` refuses an `EXACT` metric carrying an interval and an `ESTIMATED` one without. `test_yield_vs_rate` asserts both directions.
+
+**A reviewer could fairly object** that this month's precision *is* an exact fact about this month. Correct — and that fact is reported as the yield pair (confirmed errors, false positives seen), both `EXACT`. The ratio is labelled estimated because it is only interesting as a forward claim.
+
+---
+
+## 023 — Invariant 5 is enforced by refusing the name, not by convention
+**Status:** accepted
+
+**Context:** "Never a blended F1 anywhere in the codebase" is the kind of rule that holds until someone adds a convenience property, or a report label, or a column header.
+
+**Decision:** `Metric.__post_init__` rejects any name matching `f1`, `f_1`, `fbeta`, `f2`, `fscore`, `f_measure` and their variants, with an error stating why. Since every reported number is a `Metric`, a blended score cannot reach a document without deleting the check.
+
+**Alternatives rejected:** *A grep in the test suite* — catches the literal string in source, not a label built at runtime from config or from a detector's own output. Kept as well, but not as the only guard.
+
+**Consequences:** `WarrantMetrics` also requires precision and recall as separate mandatory fields, so a warrant claiming one without the other is unconstructible. A reviewer could fairly object that a project could legitimately want an F-score for an internal comparison — it could, and the answer is that the exchange rate between a wasted review and a user acting on a wrong answer is the decision this product exists to expose, so hiding it inside a single number is not a tradeoff we are willing to make silently.
+
+---
+
+## 024 — `UNVALIDATED` is a matrix-cell state, never a warrant record's status
+**Status:** accepted · **refines** 002, and `SPEC.md` §1.3 and §3.3 were updated in the same commit
+
+**Context:** `WarrantStatus` lists five members and `Warrant.status` is typed as one of them. Implementing the record made a contradiction visible: a warrant carries `metrics`, `envelope`, `controls`, `n_test`, `base_rate` and `kappa`, and an `UNVALIDATED` cell has none of those, because nobody ever ran the validation. Constructing such a record means inventing the numbers that make a record a claim — which is the precise failure the state exists to prevent.
+
+**Decision:** `UNVALIDATED` stays in the enum, because the matrix and the routing code need to name it. `Warrant.__post_init__` refuses to construct a record carrying it. A cell is `UNVALIDATED` **because it holds no record**, and `matrix.status(key)` returns `UNVALIDATED` for a missing cell rather than reading it off an object.
+
+**Alternatives rejected:** *Allow a record with `None` metrics* — every consumer then has to check for `None` before reading bounds, and the one that forgets reads `None` as a number or crashes at render time in front of a judge. The absence of a record cannot be dereferenced by accident. *Drop `UNVALIDATED` from the enum and use `Optional[Warrant]` everywhere* — loses the name, and the name is what keeps the three states distinct in the routing code (invariant 2).
+
+**Consequences:** Code asking "what do we know here?" calls the matrix, never a warrant. That is the correct direction anyway: the question is about a cell, and only the matrix knows which cells exist. `test_three_states` asserts that a missing cell reports `UNVALIDATED` and routes conservatively while a `REFUSED` cell removes the detector from service, and that the two are not interchangeable.
+
+**A reviewer could fairly object** that this makes the enum's five members mean two different kinds of thing. True — and the spec now says so explicitly in §1.3 and §3.3 rather than leaving it to be discovered from the code.
+
+---
+
+## 025 — The store claims tamper-evidence, not tamper-proofing, and the limit is tested
+**Status:** accepted
+
+**Context:** `SPEC.md` §1.5 asks for an append-only hash-chained store and says to demonstrate tamper-evidence by mutating a row and showing the chain break. Building it surfaced three attacks with three different outcomes, and only two of them are caught.
+
+**Decision:** Verification checks three things, and the limit of the third is stated rather than glossed.
+
+1. **Edit a body.** That row's `self_hash` no longer matches `SHA256(prev_hash ‖ body)`. Caught at that row.
+2. **Edit a body and recompute its hash.** The body check now passes, but the next row's `prev_hash` still records the old value. Caught at the following row. The two checks cover each other, which is why both exist — either alone leaves a hole.
+3. **Delete rows from the head.** The remainder re-anchors and would verify cleanly, so `verify_chain` also checks the anchor: a chain not starting at genesis must be explained by a surviving `retention_event` naming the hash it removed up to. An undeclared truncation is reported as a break.
+
+**The limit:** an attacker who deletes *every* row also deletes the retention event that would have declared it, and an empty ledger verifies. No log that is its own only witness can do better — detecting total erasure requires an anchor outside the file: a published head hash, a replicated store, or a notary. **We have not built one.** So the claim is tamper-*evidence* against edits and partial deletions, not tamper-proofing, and `test_total_erasure_is_undetectable_and_we_say_so` asserts the limitation so it cannot be quietly claimed away later.
+
+**Alternatives rejected:** *Store the head hash in a `meta` table and check it* — raises the bar by one `UPDATE` and reads as a defence while providing none, which is worse than the stated limitation. *Claim tamper-proofing and hope nobody asks* — the failure mode this entire project argues against, applied to our own log.
+
+**Consequences:** The limitation goes in `RESULTS.md` §12 and in the README. If an external anchor is ever added, this entry is superseded rather than edited.
+
+---
+
+## 026 — Purging is an explicit, logged act, and the retention floor is a hard refusal
+**Status:** accepted
+
+**Context:** DPDP Rule 6 sets a *minimum* retention of one year. Deleting from a hash chain breaks it, so retention and tamper-evidence pull against each other.
+
+**Decision:** Nothing is deleted automatically. `purge_older_than` defaults to a dry run, **refuses** any cutoff newer than `now − retention_days` regardless of arguments, and when it does delete, appends a `retention_event` recording the count, the seq range and the hash of the last record removed. The surviving chain re-anchors at that hash, and verification checks the two against each other.
+
+**Alternatives rejected:** *Delete silently on a schedule* — the chain would verify over a log that no longer contains what it claims to, which is a worse property than not purging at all. *Never delete* — a data-minimisation obligation is not satisfied by keeping everything forever, and a store that cannot forget cannot honour an erasure request.
+
+**Consequences:** The ledger takes an injectable clock, because the alternative way to test a 400-day floor is to wait 400 days. A reviewer could fairly object that an injectable clock is also a way to forge timestamps — true of any system clock, and the mitigation is that the timestamp is inside the hashed body, so a backdated record cannot be inserted into an existing chain without breaking it.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->
