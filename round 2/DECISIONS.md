@@ -856,4 +856,23 @@ The fourth is the instructive one: **it appeared inside the guard built to preve
 
 ---
 
+## 051 — The long-context envelope covers the test split only
+**Status:** accepted
+
+**Context:** `triviaqa-longctx-600` is what Beat 4 turns on. The obvious implementation extracts long-context activations for all 2,400 items so `run_ablation` can fit a fresh probe per envelope, exactly as it does for every other cell.
+
+**Decision:** extract long-context activations for the **600 test questions only**, and score them with the probe fitted on short context via `validate_transferred`.
+
+**This is a measurement decision, not a saving.** Refitting on long context answers *"how well can a probe do on long-context data?"*. Beat 4 asks *"what happens to **this** probe when the traffic changes underneath it?"* Those are different experiments, and only the second is the drift story — nobody retrains between one request and the next, so a refitted number describes a system that does not exist.
+
+The cost difference is real and secondary: 2,400 sequences at 4–16k tokens against 600, roughly four hours against one on a T4, on a card where a 16k-token sequence at 7B NF4 does not batch at all. Had the cheaper option also been the wrong measurement, we would have paid for the right one.
+
+**What the matrix cell means as a result.** `(probe-T1-mean_pool, triviaqa-longctx-600)` is now *"the probe fitted on short context, evaluated on long-context traffic"*, which is what a production envelope violation looks like. That is a narrower claim than the other cells in the same row and the warrant records it: `validate_transferred` carries the source run's controls with their detail amended to say they were established on the source extraction, and the split counts read `train: 0, validation: 0`.
+
+**Alternatives rejected:** *Extract both and report both* — defensible, twice the GPU cost, and it invites the reader to compare a transferred number with a refitted one as though they were the same quantity. *Refit only* — measures the wrong thing at four times the price.
+
+**A reviewer could fairly object** that a transferred warrant rests on controls that were not re-run on the new envelope. Correct, and it is stated in the record rather than glossed: the negative controls and the padding evidence describe the *fitted probe and the extraction that produced it*, both of which are unchanged by the transfer. What is not carried is anything describing the new distribution — the envelope, the metrics and the base rate are all measured on long context.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->
