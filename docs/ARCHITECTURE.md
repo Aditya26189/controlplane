@@ -163,7 +163,7 @@ Rules that hold across all of them:
 
 The one worth understanding in depth is **invariant 4**. With right padding, position −1 of a batch is a pad token, every activation is meaningless, *nothing raises*, and the resulting AUROC near 0.5 reads as "the idea doesn't work". So the check is scale-invariant (relative L2 and cosine, because bfloat16 rounding makes an absolute tolerance useless) and it is paired with a **positive control**: the same comparison is repeated with the tokenizer deliberately right-padded and the run aborts unless that one is rejected. Without the control, a permissive limit is indistinguishable from a limit that was loosened until it passed. Both rows are published in `results/RESULTS.md` §1.
 
-Invariant 2's history is also worth knowing: it originally read "test is touched exactly once", which nobody could verify. It now forbids *selection* on test and requires every scoring to be logged — a weaker claim, but an auditable one (`DECISIONS.md` 016, 017).
+Invariant 2's history is also worth knowing: it once read "the test set is touched exactly once", which nobody could verify. It now forbids *selection* on test and requires every scoring to be logged — a weaker claim, but an auditable one (`DECISIONS.md` 016, 017).
 
 ---
 

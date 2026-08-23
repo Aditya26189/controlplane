@@ -52,7 +52,7 @@ Three things, in increasing order of how much they'd survive an adversarial read
 2. `scripts/02_train_probe.py` opens the test set at exactly one place, marked in a comment box.
 3. Every scoring of the test set is appended to `results/test_scoring_log.json`, which is committed. The count is disclosed in `results/RESULTS.md`, and the one re-scoring was pre-registered in `DECISIONS.md` 016 *before* it ran, with 017 recording its outcome.
 
-The original rule was "test is touched exactly once". Nobody could check that, so it was replaced with a rule that can be checked: no selection may consult test, and every scoring is logged. That change is itself recorded rather than quietly made.
+The invariant once read "the test set is touched exactly once". Nobody could check that, so it was replaced with a rule that can be checked: no selection may consult test, and every scoring is logged. That change is itself recorded rather than quietly made.
 
 **Why deduplicate questions before splitting?**
 

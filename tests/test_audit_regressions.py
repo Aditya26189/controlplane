@@ -587,7 +587,21 @@ FORBIDDEN_ONCE = re.compile(
 
 @pytest.mark.parametrize(
     "relative_path",
-    ["README_TEMPLATE.md", "SPEC.md", "CLAUDE.md", "scripts/build_notebooks.py"],
+    [
+        "README_TEMPLATE.md",
+        "SPEC.md",
+        "CLAUDE.md",
+        "scripts/build_notebooks.py",
+        # The hand-written pages under docs/ are published prose too, and two of
+        # them describe the retired wording, which is exactly where it creeps
+        # back in as an assertion. Generated pages are excluded deliberately:
+        # they are rendered from the scoring log, so they state the real count.
+        "docs/ARCHITECTURE.md",
+        "docs/FAQ.md",
+        "docs/GLOSSARY.md",
+        "docs/SETUP.md",
+        "docs/README.md",
+    ],
 )
 def test_published_prose_does_not_claim_a_single_scoring(relative_path):
     """The test set has been scored three times; nothing shipped may say once.
