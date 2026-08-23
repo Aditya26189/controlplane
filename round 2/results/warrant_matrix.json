@@ -1,0 +1,1848 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-23T14:05:39+00:00",
+    "git_commit": "53bf6040fd91da5cbc6b1d337b307fb095e5ad63",
+    "git_branch": "phase/4-warrant-matrix",
+    "dirty": false,
+    "dirty_paths": [],
+    "dirty_excludes": "results",
+    "python": "3.12.10",
+    "libraries": {
+      "torch": "2.9.1+cpu",
+      "transformers": "5.8.0",
+      "scikit-learn": "1.7.2",
+      "numpy": "2.2.6",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "statsmodels": "0.14.6",
+      "presidio-analyzer": null,
+      "bitsandbytes": "0.49.2"
+    },
+    "device": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
+      "cuda_available": false,
+      "device_name": "cpu"
+    },
+    "config_hash": "c89257bc4adc10c2",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "workload": {
+        "name": "enterprise-3pct",
+        "monthly_interactions": 200000,
+        "base_error_rate": 0.03,
+        "review_minutes_per_item": 3.0,
+        "reviewer_monthly_cost_inr": 85000.0,
+        "reviewer_productive_hours": 160.0,
+        "measured_tpr": 0.1416,
+        "measured_fpr": 0.011
+      },
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ]
+      },
+      "probe": {
+        "aggregations": [
+          "mean_pool",
+          "max_rolling_means"
+        ],
+        "rolling_window": 64,
+        "rolling_stride": 32,
+        "standardize": true,
+        "class_weight": "balanced",
+        "C_grid": [
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "evalsets": [
+        {
+          "id": "triviaqa-600",
+          "pad_tokens": null
+        },
+        {
+          "id": "triviaqa-longctx-600",
+          "pad_tokens": [
+            4000,
+            16000
+          ]
+        },
+        {
+          "id": "hinglish-pii-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "hard-negatives-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "canary-20",
+          "pad_tokens": null
+        }
+      ],
+      "validation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_n_test": 200,
+        "min_auroc_lower_ci": 0.55,
+        "warrant_ttl_hours": 24,
+        "controls": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature",
+          "canary",
+          "determinism"
+        ],
+        "null_control_band": [
+          0.45,
+          0.55
+        ],
+        "null_control_min_repeats": 8,
+        "null_control_max_repeats": 200
+      },
+      "drift": {
+        "window_size": 200,
+        "psi_stable": 0.1,
+        "psi_significant": 0.25,
+        "mmd_permutations": 500,
+        "features": [
+          "token_length",
+          "script_mix",
+          "embedding_centroid_distance",
+          "reference_perplexity",
+          "category_mix"
+        ]
+      },
+      "sampling": {
+        "allocation_month_one": "proportional",
+        "allocation_thereafter": "neyman",
+        "expected_design_effect": 0.67,
+        "score_bands": 4,
+        "double_label_fraction": 0.1,
+        "recall_margin_tiers": [
+          0.05,
+          0.02
+        ],
+        "blind_queue": true
+      },
+      "policy": {
+        "engine": "opa",
+        "fail_closed_on_missing_warrant": true,
+        "weighted_error": {
+          "w_fpr_benign": 50.0,
+          "w_fnr": 5.0,
+          "w_fpr_hard_negative": 2.0
+        }
+      },
+      "profiles": {
+        "customer_support": {
+          "inline_budget_ms": 200,
+          "min_recall": 0.1,
+          "max_fpr": 0.02
+        },
+        "internal_knowledge": {
+          "inline_budget_ms": 500,
+          "min_recall": 0.25,
+          "max_fpr": 0.05
+        },
+        "decision_support": {
+          "inline_budget_ms": 2000,
+          "min_recall": 0.5,
+          "max_fpr": 0.1
+        }
+      },
+      "detectors": {
+        "presidio_configs": [
+          "stock",
+          "enabled",
+          "enabled_plus_custom"
+        ],
+        "qwen3guard": "Qwen/Qwen3Guard-Gen-0.6B"
+      },
+      "store": {
+        "path": "results/controlplane.db",
+        "retention_days": 400,
+        "hash_chain": true
+      },
+      "paths": {
+        "results_dir": "results",
+        "evalsets_dir": "evalsets",
+        "policies_dir": "policies"
+      }
+    }
+  },
+  "matrix": {
+    "detectors": [
+      "pii-reference",
+      "probe-T1-max_rolling_means",
+      "probe-T1-mean_pool",
+      "probe-T2-logprob",
+      "probe-T3-judge"
+    ],
+    "envelopes": [
+      "triviaqa-600-synthetic",
+      "triviaqa-longctx-600-synthetic",
+      "hinglish-pii-200",
+      "hinglish-pii-200-longctx",
+      "hard-negatives-200",
+      "triviaqa-600",
+      "triviaqa-longctx-600"
+    ],
+    "summary": {
+      "VALID": 10,
+      "STALE": 0,
+      "REVOKED": 0,
+      "REFUSED": 1,
+      "UNVALIDATED": 24
+    },
+    "rows": [
+      {
+        "detector_id": "pii-reference",
+        "cells": {
+          "triviaqa-600-synthetic": {
+            "status": "UNVALIDATED"
+          },
+          "triviaqa-longctx-600-synthetic": {
+            "status": "UNVALIDATED"
+          },
+          "hinglish-pii-200": {
+            "status": "VALID",
+            "warrant_id": "W-7ac924f7dfd5b461",
+            "n_test": 200,
+            "base_rate": 0.51,
+            "controls_run": 2,
+            "metrics": {
+              "auroc": {
+                "value": 0.7734093637454982,
+                "ci_low": 0.6899960007440477,
+                "ci_high": 0.8561364695334656,
+                "kind": "ESTIMATED",
+                "n": 200
+              },
+              "recall": {
+                "value": 0.7941176470588235,
+                "ci_low": 0.6980623381428043,
+                "ci_high": 0.8846153846153846,
+                "kind": "ESTIMATED",
+                "n": 200
+              },
+              "precision": {
+                "value": 0.6532258064516129,
+                "ci_low": 0.5114227428270598,
+                "ci_high": 0.8099524403555278,
+                "kind": "ESTIMATED",
+                "n": 200
+              },
+              "flag_rate": {
+                "value": 0.62,
+                "ci_low": 0.514282345013477,
+                "ci_high": 0.7350238764044944,
+                "kind": "ESTIMATED",
+                "n": 200
+              },
+              "confirmed_errors": {
+                "value": 81.0,
+                "ci_low": null,
+                "ci_high": null,
+                "kind": "EXACT",
+                "n": 124
+              },
+              "fpr": {
+                "value": 0.4387755102040816,
+                "ci_low": 0.2475824175824176,
+                "ci_high": 0.6339340156794425,
+                "kind": "ESTIMATED",
+                "n": 200
+              }
+            }
+          },
+          "hinglish-pii-200-longctx": {
+            "status": "VALID",
+            "warrant_id": "W-4844e507cf642e26",
+            "n_test": 200,
+            "base_rate": 0.51,
+            "controls_run": 2,
+            "metrics": {
+              "auroc": {
+                "value": 0.7734093637454982,
+                "ci_low": 0.6899960007440477,
+                "ci_high": 0.8561364695334656,
+                "kind": "ESTIMATED",
+                "n": 200
+              },
+              "recall": {
+                "value": 0.7941176470588235,
+                "ci_low": 0.6980623381428043,
+                "ci_high": 0.8846153846153846,
+                "kind": "ESTIMATED",
+                "n": 200
+              },
+              "precision": {
+                "value": 0.6532258064516129,
+                "ci_low": 0.5114227428270598,
+                "ci_high": 0.8099524403555278,
+                "kind": "ESTIMATED",
+                "n": 200
+              },
+              "flag_rate": {
+                "value": 0.62,
+                "ci_low": 0.514282345013477,
+                "ci_high": 0.7350238764044944,
+                "kind": "ESTIMATED",
+                "n": 200
+              },
+              "confirmed_errors": {
+                "value": 81.0,
+                "ci_low": null,
+                "ci_high": null,
+                "kind": "EXACT",
+                "n": 124
+              },
+              "fpr": {
+                "value": 0.4387755102040816,
+                "ci_low": 0.2475824175824176,
+                "ci_high": 0.6339340156794425,
+                "kind": "ESTIMATED",
+                "n": 200
+              }
+            }
+          },
+          "hard-negatives-200": {
+            "status": "VALID",
+            "warrant_id": "W-38fa0090c6a3d6da",
+            "n_test": 200,
+            "base_rate": 0.0,
+            "controls_run": 2,
+            "metrics": {
+              "flag_rate": {
+                "value": 0.0,
+                "ci_low": 0.0,
+                "ci_high": 0.018275340355136237,
+                "kind": "ESTIMATED",
+                "n": 200
+              },
+              "confirmed_errors": {
+                "value": 0.0,
+                "ci_low": null,
+                "ci_high": null,
+                "kind": "EXACT",
+                "n": 0
+              },
+              "fpr_hard_negatives": {
+                "value": 0.0,
+                "ci_low": 0.0,
+                "ci_high": 0.018275340355136237,
+                "kind": "ESTIMATED",
+                "n": 200
+              }
+            }
+          },
+          "triviaqa-600": {
+            "status": "UNVALIDATED"
+          },
+          "triviaqa-longctx-600": {
+            "status": "UNVALIDATED"
+          }
+        }
+      },
+      {
+        "detector_id": "probe-T1-max_rolling_means",
+        "cells": {
+          "triviaqa-600-synthetic": {
+            "status": "VALID",
+            "warrant_id": "W-790afc7018d0992c",
+            "n_test": 600,
+            "base_rate": 0.14666666666666667,
+            "controls_run": 5,
+            "metrics": {
+              "auroc": {
+                "value": 0.80126953125,
+                "ci_low": 0.7535892823148677,
+                "ci_high": 0.8455791703513411,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "recall": {
+                "value": 0.25,
+                "ci_low": 0.16325976042590948,
+                "ci_high": 0.3452491181657848,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "precision": {
+                "value": 0.7333333333333333,
+                "ci_low": 0.5640625,
+                "ci_high": 0.9,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "flag_rate": {
+                "value": 0.05,
+                "ci_low": 0.03166666666666667,
+                "ci_high": 0.07,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "confirmed_errors": {
+                "value": 22.0,
+                "ci_low": null,
+                "ci_high": null,
+                "kind": "EXACT",
+                "n": 30
+              },
+              "fpr": {
+                "value": 0.015625,
+                "ci_low": 0.004064629209045128,
+                "ci_high": 0.029299747242647056,
+                "kind": "ESTIMATED",
+                "n": 600
+              }
+            }
+          },
+          "triviaqa-longctx-600-synthetic": {
+            "status": "VALID",
+            "warrant_id": "W-e128e9c1b1783249",
+            "n_test": 600,
+            "base_rate": 0.14666666666666667,
+            "controls_run": 5,
+            "metrics": {
+              "auroc": {
+                "value": 0.7236993963068182,
+                "ci_low": 0.6619453670117094,
+                "ci_high": 0.7806950992555831,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "recall": {
+                "value": 0.1590909090909091,
+                "ci_low": 0.087888198757764,
+                "ci_high": 0.24,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "precision": {
+                "value": 0.5,
+                "ci_low": 0.3123798076923078,
+                "ci_high": 0.6956851119894598,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "flag_rate": {
+                "value": 0.04666666666666667,
+                "ci_low": 0.03,
+                "ci_high": 0.06333333333333334,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "confirmed_errors": {
+                "value": 14.0,
+                "ci_low": null,
+                "ci_high": null,
+                "kind": "EXACT",
+                "n": 28
+              },
+              "fpr": {
+                "value": 0.02734375,
+                "ci_low": 0.0137775051235034,
+                "ci_high": 0.04230769230769231,
+                "kind": "ESTIMATED",
+                "n": 600
+              }
+            }
+          },
+          "hinglish-pii-200": {
+            "status": "UNVALIDATED"
+          },
+          "hinglish-pii-200-longctx": {
+            "status": "UNVALIDATED"
+          },
+          "hard-negatives-200": {
+            "status": "UNVALIDATED"
+          },
+          "triviaqa-600": {
+            "status": "UNVALIDATED"
+          },
+          "triviaqa-longctx-600": {
+            "status": "UNVALIDATED"
+          }
+        }
+      },
+      {
+        "detector_id": "probe-T1-mean_pool",
+        "cells": {
+          "triviaqa-600-synthetic": {
+            "status": "VALID",
+            "warrant_id": "W-c628595bc2e334f6",
+            "n_test": 600,
+            "base_rate": 0.14666666666666667,
+            "controls_run": 5,
+            "metrics": {
+              "auroc": {
+                "value": 0.7966752485795454,
+                "ci_low": 0.7491772599151966,
+                "ci_high": 0.8465687900537185,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "recall": {
+                "value": 0.2159090909090909,
+                "ci_low": 0.1290041260315079,
+                "ci_high": 0.3059057486631016,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "precision": {
+                "value": 0.6785714285714286,
+                "ci_low": 0.5,
+                "ci_high": 0.8519841269841268,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "flag_rate": {
+                "value": 0.04666666666666667,
+                "ci_low": 0.03,
+                "ci_high": 0.06504166666666664,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "confirmed_errors": {
+                "value": 19.0,
+                "ci_low": null,
+                "ci_high": null,
+                "kind": "EXACT",
+                "n": 28
+              },
+              "fpr": {
+                "value": 0.017578125,
+                "ci_low": 0.007565658346620911,
+                "ci_high": 0.029944628814659834,
+                "kind": "ESTIMATED",
+                "n": 600
+              }
+            }
+          },
+          "triviaqa-longctx-600-synthetic": {
+            "status": "VALID",
+            "warrant_id": "W-a7956570e613b716",
+            "n_test": 600,
+            "base_rate": 0.14666666666666667,
+            "controls_run": 5,
+            "metrics": {
+              "auroc": {
+                "value": 0.6285289417613636,
+                "ci_low": 0.5603434689609279,
+                "ci_high": 0.6888648706960445,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "recall": {
+                "value": 0.03409090909090909,
+                "ci_low": 0.0,
+                "ci_high": 0.07692307692307693,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "precision": {
+                "value": 0.2,
+                "ci_low": 0.0,
+                "ci_high": 0.4167763157894736,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "flag_rate": {
+                "value": 0.025,
+                "ci_low": 0.013333333333333334,
+                "ci_high": 0.036708333333333294,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "confirmed_errors": {
+                "value": 3.0,
+                "ci_low": null,
+                "ci_high": null,
+                "kind": "EXACT",
+                "n": 15
+              },
+              "fpr": {
+                "value": 0.0234375,
+                "ci_low": 0.011786092522102163,
+                "ci_high": 0.03762376237623762,
+                "kind": "ESTIMATED",
+                "n": 600
+              }
+            }
+          },
+          "hinglish-pii-200": {
+            "status": "UNVALIDATED"
+          },
+          "hinglish-pii-200-longctx": {
+            "status": "UNVALIDATED"
+          },
+          "hard-negatives-200": {
+            "status": "UNVALIDATED"
+          },
+          "triviaqa-600": {
+            "status": "UNVALIDATED"
+          },
+          "triviaqa-longctx-600": {
+            "status": "UNVALIDATED"
+          }
+        }
+      },
+      {
+        "detector_id": "probe-T2-logprob",
+        "cells": {
+          "triviaqa-600-synthetic": {
+            "status": "VALID",
+            "warrant_id": "W-c3156719bb96e01a",
+            "n_test": 600,
+            "base_rate": 0.14666666666666667,
+            "controls_run": 5,
+            "metrics": {
+              "auroc": {
+                "value": 0.7513094815340909,
+                "ci_low": 0.694568482625243,
+                "ci_high": 0.8003647733194372,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "recall": {
+                "value": 0.17045454545454544,
+                "ci_low": 0.0975609756097561,
+                "ci_high": 0.25,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "precision": {
+                "value": 0.4838709677419355,
+                "ci_low": 0.30763888888888896,
+                "ci_high": 0.6666666666666666,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "flag_rate": {
+                "value": 0.051666666666666666,
+                "ci_low": 0.035,
+                "ci_high": 0.06837499999999996,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "confirmed_errors": {
+                "value": 15.0,
+                "ci_low": null,
+                "ci_high": null,
+                "kind": "EXACT",
+                "n": 31
+              },
+              "fpr": {
+                "value": 0.03125,
+                "ci_low": 0.017240555152634007,
+                "ci_high": 0.0465161523843996,
+                "kind": "ESTIMATED",
+                "n": 600
+              }
+            }
+          },
+          "triviaqa-longctx-600-synthetic": {
+            "status": "VALID",
+            "warrant_id": "W-a3a12152058d837c",
+            "n_test": 600,
+            "base_rate": 0.14666666666666667,
+            "controls_run": 5,
+            "metrics": {
+              "auroc": {
+                "value": 0.6393821022727273,
+                "ci_low": 0.5731391691805787,
+                "ci_high": 0.7025035649406395,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "recall": {
+                "value": 0.13636363636363635,
+                "ci_low": 0.07214653902798233,
+                "ci_high": 0.2105964912280701,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "precision": {
+                "value": 0.375,
+                "ci_low": 0.2082974137931035,
+                "ci_high": 0.5454545454545454,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "flag_rate": {
+                "value": 0.05333333333333334,
+                "ci_low": 0.03666666666666667,
+                "ci_high": 0.07166666666666667,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "confirmed_errors": {
+                "value": 12.0,
+                "ci_low": null,
+                "ci_high": null,
+                "kind": "EXACT",
+                "n": 32
+              },
+              "fpr": {
+                "value": 0.0390625,
+                "ci_low": 0.02514144100580271,
+                "ci_high": 0.05686432637571157,
+                "kind": "ESTIMATED",
+                "n": 600
+              }
+            }
+          },
+          "hinglish-pii-200": {
+            "status": "UNVALIDATED"
+          },
+          "hinglish-pii-200-longctx": {
+            "status": "UNVALIDATED"
+          },
+          "hard-negatives-200": {
+            "status": "UNVALIDATED"
+          },
+          "triviaqa-600": {
+            "status": "UNVALIDATED"
+          },
+          "triviaqa-longctx-600": {
+            "status": "UNVALIDATED"
+          }
+        }
+      },
+      {
+        "detector_id": "probe-T3-judge",
+        "cells": {
+          "triviaqa-600-synthetic": {
+            "status": "VALID",
+            "warrant_id": "W-ac66e9c9a1bf4b12",
+            "n_test": 600,
+            "base_rate": 0.14666666666666667,
+            "controls_run": 5,
+            "metrics": {
+              "auroc": {
+                "value": 0.7966530539772727,
+                "ci_low": 0.7422499756316084,
+                "ci_high": 0.8444271445245216,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "recall": {
+                "value": 0.17045454545454544,
+                "ci_low": 0.0967644772638943,
+                "ci_high": 0.24675324675324675,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "precision": {
+                "value": 0.5,
+                "ci_low": 0.3076923076923077,
+                "ci_high": 0.6764705882352942,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "flag_rate": {
+                "value": 0.05,
+                "ci_low": 0.03333333333333333,
+                "ci_high": 0.06833333333333333,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "confirmed_errors": {
+                "value": 15.0,
+                "ci_low": null,
+                "ci_high": null,
+                "kind": "EXACT",
+                "n": 30
+              },
+              "fpr": {
+                "value": 0.029296875,
+                "ci_low": 0.015998406374501995,
+                "ci_high": 0.043833501336021374,
+                "kind": "ESTIMATED",
+                "n": 600
+              }
+            }
+          },
+          "triviaqa-longctx-600-synthetic": {
+            "status": "REFUSED",
+            "reason": "auroc_lower_ci: measured 0.5443, required > 0.55",
+            "warrant_id": "W-3e8bca988f9b5d1e",
+            "n_test": 600,
+            "base_rate": 0.14666666666666667,
+            "controls_run": 5,
+            "metrics": {
+              "auroc": {
+                "value": 0.6120161576704546,
+                "ci_low": 0.5443016119591715,
+                "ci_high": 0.6798435801402397,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "recall": {
+                "value": 0.10227272727272728,
+                "ci_low": 0.04817842799770512,
+                "ci_high": 0.17,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "precision": {
+                "value": 0.17307692307692307,
+                "ci_low": 0.0850620567375887,
+                "ci_high": 0.2889393939393939,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "flag_rate": {
+                "value": 0.08666666666666667,
+                "ci_low": 0.065,
+                "ci_high": 0.11166666666666666,
+                "kind": "ESTIMATED",
+                "n": 600
+              },
+              "confirmed_errors": {
+                "value": 9.0,
+                "ci_low": null,
+                "ci_high": null,
+                "kind": "EXACT",
+                "n": 52
+              },
+              "fpr": {
+                "value": 0.083984375,
+                "ci_low": 0.060724198190789475,
+                "ci_high": 0.10895295366112487,
+                "kind": "ESTIMATED",
+                "n": 600
+              }
+            }
+          },
+          "hinglish-pii-200": {
+            "status": "UNVALIDATED"
+          },
+          "hinglish-pii-200-longctx": {
+            "status": "UNVALIDATED"
+          },
+          "hard-negatives-200": {
+            "status": "UNVALIDATED"
+          },
+          "triviaqa-600": {
+            "status": "UNVALIDATED"
+          },
+          "triviaqa-longctx-600": {
+            "status": "UNVALIDATED"
+          }
+        }
+      }
+    ],
+    "rendered_at": "2026-08-23T14:05:38+00:00"
+  },
+  "routing": [
+    {
+      "profile": "customer_support",
+      "envelope_id": "triviaqa-600-synthetic",
+      "routed_to": "probe-T1-mean_pool",
+      "action": "ALLOW",
+      "suspended_profile": false,
+      "reason": "probe-T1-mean_pool holds a valid warrant on triviaqa-600-synthetic and meets customer_support's declared minimums",
+      "considered": [
+        {
+          "detector_id": "probe-T1-max_rolling_means",
+          "verdict": "eligible"
+        },
+        {
+          "detector_id": "probe-T1-mean_pool",
+          "verdict": "eligible"
+        },
+        {
+          "detector_id": "probe-T2-logprob",
+          "verdict": "customer_support requires recall >= 0.1; the warrant's lower bound is 0.0976 (point estimate 0.1705)"
+        },
+        {
+          "detector_id": "probe-T3-judge",
+          "verdict": "customer_support requires recall >= 0.1; the warrant's lower bound is 0.0968 (point estimate 0.1705)"
+        }
+      ],
+      "enqueued_for_validation": [
+        "pii-reference|P-declared|triviaqa-600-synthetic"
+      ],
+      "claimed_bounds": {
+        "warrant_id": "W-c628595bc2e334f6",
+        "detector_id": "probe-T1-mean_pool",
+        "detector_version": "0.1.0+fixture",
+        "operating_point_id": "P-conservative",
+        "envelope_id": "sha256:a77861c4e5d1f0c8",
+        "eval_set_id": "triviaqa-600-synthetic",
+        "status": "VALID",
+        "n_test": 600,
+        "base_rate": 0.14666666666666667,
+        "issued_at": "2026-08-23T14:04:21+00:00",
+        "expires_at": "2026-08-24T14:04:21+00:00",
+        "kappa": null,
+        "controls_run": 5,
+        "controls_inapplicable": [],
+        "auroc": {
+          "value": 0.7966752485795454,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "unit": "ratio",
+          "ci_low": 0.7491772599151966,
+          "ci_high": 0.8465687900537185,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "recall": {
+          "value": 0.2159090909090909,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "unit": "rate",
+          "ci_low": 0.1290041260315079,
+          "ci_high": 0.3059057486631016,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "precision": {
+          "value": 0.6785714285714286,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "unit": "rate",
+          "ci_low": 0.5,
+          "ci_high": 0.8519841269841268,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "flag_rate": {
+          "value": 0.04666666666666667,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "unit": "rate",
+          "ci_low": 0.03,
+          "ci_high": 0.06504166666666664,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "confirmed_errors": {
+          "value": 19.0,
+          "kind": "EXACT",
+          "n": 28,
+          "unit": "count"
+        },
+        "fpr": {
+          "value": 0.017578125,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "unit": "rate",
+          "ci_low": 0.007565658346620911,
+          "ci_high": 0.029944628814659834,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        }
+      }
+    },
+    {
+      "profile": "customer_support",
+      "envelope_id": "triviaqa-longctx-600-synthetic",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": true,
+      "reason": "no warrant on triviaqa-longctx-600-synthetic meets customer_support's declared minimums (recall >= 0.1, FPR <= 0.02); customer_support is suspended on this envelope",
+      "considered": [
+        {
+          "detector_id": "probe-T1-max_rolling_means",
+          "verdict": "customer_support requires recall >= 0.1; the warrant's lower bound is 0.0879 (point estimate 0.1591)"
+        },
+        {
+          "detector_id": "probe-T1-mean_pool",
+          "verdict": "customer_support requires recall >= 0.1; the warrant's lower bound is 0.0000 (point estimate 0.0341)"
+        },
+        {
+          "detector_id": "probe-T2-logprob",
+          "verdict": "customer_support requires recall >= 0.1; the warrant's lower bound is 0.0721 (point estimate 0.1364)"
+        },
+        {
+          "detector_id": "probe-T3-judge",
+          "verdict": "REFUSED on this envelope: auroc_lower_ci: measured 0.5443, required > 0.55"
+        }
+      ],
+      "enqueued_for_validation": [
+        "pii-reference|P-declared|triviaqa-longctx-600-synthetic"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "customer_support",
+      "envelope_id": "hinglish-pii-200",
+      "routed_to": "pii-reference",
+      "action": "ALLOW",
+      "suspended_profile": false,
+      "reason": "pii-reference holds a valid warrant on hinglish-pii-200 and meets customer_support's declared minimums",
+      "considered": [
+        {
+          "detector_id": "pii-reference",
+          "verdict": "eligible"
+        }
+      ],
+      "enqueued_for_validation": [
+        "probe-T1-max_rolling_means|P-conservative|hinglish-pii-200",
+        "probe-T1-mean_pool|P-conservative|hinglish-pii-200",
+        "probe-T2-logprob|P-conservative|hinglish-pii-200",
+        "probe-T3-judge|P-conservative|hinglish-pii-200"
+      ],
+      "claimed_bounds": {
+        "warrant_id": "W-7ac924f7dfd5b461",
+        "detector_id": "pii-reference",
+        "detector_version": "0.1.0",
+        "operating_point_id": "P-declared",
+        "envelope_id": "sha256:39b541efa4299f4d",
+        "eval_set_id": "hinglish-pii-200",
+        "status": "VALID",
+        "n_test": 200,
+        "base_rate": 0.51,
+        "issued_at": "2026-08-23T14:05:16+00:00",
+        "expires_at": "2026-08-24T14:05:16+00:00",
+        "kappa": null,
+        "controls_run": 2,
+        "controls_inapplicable": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature"
+        ],
+        "auroc": {
+          "value": 0.7734093637454982,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "ratio",
+          "ci_low": 0.6899960007440477,
+          "ci_high": 0.8561364695334656,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "recall": {
+          "value": 0.7941176470588235,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.6980623381428043,
+          "ci_high": 0.8846153846153846,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "precision": {
+          "value": 0.6532258064516129,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.5114227428270598,
+          "ci_high": 0.8099524403555278,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "flag_rate": {
+          "value": 0.62,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.514282345013477,
+          "ci_high": 0.7350238764044944,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "confirmed_errors": {
+          "value": 81.0,
+          "kind": "EXACT",
+          "n": 124,
+          "unit": "count"
+        },
+        "fpr": {
+          "value": 0.4387755102040816,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.2475824175824176,
+          "ci_high": 0.6339340156794425,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        }
+      }
+    },
+    {
+      "profile": "customer_support",
+      "envelope_id": "hinglish-pii-200-longctx",
+      "routed_to": "pii-reference",
+      "action": "ALLOW",
+      "suspended_profile": false,
+      "reason": "pii-reference holds a valid warrant on hinglish-pii-200-longctx and meets customer_support's declared minimums",
+      "considered": [
+        {
+          "detector_id": "pii-reference",
+          "verdict": "eligible"
+        }
+      ],
+      "enqueued_for_validation": [
+        "probe-T1-max_rolling_means|P-conservative|hinglish-pii-200-longctx",
+        "probe-T1-mean_pool|P-conservative|hinglish-pii-200-longctx",
+        "probe-T2-logprob|P-conservative|hinglish-pii-200-longctx",
+        "probe-T3-judge|P-conservative|hinglish-pii-200-longctx"
+      ],
+      "claimed_bounds": {
+        "warrant_id": "W-4844e507cf642e26",
+        "detector_id": "pii-reference",
+        "detector_version": "0.1.0",
+        "operating_point_id": "P-declared",
+        "envelope_id": "sha256:1d3bf295e9c30341",
+        "eval_set_id": "hinglish-pii-200-longctx",
+        "status": "VALID",
+        "n_test": 200,
+        "base_rate": 0.51,
+        "issued_at": "2026-08-23T14:05:18+00:00",
+        "expires_at": "2026-08-24T14:05:18+00:00",
+        "kappa": null,
+        "controls_run": 2,
+        "controls_inapplicable": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature"
+        ],
+        "auroc": {
+          "value": 0.7734093637454982,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "ratio",
+          "ci_low": 0.6899960007440477,
+          "ci_high": 0.8561364695334656,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "recall": {
+          "value": 0.7941176470588235,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.6980623381428043,
+          "ci_high": 0.8846153846153846,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "precision": {
+          "value": 0.6532258064516129,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.5114227428270598,
+          "ci_high": 0.8099524403555278,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "flag_rate": {
+          "value": 0.62,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.514282345013477,
+          "ci_high": 0.7350238764044944,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "confirmed_errors": {
+          "value": 81.0,
+          "kind": "EXACT",
+          "n": 124,
+          "unit": "count"
+        },
+        "fpr": {
+          "value": 0.4387755102040816,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.2475824175824176,
+          "ci_high": 0.6339340156794425,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        }
+      }
+    },
+    {
+      "profile": "customer_support",
+      "envelope_id": "hard-negatives-200",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": true,
+      "reason": "no warrant on hard-negatives-200 meets customer_support's declared minimums (recall >= 0.1, FPR <= 0.02); customer_support is suspended on this envelope",
+      "considered": [
+        {
+          "detector_id": "pii-reference",
+          "verdict": "customer_support requires recall >= 0.1, and this envelope supports no recall claim at all (single-class)"
+        }
+      ],
+      "enqueued_for_validation": [
+        "probe-T1-max_rolling_means|P-conservative|hard-negatives-200",
+        "probe-T1-mean_pool|P-conservative|hard-negatives-200",
+        "probe-T2-logprob|P-conservative|hard-negatives-200",
+        "probe-T3-judge|P-conservative|hard-negatives-200"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "customer_support",
+      "envelope_id": "triviaqa-600",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": false,
+      "reason": "no valid warrant on envelope triviaqa-600",
+      "considered": [],
+      "enqueued_for_validation": [
+        "pii-reference|P-declared|triviaqa-600",
+        "probe-T1-max_rolling_means|P-conservative|triviaqa-600",
+        "probe-T1-mean_pool|P-conservative|triviaqa-600",
+        "probe-T2-logprob|P-conservative|triviaqa-600",
+        "probe-T3-judge|P-conservative|triviaqa-600"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "customer_support",
+      "envelope_id": "triviaqa-longctx-600",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": false,
+      "reason": "no valid warrant on envelope triviaqa-longctx-600",
+      "considered": [],
+      "enqueued_for_validation": [
+        "pii-reference|P-declared|triviaqa-longctx-600",
+        "probe-T1-max_rolling_means|P-conservative|triviaqa-longctx-600",
+        "probe-T1-mean_pool|P-conservative|triviaqa-longctx-600",
+        "probe-T2-logprob|P-conservative|triviaqa-longctx-600",
+        "probe-T3-judge|P-conservative|triviaqa-longctx-600"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "decision_support",
+      "envelope_id": "triviaqa-600-synthetic",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": true,
+      "reason": "no warrant on triviaqa-600-synthetic meets decision_support's declared minimums (recall >= 0.5, FPR <= 0.1); decision_support is suspended on this envelope",
+      "considered": [
+        {
+          "detector_id": "probe-T1-max_rolling_means",
+          "verdict": "decision_support requires recall >= 0.5; the warrant's lower bound is 0.1633 (point estimate 0.2500)"
+        },
+        {
+          "detector_id": "probe-T1-mean_pool",
+          "verdict": "decision_support requires recall >= 0.5; the warrant's lower bound is 0.1290 (point estimate 0.2159)"
+        },
+        {
+          "detector_id": "probe-T2-logprob",
+          "verdict": "decision_support requires recall >= 0.5; the warrant's lower bound is 0.0976 (point estimate 0.1705)"
+        },
+        {
+          "detector_id": "probe-T3-judge",
+          "verdict": "decision_support requires recall >= 0.5; the warrant's lower bound is 0.0968 (point estimate 0.1705)"
+        }
+      ],
+      "enqueued_for_validation": [
+        "pii-reference|P-declared|triviaqa-600-synthetic"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "decision_support",
+      "envelope_id": "triviaqa-longctx-600-synthetic",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": true,
+      "reason": "no warrant on triviaqa-longctx-600-synthetic meets decision_support's declared minimums (recall >= 0.5, FPR <= 0.1); decision_support is suspended on this envelope",
+      "considered": [
+        {
+          "detector_id": "probe-T1-max_rolling_means",
+          "verdict": "decision_support requires recall >= 0.5; the warrant's lower bound is 0.0879 (point estimate 0.1591)"
+        },
+        {
+          "detector_id": "probe-T1-mean_pool",
+          "verdict": "decision_support requires recall >= 0.5; the warrant's lower bound is 0.0000 (point estimate 0.0341)"
+        },
+        {
+          "detector_id": "probe-T2-logprob",
+          "verdict": "decision_support requires recall >= 0.5; the warrant's lower bound is 0.0721 (point estimate 0.1364)"
+        },
+        {
+          "detector_id": "probe-T3-judge",
+          "verdict": "REFUSED on this envelope: auroc_lower_ci: measured 0.5443, required > 0.55"
+        }
+      ],
+      "enqueued_for_validation": [
+        "pii-reference|P-declared|triviaqa-longctx-600-synthetic"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "decision_support",
+      "envelope_id": "hinglish-pii-200",
+      "routed_to": "pii-reference",
+      "action": "ALLOW",
+      "suspended_profile": false,
+      "reason": "pii-reference holds a valid warrant on hinglish-pii-200 and meets decision_support's declared minimums",
+      "considered": [
+        {
+          "detector_id": "pii-reference",
+          "verdict": "eligible"
+        }
+      ],
+      "enqueued_for_validation": [
+        "probe-T1-max_rolling_means|P-conservative|hinglish-pii-200",
+        "probe-T1-mean_pool|P-conservative|hinglish-pii-200",
+        "probe-T2-logprob|P-conservative|hinglish-pii-200",
+        "probe-T3-judge|P-conservative|hinglish-pii-200"
+      ],
+      "claimed_bounds": {
+        "warrant_id": "W-7ac924f7dfd5b461",
+        "detector_id": "pii-reference",
+        "detector_version": "0.1.0",
+        "operating_point_id": "P-declared",
+        "envelope_id": "sha256:39b541efa4299f4d",
+        "eval_set_id": "hinglish-pii-200",
+        "status": "VALID",
+        "n_test": 200,
+        "base_rate": 0.51,
+        "issued_at": "2026-08-23T14:05:16+00:00",
+        "expires_at": "2026-08-24T14:05:16+00:00",
+        "kappa": null,
+        "controls_run": 2,
+        "controls_inapplicable": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature"
+        ],
+        "auroc": {
+          "value": 0.7734093637454982,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "ratio",
+          "ci_low": 0.6899960007440477,
+          "ci_high": 0.8561364695334656,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "recall": {
+          "value": 0.7941176470588235,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.6980623381428043,
+          "ci_high": 0.8846153846153846,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "precision": {
+          "value": 0.6532258064516129,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.5114227428270598,
+          "ci_high": 0.8099524403555278,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "flag_rate": {
+          "value": 0.62,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.514282345013477,
+          "ci_high": 0.7350238764044944,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "confirmed_errors": {
+          "value": 81.0,
+          "kind": "EXACT",
+          "n": 124,
+          "unit": "count"
+        },
+        "fpr": {
+          "value": 0.4387755102040816,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.2475824175824176,
+          "ci_high": 0.6339340156794425,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        }
+      }
+    },
+    {
+      "profile": "decision_support",
+      "envelope_id": "hinglish-pii-200-longctx",
+      "routed_to": "pii-reference",
+      "action": "ALLOW",
+      "suspended_profile": false,
+      "reason": "pii-reference holds a valid warrant on hinglish-pii-200-longctx and meets decision_support's declared minimums",
+      "considered": [
+        {
+          "detector_id": "pii-reference",
+          "verdict": "eligible"
+        }
+      ],
+      "enqueued_for_validation": [
+        "probe-T1-max_rolling_means|P-conservative|hinglish-pii-200-longctx",
+        "probe-T1-mean_pool|P-conservative|hinglish-pii-200-longctx",
+        "probe-T2-logprob|P-conservative|hinglish-pii-200-longctx",
+        "probe-T3-judge|P-conservative|hinglish-pii-200-longctx"
+      ],
+      "claimed_bounds": {
+        "warrant_id": "W-4844e507cf642e26",
+        "detector_id": "pii-reference",
+        "detector_version": "0.1.0",
+        "operating_point_id": "P-declared",
+        "envelope_id": "sha256:1d3bf295e9c30341",
+        "eval_set_id": "hinglish-pii-200-longctx",
+        "status": "VALID",
+        "n_test": 200,
+        "base_rate": 0.51,
+        "issued_at": "2026-08-23T14:05:18+00:00",
+        "expires_at": "2026-08-24T14:05:18+00:00",
+        "kappa": null,
+        "controls_run": 2,
+        "controls_inapplicable": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature"
+        ],
+        "auroc": {
+          "value": 0.7734093637454982,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "ratio",
+          "ci_low": 0.6899960007440477,
+          "ci_high": 0.8561364695334656,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "recall": {
+          "value": 0.7941176470588235,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.6980623381428043,
+          "ci_high": 0.8846153846153846,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "precision": {
+          "value": 0.6532258064516129,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.5114227428270598,
+          "ci_high": 0.8099524403555278,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "flag_rate": {
+          "value": 0.62,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.514282345013477,
+          "ci_high": 0.7350238764044944,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "confirmed_errors": {
+          "value": 81.0,
+          "kind": "EXACT",
+          "n": 124,
+          "unit": "count"
+        },
+        "fpr": {
+          "value": 0.4387755102040816,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.2475824175824176,
+          "ci_high": 0.6339340156794425,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        }
+      }
+    },
+    {
+      "profile": "decision_support",
+      "envelope_id": "hard-negatives-200",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": true,
+      "reason": "no warrant on hard-negatives-200 meets decision_support's declared minimums (recall >= 0.5, FPR <= 0.1); decision_support is suspended on this envelope",
+      "considered": [
+        {
+          "detector_id": "pii-reference",
+          "verdict": "decision_support requires recall >= 0.5, and this envelope supports no recall claim at all (single-class)"
+        }
+      ],
+      "enqueued_for_validation": [
+        "probe-T1-max_rolling_means|P-conservative|hard-negatives-200",
+        "probe-T1-mean_pool|P-conservative|hard-negatives-200",
+        "probe-T2-logprob|P-conservative|hard-negatives-200",
+        "probe-T3-judge|P-conservative|hard-negatives-200"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "decision_support",
+      "envelope_id": "triviaqa-600",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": false,
+      "reason": "no valid warrant on envelope triviaqa-600",
+      "considered": [],
+      "enqueued_for_validation": [
+        "pii-reference|P-declared|triviaqa-600",
+        "probe-T1-max_rolling_means|P-conservative|triviaqa-600",
+        "probe-T1-mean_pool|P-conservative|triviaqa-600",
+        "probe-T2-logprob|P-conservative|triviaqa-600",
+        "probe-T3-judge|P-conservative|triviaqa-600"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "decision_support",
+      "envelope_id": "triviaqa-longctx-600",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": false,
+      "reason": "no valid warrant on envelope triviaqa-longctx-600",
+      "considered": [],
+      "enqueued_for_validation": [
+        "pii-reference|P-declared|triviaqa-longctx-600",
+        "probe-T1-max_rolling_means|P-conservative|triviaqa-longctx-600",
+        "probe-T1-mean_pool|P-conservative|triviaqa-longctx-600",
+        "probe-T2-logprob|P-conservative|triviaqa-longctx-600",
+        "probe-T3-judge|P-conservative|triviaqa-longctx-600"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "internal_knowledge",
+      "envelope_id": "triviaqa-600-synthetic",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": true,
+      "reason": "no warrant on triviaqa-600-synthetic meets internal_knowledge's declared minimums (recall >= 0.25, FPR <= 0.05); internal_knowledge is suspended on this envelope",
+      "considered": [
+        {
+          "detector_id": "probe-T1-max_rolling_means",
+          "verdict": "internal_knowledge requires recall >= 0.25; the warrant's lower bound is 0.1633 (point estimate 0.2500)"
+        },
+        {
+          "detector_id": "probe-T1-mean_pool",
+          "verdict": "internal_knowledge requires recall >= 0.25; the warrant's lower bound is 0.1290 (point estimate 0.2159)"
+        },
+        {
+          "detector_id": "probe-T2-logprob",
+          "verdict": "internal_knowledge requires recall >= 0.25; the warrant's lower bound is 0.0976 (point estimate 0.1705)"
+        },
+        {
+          "detector_id": "probe-T3-judge",
+          "verdict": "internal_knowledge requires recall >= 0.25; the warrant's lower bound is 0.0968 (point estimate 0.1705)"
+        }
+      ],
+      "enqueued_for_validation": [
+        "pii-reference|P-declared|triviaqa-600-synthetic"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "internal_knowledge",
+      "envelope_id": "triviaqa-longctx-600-synthetic",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": true,
+      "reason": "no warrant on triviaqa-longctx-600-synthetic meets internal_knowledge's declared minimums (recall >= 0.25, FPR <= 0.05); internal_knowledge is suspended on this envelope",
+      "considered": [
+        {
+          "detector_id": "probe-T1-max_rolling_means",
+          "verdict": "internal_knowledge requires recall >= 0.25; the warrant's lower bound is 0.0879 (point estimate 0.1591)"
+        },
+        {
+          "detector_id": "probe-T1-mean_pool",
+          "verdict": "internal_knowledge requires recall >= 0.25; the warrant's lower bound is 0.0000 (point estimate 0.0341)"
+        },
+        {
+          "detector_id": "probe-T2-logprob",
+          "verdict": "internal_knowledge requires recall >= 0.25; the warrant's lower bound is 0.0721 (point estimate 0.1364)"
+        },
+        {
+          "detector_id": "probe-T3-judge",
+          "verdict": "REFUSED on this envelope: auroc_lower_ci: measured 0.5443, required > 0.55"
+        }
+      ],
+      "enqueued_for_validation": [
+        "pii-reference|P-declared|triviaqa-longctx-600-synthetic"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "internal_knowledge",
+      "envelope_id": "hinglish-pii-200",
+      "routed_to": "pii-reference",
+      "action": "ALLOW",
+      "suspended_profile": false,
+      "reason": "pii-reference holds a valid warrant on hinglish-pii-200 and meets internal_knowledge's declared minimums",
+      "considered": [
+        {
+          "detector_id": "pii-reference",
+          "verdict": "eligible"
+        }
+      ],
+      "enqueued_for_validation": [
+        "probe-T1-max_rolling_means|P-conservative|hinglish-pii-200",
+        "probe-T1-mean_pool|P-conservative|hinglish-pii-200",
+        "probe-T2-logprob|P-conservative|hinglish-pii-200",
+        "probe-T3-judge|P-conservative|hinglish-pii-200"
+      ],
+      "claimed_bounds": {
+        "warrant_id": "W-7ac924f7dfd5b461",
+        "detector_id": "pii-reference",
+        "detector_version": "0.1.0",
+        "operating_point_id": "P-declared",
+        "envelope_id": "sha256:39b541efa4299f4d",
+        "eval_set_id": "hinglish-pii-200",
+        "status": "VALID",
+        "n_test": 200,
+        "base_rate": 0.51,
+        "issued_at": "2026-08-23T14:05:16+00:00",
+        "expires_at": "2026-08-24T14:05:16+00:00",
+        "kappa": null,
+        "controls_run": 2,
+        "controls_inapplicable": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature"
+        ],
+        "auroc": {
+          "value": 0.7734093637454982,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "ratio",
+          "ci_low": 0.6899960007440477,
+          "ci_high": 0.8561364695334656,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "recall": {
+          "value": 0.7941176470588235,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.6980623381428043,
+          "ci_high": 0.8846153846153846,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "precision": {
+          "value": 0.6532258064516129,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.5114227428270598,
+          "ci_high": 0.8099524403555278,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "flag_rate": {
+          "value": 0.62,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.514282345013477,
+          "ci_high": 0.7350238764044944,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "confirmed_errors": {
+          "value": 81.0,
+          "kind": "EXACT",
+          "n": 124,
+          "unit": "count"
+        },
+        "fpr": {
+          "value": 0.4387755102040816,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.2475824175824176,
+          "ci_high": 0.6339340156794425,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        }
+      }
+    },
+    {
+      "profile": "internal_knowledge",
+      "envelope_id": "hinglish-pii-200-longctx",
+      "routed_to": "pii-reference",
+      "action": "ALLOW",
+      "suspended_profile": false,
+      "reason": "pii-reference holds a valid warrant on hinglish-pii-200-longctx and meets internal_knowledge's declared minimums",
+      "considered": [
+        {
+          "detector_id": "pii-reference",
+          "verdict": "eligible"
+        }
+      ],
+      "enqueued_for_validation": [
+        "probe-T1-max_rolling_means|P-conservative|hinglish-pii-200-longctx",
+        "probe-T1-mean_pool|P-conservative|hinglish-pii-200-longctx",
+        "probe-T2-logprob|P-conservative|hinglish-pii-200-longctx",
+        "probe-T3-judge|P-conservative|hinglish-pii-200-longctx"
+      ],
+      "claimed_bounds": {
+        "warrant_id": "W-4844e507cf642e26",
+        "detector_id": "pii-reference",
+        "detector_version": "0.1.0",
+        "operating_point_id": "P-declared",
+        "envelope_id": "sha256:1d3bf295e9c30341",
+        "eval_set_id": "hinglish-pii-200-longctx",
+        "status": "VALID",
+        "n_test": 200,
+        "base_rate": 0.51,
+        "issued_at": "2026-08-23T14:05:18+00:00",
+        "expires_at": "2026-08-24T14:05:18+00:00",
+        "kappa": null,
+        "controls_run": 2,
+        "controls_inapplicable": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature"
+        ],
+        "auroc": {
+          "value": 0.7734093637454982,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "ratio",
+          "ci_low": 0.6899960007440477,
+          "ci_high": 0.8561364695334656,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "recall": {
+          "value": 0.7941176470588235,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.6980623381428043,
+          "ci_high": 0.8846153846153846,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "precision": {
+          "value": 0.6532258064516129,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.5114227428270598,
+          "ci_high": 0.8099524403555278,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "flag_rate": {
+          "value": 0.62,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.514282345013477,
+          "ci_high": 0.7350238764044944,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "confirmed_errors": {
+          "value": 81.0,
+          "kind": "EXACT",
+          "n": 124,
+          "unit": "count"
+        },
+        "fpr": {
+          "value": 0.4387755102040816,
+          "kind": "ESTIMATED",
+          "n": 200,
+          "unit": "rate",
+          "ci_low": 0.2475824175824176,
+          "ci_high": 0.6339340156794425,
+          "ci_level": 0.95,
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        }
+      }
+    },
+    {
+      "profile": "internal_knowledge",
+      "envelope_id": "hard-negatives-200",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": true,
+      "reason": "no warrant on hard-negatives-200 meets internal_knowledge's declared minimums (recall >= 0.25, FPR <= 0.05); internal_knowledge is suspended on this envelope",
+      "considered": [
+        {
+          "detector_id": "pii-reference",
+          "verdict": "internal_knowledge requires recall >= 0.25, and this envelope supports no recall claim at all (single-class)"
+        }
+      ],
+      "enqueued_for_validation": [
+        "probe-T1-max_rolling_means|P-conservative|hard-negatives-200",
+        "probe-T1-mean_pool|P-conservative|hard-negatives-200",
+        "probe-T2-logprob|P-conservative|hard-negatives-200",
+        "probe-T3-judge|P-conservative|hard-negatives-200"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "internal_knowledge",
+      "envelope_id": "triviaqa-600",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": false,
+      "reason": "no valid warrant on envelope triviaqa-600",
+      "considered": [],
+      "enqueued_for_validation": [
+        "pii-reference|P-declared|triviaqa-600",
+        "probe-T1-max_rolling_means|P-conservative|triviaqa-600",
+        "probe-T1-mean_pool|P-conservative|triviaqa-600",
+        "probe-T2-logprob|P-conservative|triviaqa-600",
+        "probe-T3-judge|P-conservative|triviaqa-600"
+      ],
+      "claimed_bounds": {}
+    },
+    {
+      "profile": "internal_knowledge",
+      "envelope_id": "triviaqa-longctx-600",
+      "routed_to": null,
+      "action": "ESCALATE",
+      "suspended_profile": false,
+      "reason": "no valid warrant on envelope triviaqa-longctx-600",
+      "considered": [],
+      "enqueued_for_validation": [
+        "pii-reference|P-declared|triviaqa-longctx-600",
+        "probe-T1-max_rolling_means|P-conservative|triviaqa-longctx-600",
+        "probe-T1-mean_pool|P-conservative|triviaqa-longctx-600",
+        "probe-T2-logprob|P-conservative|triviaqa-longctx-600",
+        "probe-T3-judge|P-conservative|triviaqa-longctx-600"
+      ],
+      "claimed_bounds": {}
+    }
+  ]
+}

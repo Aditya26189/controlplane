@@ -570,4 +570,80 @@ Quantity: a binomial proportion. Propagation: Clopper–Pearson, inverting the b
 
 ---
 
+## 038 — Superseding 028: the max-of-rolling-means pedestal was a fixture artefact
+**Status:** accepted · **supersedes 028**
+
+**Context:** Entry 028 recorded that max-of-rolling-means degraded *faster* than mean pooling on long context (0.545 against 0.600 on the fixture), attributed it to an extreme-value pedestal growing like `√(2 ln W)` in the window count, and flagged the Phase 4 cell as genuinely open.
+
+**What changed:** the measurement in 028 was taken before the synthetic generator was corrected in Phase 2. At that point every cache drew its own readable direction from its own seed, and the signal was spread across all 32 dimensions rather than living in a subspace. Both are unrealistic, and both distorted the comparison — a signal spread over every dimension survives dilution trivially, which flatters mean pooling.
+
+**Measured now**, same fixture, corrected generator, n_test 600:
+
+| aggregation | short context | long context |
+|---|---|---|
+| `T1-mean_pool` | AUROC 0.797 [0.749, 0.847], recall 0.216 [0.129, 0.306] | AUROC 0.629 [0.560, 0.689], recall **0.034 [0.000, 0.077]** |
+| `T1-max_rolling_means` | AUROC 0.801 [0.754, 0.846], recall 0.250 [0.163, 0.345] | AUROC 0.724 [0.662, 0.781], recall 0.159 [0.088, 0.240] |
+
+Mean pooling loses **84% of its recall** and its lower bound falls to zero — it can support no recall claim at all. Max-of-rolling-means loses 36% and keeps a usable interval. The direction 028 questioned is the direction the corrected fixture produces.
+
+**What survives from 028:** the analysis of the pedestal is still correct as *mechanism* — the maximum of `W` window means does carry a label-independent positive bias growing like `√(2 ln W)`, and it does compete against the protection from dilution. What was wrong was the conclusion that the pedestal wins, which was an artefact of a generator that made dilution too easy to survive.
+
+**What this does not establish.** These are fixture numbers and cannot reach `RESULTS.md` (`DECISIONS.md` 027). The real cells are `UNVALIDATED` and stay that way until the GPU run. The value here is that the *machinery* demonstrably distinguishes the two aggregations, and the suggestion in 028 — sweep `probe.rolling_window` against the signal span on validation — is still worth doing on real activations.
+
+---
+
+## 039 — The AUROC bar does not catch a recall collapse; the profile minimum does
+**Status:** accepted
+
+**Context:** Populating the matrix produced a result the refusal criteria in `SPEC.md` §2.3 do not catch. On long context, `T1-mean_pool` holds recall **0.034 [0.000, 0.077]** — a lower bound of exactly zero, meaning no recall claim is supportable at all — and yet its warrant is issued **VALID**, because its AUROC lower bound is 0.560 and the declared bar is 0.55.
+
+A warrant that says *"I rank slightly better than chance, and I will catch between none and 7.7% of your errors"* is technically valid and operationally worthless.
+
+**Decision:** do not add a refusal criterion. Report it as measured, and let the **profile minimum** be what catches it — which it does, correctly and visibly:
+
+```
+customer_support (recall >= 0.10)  short context  -> ROUTED to a probe
+customer_support (recall >= 0.10)  long context   -> SUSPENDED
+    probe-T1-mean_pool: requires recall >= 0.1; the warrant's lower bound is
+    0.0000 (point estimate 0.0340)
+```
+
+**Why not tighten the refusal bar:** three reasons, in order of weight.
+
+1. **It would invent a threshold the spec does not declare.** `min_auroc_lower_ci` is a config value with a stated meaning; a second implicit bar on recall would be a number we chose because we did not like a result, which is the failure pattern this repo exists to argue against.
+2. **The two-layer structure is the correct design and this demonstrates it.** Validation asks *"is this measurement sound?"* — controls passed, interval honest, `n` adequate: yes. A profile asks *"is it good enough for what I do?"* — separately, and per profile. `customer_support` at 0.10 and `decision_support` at 0.50 draw different lines on the same warrant, which is impossible if the bar lives in issuance.
+3. **A universal recall floor would be wrong for some detectors by design.** The probe is tuned for recall at a fixed flag-rate budget and its precision is deliberately poor; a hard-negative FPR warrant carries no recall at all. One number cannot serve them.
+
+**What this changes for Beat 4:** the narration is *sharper* than the script anticipated. The scripted beat says the warrant is revoked. What actually happens is more interesting and harder to argue with — the warrant stays valid, the measurement is still sound, and **the profile suspends itself because the honest number is no longer enough for what it does**. "This detector is broken" is a weaker claim than "this detector is still working exactly as measured, and what it can now prove is below what this profile requires."
+
+**A reviewer could fairly object** that a `VALID` cell showing recall `[0.000, 0.077]` looks like a system claiming something useless is fine. The matrix renders the interval next to the status precisely so that reading is available, and the routing decision names the number that suspended the profile.
+
+---
+
+## 040 — The within-set FPR conflation recurred on the second code path
+**Status:** accepted
+
+**Context:** `DECISIONS.md` 036 recorded a defect on the text-validation path: the FPR measured *within* whatever set was under test was being written into `fpr_hard_negatives`, the field a profile declares its maximum against. It was fixed there. The probe path had the same bug and was not touched, because the fix was made where the symptom appeared rather than where the cause lived.
+
+**How it surfaced:** every profile suspended on every activation envelope, including short context where the probe is at its best. The probe's within-set FPR upper bound of 0.029 was being judged against `customer_support`'s declared hard-negative maximum of 0.02 — a bar that had never been measured for that detector on any hard-negative set.
+
+**Decision:** both runners now take an explicit `is_hard_negative_set` flag and populate `fpr_hard_negatives` only when the set under test *is* that set; otherwise the within-set FPR is reported as `fpr`.
+
+**The lesson worth recording**, which is why this is an entry rather than a commit note: the second occurrence was invisible for exactly as long as the first, and for the same reason — the output was plausible. "Every profile is suspended" reads like a conservative system doing its job, and it is what a genuinely weak detector would produce. It was only caught because the suspension persisted on the envelope where the probe was known to be strong, which was a hunch rather than a check.
+
+**Consequences:** a fix applied at one call site when the cause is a shared concept should be followed by a search for the other call sites. Recorded here so the next occurrence of this shape gets found by reading rather than by luck.
+
+---
+
+## 041 — The matrix lists declared-but-unbuilt envelopes so their cells show UNVALIDATED
+**Status:** accepted
+
+**Context:** `triviaqa-600` and `triviaqa-longctx-600` cannot be built without model generations, so no warrant references them. A matrix built only from the warrants that exist would not contain those columns at all.
+
+**Decision:** `WarrantMatrix` takes the detector and envelope axes explicitly rather than deriving them from the warrants present, and the script passes every declared eval set including the unbuilt ones. Their cells render `UNVALIDATED`.
+
+**Why this matters more than it looks:** *"we have not measured this"* and *"we have not thought about this"* are different, and only the first is acceptable in a system whose product is knowing what it does not know. An absent column is indistinguishable from an oversight; an `UNVALIDATED` column is a stated gap. The current matrix is 24 `UNVALIDATED` cells out of 35, which is the expected shape rather than an embarrassment — `UNVALIDATED` is the modal state in production, and a matrix that did not look like this would mean we were hiding cells.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->
