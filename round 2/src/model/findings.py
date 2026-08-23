@@ -294,16 +294,35 @@ class DistributionEnvelope:
         eval_set_id: Human-readable set name, e.g. ``"triviaqa-longctx-600"``.
         n_reference: How many items the reference distribution was computed from.
         features: One entry per configured drift feature.
+        data_source: ``"measured"`` or ``"synthetic"``. Carried on the envelope
+            rather than looked up, because ``SPEC.md`` §1.5 requires every record
+            be self-describing enough to interpret a year later without this
+            codebase — and "was this a real distribution or a generator?" is the
+            first question a reader of an old warrant needs answered. It is also
+            what lets the report refuse to print a fixture number as a result
+            (``DECISIONS.md`` 046) without consulting a registry that may not
+            exist by then.
     """
 
     envelope_id: str
     eval_set_id: str
     n_reference: int
     features: tuple[EnvelopeFeature, ...]
+    data_source: str = "measured"
 
     def __post_init__(self) -> None:
         if not self.envelope_id or not self.eval_set_id:
             raise FindingError("envelope_id and eval_set_id are required")
+        if self.data_source not in ("measured", "synthetic"):
+            raise FindingError(
+                f"envelope {self.eval_set_id}: data_source must be 'measured' or "
+                f"'synthetic', got {self.data_source!r}"
+            )
+
+    @property
+    def is_synthetic(self) -> bool:
+        """Whether this envelope describes generated data rather than a real one."""
+        return self.data_source == "synthetic"
         if self.n_reference <= 0:
             raise FindingError(
                 f"envelope {self.eval_set_id}: n_reference must be positive, got "
