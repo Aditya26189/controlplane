@@ -1,12 +1,10 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-23T12:09:29+00:00",
-    "git_commit": "950365e3a671d36c7b489a1a0b5a790de22d4177",
+    "timestamp_utc": "2026-08-23T12:11:39+00:00",
+    "git_commit": "2ed2a341208803afeb8a306af05bce94fa762706",
     "git_branch": "phase/3-evaluation-sets",
-    "dirty": true,
-    "dirty_paths": [
-      "round 2/evalsets/manifest.json"
-    ],
+    "dirty": false,
+    "dirty_paths": [],
     "dirty_excludes": "results",
     "python": "3.12.10",
     "libraries": {
