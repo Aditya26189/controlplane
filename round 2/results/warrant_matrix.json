@@ -1,8 +1,8 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-23T15:27:07+00:00",
-    "git_commit": "a5a40e1bd77a337a8981d8ecf7697d0070c731ad",
-    "git_branch": "phase/4.6-fixture-guards",
+    "timestamp_utc": "2026-08-23T16:19:59+00:00",
+    "git_commit": "e3622749ec05874f5bb29ac61b43a9c4ab8ed8f9",
+    "git_branch": "main",
     "dirty": false,
     "dirty_paths": [],
     "dirty_excludes": "results",
@@ -850,7 +850,7 @@
         }
       }
     ],
-    "rendered_at": "2026-08-23T15:27:07+00:00"
+    "rendered_at": "2026-08-23T16:19:59+00:00"
   },
   "routing": [
     {
@@ -876,6 +876,22 @@
         {
           "detector_id": "probe-T3-judge",
           "verdict": "customer_support requires recall >= 0.1; the warrant's lower bound is 0.0968 (point estimate 0.1705)"
+        },
+        {
+          "detector_id": "probe-qwen2.5-7b-instruct-T1-max_rolling_means",
+          "verdict": "eligible"
+        },
+        {
+          "detector_id": "probe-qwen2.5-7b-instruct-T1-mean_pool",
+          "verdict": "eligible"
+        },
+        {
+          "detector_id": "probe-qwen2.5-7b-instruct-T2-logprob",
+          "verdict": "customer_support requires recall >= 0.1; the warrant's lower bound is 0.0976 (point estimate 0.1705)"
+        },
+        {
+          "detector_id": "probe-qwen2.5-7b-instruct-T3-judge",
+          "verdict": "customer_support requires recall >= 0.1; the warrant's lower bound is 0.0968 (point estimate 0.1705)"
         }
       ],
       "enqueued_for_validation": [
@@ -891,8 +907,8 @@
         "status": "VALID",
         "n_test": 600,
         "base_rate": 0.14666666666666667,
-        "issued_at": "2026-08-23T15:25:52+00:00",
-        "expires_at": "2026-08-24T15:25:52+00:00",
+        "issued_at": "2026-08-23T16:18:29+00:00",
+        "expires_at": "2026-08-24T16:18:29+00:00",
         "kappa": null,
         "controls_run": 5,
         "controls_inapplicable": [],
@@ -1013,8 +1029,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-23T15:26:47+00:00",
-        "expires_at": "2026-08-24T15:26:47+00:00",
+        "issued_at": "2026-08-23T16:16:47+00:00",
+        "expires_at": "2026-08-24T16:16:47+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1109,8 +1125,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-23T15:26:48+00:00",
-        "expires_at": "2026-08-24T15:26:48+00:00",
+        "issued_at": "2026-08-23T16:16:49+00:00",
+        "expires_at": "2026-08-24T16:16:49+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1254,6 +1270,22 @@
         {
           "detector_id": "probe-T3-judge",
           "verdict": "decision_support requires recall >= 0.5; the warrant's lower bound is 0.0968 (point estimate 0.1705)"
+        },
+        {
+          "detector_id": "probe-qwen2.5-7b-instruct-T1-max_rolling_means",
+          "verdict": "decision_support requires recall >= 0.5; the warrant's lower bound is 0.1633 (point estimate 0.2500)"
+        },
+        {
+          "detector_id": "probe-qwen2.5-7b-instruct-T1-mean_pool",
+          "verdict": "decision_support requires recall >= 0.5; the warrant's lower bound is 0.1290 (point estimate 0.2159)"
+        },
+        {
+          "detector_id": "probe-qwen2.5-7b-instruct-T2-logprob",
+          "verdict": "decision_support requires recall >= 0.5; the warrant's lower bound is 0.0976 (point estimate 0.1705)"
+        },
+        {
+          "detector_id": "probe-qwen2.5-7b-instruct-T3-judge",
+          "verdict": "decision_support requires recall >= 0.5; the warrant's lower bound is 0.0968 (point estimate 0.1705)"
         }
       ],
       "enqueued_for_validation": [
@@ -1320,8 +1352,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-23T15:26:47+00:00",
-        "expires_at": "2026-08-24T15:26:47+00:00",
+        "issued_at": "2026-08-23T16:16:47+00:00",
+        "expires_at": "2026-08-24T16:16:47+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1416,8 +1448,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-23T15:26:48+00:00",
-        "expires_at": "2026-08-24T15:26:48+00:00",
+        "issued_at": "2026-08-23T16:16:49+00:00",
+        "expires_at": "2026-08-24T16:16:49+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1561,6 +1593,22 @@
         {
           "detector_id": "probe-T3-judge",
           "verdict": "internal_knowledge requires recall >= 0.25; the warrant's lower bound is 0.0968 (point estimate 0.1705)"
+        },
+        {
+          "detector_id": "probe-qwen2.5-7b-instruct-T1-max_rolling_means",
+          "verdict": "internal_knowledge requires recall >= 0.25; the warrant's lower bound is 0.1633 (point estimate 0.2500)"
+        },
+        {
+          "detector_id": "probe-qwen2.5-7b-instruct-T1-mean_pool",
+          "verdict": "internal_knowledge requires recall >= 0.25; the warrant's lower bound is 0.1290 (point estimate 0.2159)"
+        },
+        {
+          "detector_id": "probe-qwen2.5-7b-instruct-T2-logprob",
+          "verdict": "internal_knowledge requires recall >= 0.25; the warrant's lower bound is 0.0976 (point estimate 0.1705)"
+        },
+        {
+          "detector_id": "probe-qwen2.5-7b-instruct-T3-judge",
+          "verdict": "internal_knowledge requires recall >= 0.25; the warrant's lower bound is 0.0968 (point estimate 0.1705)"
         }
       ],
       "enqueued_for_validation": [
@@ -1627,8 +1675,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-23T15:26:47+00:00",
-        "expires_at": "2026-08-24T15:26:47+00:00",
+        "issued_at": "2026-08-23T16:16:47+00:00",
+        "expires_at": "2026-08-24T16:16:47+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1723,8 +1771,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-23T15:26:48+00:00",
-        "expires_at": "2026-08-24T15:26:48+00:00",
+        "issued_at": "2026-08-23T16:16:49+00:00",
+        "expires_at": "2026-08-24T16:16:49+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [

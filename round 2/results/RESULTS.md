@@ -1,7 +1,7 @@
 # RESULTS
 
 > [!WARNING]
-> **8 of 11 populated cells are synthetic fixtures and their numbers are not printed below.**
+> **12 of 15 populated cells are synthetic fixtures and their numbers are not printed below.**
 >
 > A fixture number is internally valid and is not evidence about a language model. The renderer refuses to print them rather than relying on a reader noticing a footnote. Cells affected:
 >
@@ -9,6 +9,10 @@
 > - `probe-T1-mean_pool` on `triviaqa-600-synthetic` — triviaqa-600-synthetic is a synthetic fixture; its numbers describe a generator we wrote, not a language model
 > - `probe-T2-logprob` on `triviaqa-600-synthetic` — triviaqa-600-synthetic is a synthetic fixture; its numbers describe a generator we wrote, not a language model
 > - `probe-T3-judge` on `triviaqa-600-synthetic` — triviaqa-600-synthetic is a synthetic fixture; its numbers describe a generator we wrote, not a language model
+> - `probe-qwen2.5-7b-instruct-T1-max_rolling_means` on `triviaqa-600-synthetic` — triviaqa-600-synthetic is a synthetic fixture; its numbers describe a generator we wrote, not a language model
+> - `probe-qwen2.5-7b-instruct-T1-mean_pool` on `triviaqa-600-synthetic` — triviaqa-600-synthetic is a synthetic fixture; its numbers describe a generator we wrote, not a language model
+> - `probe-qwen2.5-7b-instruct-T2-logprob` on `triviaqa-600-synthetic` — triviaqa-600-synthetic is a synthetic fixture; its numbers describe a generator we wrote, not a language model
+> - `probe-qwen2.5-7b-instruct-T3-judge` on `triviaqa-600-synthetic` — triviaqa-600-synthetic is a synthetic fixture; its numbers describe a generator we wrote, not a language model
 > - `probe-T1-max_rolling_means` on `triviaqa-longctx-600-synthetic` — triviaqa-longctx-600-synthetic is a synthetic fixture; its numbers describe a generator we wrote, not a language model
 > - `probe-T1-mean_pool` on `triviaqa-longctx-600-synthetic` — triviaqa-longctx-600-synthetic is a synthetic fixture; its numbers describe a generator we wrote, not a language model
 > - `probe-T2-logprob` on `triviaqa-longctx-600-synthetic` — triviaqa-longctx-600-synthetic is a synthetic fixture; its numbers describe a generator we wrote, not a language model
@@ -48,7 +52,7 @@ Cell states: VALID 9, REFUSED 2, UNVALIDATED 24. 24 of 35 cells have never been 
 ## Provenance
 
 - config hash `c89257bc4adc10c2`
-- git commit `a5a40e1bd77a337a8981d8ecf7697d0070c731ad`
+- git commit `e3622749ec05874f5bb29ac61b43a9c4ab8ed8f9`
 - dirty tree: `False`
 - seed `1729`
-- generated `2026-08-23T15:27:08+00:00`
+- generated `2026-08-23T16:19:59+00:00`

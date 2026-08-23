@@ -1,8 +1,8 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-23T12:11:41+00:00",
-    "git_commit": "2ed2a341208803afeb8a306af05bce94fa762706",
-    "git_branch": "phase/3-evaluation-sets",
+    "timestamp_utc": "2026-08-23T16:16:49+00:00",
+    "git_commit": "e3622749ec05874f5bb29ac61b43a9c4ab8ed8f9",
+    "git_branch": "main",
     "dirty": false,
     "dirty_paths": [],
     "dirty_excludes": "results",
@@ -191,9 +191,9 @@
   "eval_set_id": "hinglish-pii-200",
   "envelope_id": "sha256:39b541efa4299f4d",
   "data_source": "measured",
-  "started_at": "2026-08-23T12:11:39+00:00",
-  "completed_at": "2026-08-23T12:11:41+00:00",
-  "duration_seconds": 1.8373536000726745,
+  "started_at": "2026-08-23T16:16:47+00:00",
+  "completed_at": "2026-08-23T16:16:48+00:00",
+  "duration_seconds": 1.5277812000131235,
   "splits": {
     "train": 0,
     "validation": 0,
@@ -275,6 +275,7 @@
       "estimator": null
     },
     "fpr_hard_negatives": null,
+    "base_rate": 0.51,
     "extra": [
       {
         "name": "fpr",
@@ -350,8 +351,8 @@
     },
     "eval_set_id": "hinglish-pii-200",
     "validation_run_id": "run-c9c31d965ce8",
-    "issued_at": "2026-08-23T12:11:39+00:00",
-    "expires_at": "2026-08-24T12:11:39+00:00",
+    "issued_at": "2026-08-23T16:16:47+00:00",
+    "expires_at": "2026-08-24T16:16:47+00:00",
     "metrics": {
       "auroc": {
         "name": "auroc",
@@ -409,6 +410,7 @@
         "estimator": null
       },
       "fpr_hard_negatives": null,
+      "base_rate": 0.51,
       "extra": [
         {
           "name": "fpr",
@@ -456,7 +458,8 @@
           "mean": 71.08,
           "std": 12.913698153511255
         }
-      ]
+      ],
+      "data_source": "measured"
     },
     "controls": [
       {

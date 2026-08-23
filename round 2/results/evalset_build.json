@@ -1,8 +1,8 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-23T12:11:39+00:00",
-    "git_commit": "2ed2a341208803afeb8a306af05bce94fa762706",
-    "git_branch": "phase/3-evaluation-sets",
+    "timestamp_utc": "2026-08-23T16:16:47+00:00",
+    "git_commit": "e3622749ec05874f5bb29ac61b43a9c4ab8ed8f9",
+    "git_branch": "main",
     "dirty": false,
     "dirty_paths": [],
     "dirty_excludes": "results",

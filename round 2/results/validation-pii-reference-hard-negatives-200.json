@@ -1,8 +1,8 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-23T12:12:07+00:00",
-    "git_commit": "2ed2a341208803afeb8a306af05bce94fa762706",
-    "git_branch": "phase/3-evaluation-sets",
+    "timestamp_utc": "2026-08-23T16:17:10+00:00",
+    "git_commit": "e3622749ec05874f5bb29ac61b43a9c4ab8ed8f9",
+    "git_branch": "main",
     "dirty": false,
     "dirty_paths": [],
     "dirty_excludes": "results",
@@ -191,9 +191,9 @@
   "eval_set_id": "hard-negatives-200",
   "envelope_id": "sha256:d28e4de2024de10d",
   "data_source": "measured",
-  "started_at": "2026-08-23T12:12:07+00:00",
-  "completed_at": "2026-08-23T12:12:07+00:00",
-  "duration_seconds": 0.3946159000042826,
+  "started_at": "2026-08-23T16:17:09+00:00",
+  "completed_at": "2026-08-23T16:17:10+00:00",
+  "duration_seconds": 0.30728299997281283,
   "splits": {
     "train": 0,
     "validation": 0,
@@ -255,6 +255,7 @@
       "unit": "rate",
       "estimator": "Clopper-Pearson exact (0/200 events); the bootstrap degenerated to a zero-width interval at the boundary"
     },
+    "base_rate": 0.0,
     "extra": []
   },
   "controls": [
@@ -318,8 +319,8 @@
     },
     "eval_set_id": "hard-negatives-200",
     "validation_run_id": "run-3607cee06b12",
-    "issued_at": "2026-08-23T12:12:07+00:00",
-    "expires_at": "2026-08-24T12:12:07+00:00",
+    "issued_at": "2026-08-23T16:17:09+00:00",
+    "expires_at": "2026-08-24T16:17:09+00:00",
     "metrics": {
       "auroc": null,
       "recall": null,
@@ -357,6 +358,7 @@
         "unit": "rate",
         "estimator": "Clopper-Pearson exact (0/200 events); the bootstrap degenerated to a zero-width interval at the boundary"
       },
+      "base_rate": 0.0,
       "extra": []
     },
     "n_test": 200,
@@ -392,7 +394,8 @@
           "mean": 133.5,
           "std": 20.374248452396962
         }
-      ]
+      ],
+      "data_source": "measured"
     },
     "controls": [
       {
