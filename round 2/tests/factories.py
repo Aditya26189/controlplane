@@ -89,12 +89,14 @@ def make_envelope(
     eval_set_id: str = "triviaqa-600",
     envelope_id: Optional[str] = None,
     mean_tokens: float = 128.0,
+    data_source: str = "measured",
 ) -> DistributionEnvelope:
     """A reference distribution with one binned token-length feature."""
     return DistributionEnvelope(
         envelope_id=envelope_id or f"sha256:{eval_set_id}",
         eval_set_id=eval_set_id,
         n_reference=600,
+        data_source=data_source,
         features=(
             EnvelopeFeature(
                 name="token_length",
@@ -126,6 +128,7 @@ def make_metrics(
         precision=Metric("precision", precision, MetricKind.ESTIMATED, 600, precision - 0.045, precision + 0.045, 0.95, "rate", boot),
         flag_rate=Metric("flag_rate", flag_rate, MetricKind.ESTIMATED, 600, flag_rate - 0.003, flag_rate + 0.003, 0.95, "rate", boot),
         confirmed_errors=Metric("confirmed_errors", confirmed_errors, MetricKind.EXACT, 2984, unit="count"),
+        base_rate=0.1517,
     )
 
 

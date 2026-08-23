@@ -252,6 +252,12 @@ class WarrantMetrics:
         confirmed_errors: Count of reviewed, confirmed true positives. Exact.
         fpr_hard_negatives: FPR on the hard-negative set, where it means
             something. Optional because not every envelope has one.
+        base_rate: Positive-class prevalence on the set these were measured on.
+            Carried here, beside the metrics rather than only on the warrant,
+            because **lift is not interpretable without it**: the maximum
+            achievable lift is ``1 / max(base_rate, flag_rate)``, so a detector
+            on an enriched set sits near a low ceiling however good it is
+            (``DECISIONS.md`` 047).
         extra: Any additional metrics, each carrying its own kind.
     """
 
@@ -261,6 +267,7 @@ class WarrantMetrics:
     flag_rate: Metric
     confirmed_errors: Metric
     fpr_hard_negatives: Optional[Metric] = None
+    base_rate: Optional[float] = None
     extra: tuple[Metric, ...] = ()
 
     def __post_init__(self) -> None:
@@ -348,6 +355,13 @@ class WarrantMetrics:
                 "lift is recall / flag_rate and the measured flag rate is zero; "
                 "nothing was flagged, so there is no lift to report"
             )
+        ceiling = self.lift_ceiling
+        context = f"recall interval at measured flag rate f={f:.4f}"
+        if ceiling is not None:
+            context += (
+                f"; ceiling {ceiling:.3f} at base rate {self.base_rate:.4f} "
+                f"(max achievable lift is 1/max(base_rate, flag_rate))"
+            )
         return Metric(
             name="lift",
             value=self.recall.value / f,
@@ -357,5 +371,44 @@ class WarrantMetrics:
             ci_high=self.recall.ci_high / f,  # type: ignore[operator]
             ci_level=self.recall.ci_level,
             unit="ratio",
-            estimator=f"recall interval at measured flag rate f={f:.4f}",
+            estimator=context,
         )
+
+    @property
+    def lift_ceiling(self) -> Optional[float]:
+        """The largest lift physically achievable at this base rate and budget.
+
+        Flagging a fraction ``f`` of items when a fraction ``b`` are positive
+        caps true positives at ``min(f, b)``, so::
+
+            R    <= min(f, b) / b
+            lift  = R / f  <=  min(1/b, 1/f)  =  1 / max(b, f)
+
+        This is why ``MIN_LIFT_LOWER_BOUND = 1.0`` is a **base-rate-dependent**
+        bar despite being stated as an absolute one. On an enriched set the
+        ceiling is low and a genuinely strong detector sits near the floor: at
+        base rate 0.51 and flag rate 0.62 the ceiling is 1.61, so a measured
+        lift of 1.28 is 79% of everything available — not "barely useful", which
+        is how 1.28 reads without this number beside it.
+
+        Returns:
+            The ceiling, or None when the base rate was not recorded.
+        """
+        if self.base_rate is None or self.recall is None:
+            return None
+        denominator = max(self.base_rate, self.flag_rate.value)
+        if denominator <= 0:
+            return None
+        return 1.0 / denominator
+
+    @property
+    def lift_fraction_of_ceiling(self) -> Optional[float]:
+        """Measured lift as a fraction of the achievable maximum.
+
+        The number that makes lift comparable across envelopes with different
+        base rates, which raw lift is not.
+        """
+        ceiling = self.lift_ceiling
+        if ceiling is None or ceiling <= 0:
+            return None
+        return self.lift.value / ceiling

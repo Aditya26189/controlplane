@@ -209,6 +209,7 @@ def build_envelope(
         envelope_id=evalset.envelope_id,
         eval_set_id=evalset.eval_set_id,
         n_reference=len(evalset),
+        data_source=evalset.data_source,
         features=(
             EnvelopeFeature(
                 name="token_length",

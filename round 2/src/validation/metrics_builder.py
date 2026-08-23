@@ -33,7 +33,7 @@ from typing import Optional
 import numpy as np
 
 from ..config import Config
-from ..model import WarrantMetrics
+from ..model import MetricKind, WarrantMetrics
 from .stats import (
     auroc,
     estimated,
@@ -44,7 +44,7 @@ from .stats import (
     recall_at,
 )
 
-__all__ = ["build_warrant_metrics"]
+__all__ = ["assert_metric_shape_compatible", "build_warrant_metrics"]
 
 _LOG = logging.getLogger(__name__)
 
@@ -143,7 +143,74 @@ def build_warrant_metrics(
             n=n_flagged,
         ),
         fpr_hard_negatives=within_set_fpr if is_hard_negative_set else None,
+        base_rate=float(labels.mean()) if n_items else None,
         extra=()
         if (is_hard_negative_set or within_set_fpr is None)
         else (within_set_fpr,),
     )
+
+
+def assert_metric_shape_compatible(
+    first: WarrantMetrics, second: WarrantMetrics, *, first_name: str, second_name: str
+) -> None:
+    """Assert two metric sets have the same *structure*, not the same values.
+
+    The remaining dual-path risk after the duplication was removed is not two
+    implementations of one quantity — it is the fixture path and the real
+    extraction path producing metrics that *should* be comparable and silently
+    are not, because they differ in normalisation, split derivation or label
+    polarity. Values must differ; shape must not.
+
+    Run this when the real extraction lands, on the same eval set id through
+    both paths. A mismatch means the two are not measuring the same thing, and
+    every comparison between fixture and measured results is void.
+
+    Checks, in the order they would fail:
+
+    * the same metrics are present and the same ones absent — a path that
+      silently drops recall on a set the other measures it on is the failure;
+    * each shared metric has the same ``kind`` and ``unit`` — an ``EXACT`` count
+      on one side and an ``ESTIMATED`` rate on the other is the yield/rate
+      confusion arriving through the back door;
+    * every estimated metric carries an interval on both sides.
+
+    Args:
+        first: Metrics from one path.
+        second: Metrics from the other.
+        first_name: Human-readable name for error messages, e.g. ``"fixture"``.
+        second_name: Likewise, e.g. ``"measured"``.
+
+    Raises:
+        AssertionError: Naming the specific divergence.
+    """
+    def shape(metrics: WarrantMetrics) -> dict[str, tuple[str, str, bool]]:
+        return {
+            m.name: (m.kind.value, m.unit, m.has_interval)
+            for m in metrics.all_metrics()
+        }
+
+    left, right = shape(first), shape(second)
+
+    only_left = sorted(set(left) - set(right))
+    only_right = sorted(set(right) - set(left))
+    assert not only_left and not only_right, (
+        f"metric sets differ in which metrics exist: {first_name} has "
+        f"{only_left or 'nothing extra'}, {second_name} has "
+        f"{only_right or 'nothing extra'}. The two paths are not measuring the "
+        "same thing, so no comparison between them is meaningful."
+    )
+
+    for name in sorted(left):
+        assert left[name] == right[name], (
+            f"metric {name!r} has a different shape on the two paths: "
+            f"{first_name} is kind={left[name][0]} unit={left[name][1]} "
+            f"interval={left[name][2]}, {second_name} is kind={right[name][0]} "
+            f"unit={right[name][1]} interval={right[name][2]}"
+        )
+
+    for metrics, label in ((first, first_name), (second, second_name)):
+        for metric in metrics.all_metrics():
+            if metric.kind is MetricKind.ESTIMATED:
+                assert metric.has_interval, (
+                    f"{label}: estimated metric {metric.name!r} carries no interval"
+                )

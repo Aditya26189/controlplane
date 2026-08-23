@@ -296,12 +296,21 @@ class WarrantMatrix:
             "rendered_at": self.now.isoformat(),
         }
 
-    def render(self) -> str:
+    def render(self, *, mask_synthetic: bool = False) -> str:
         """A markdown table with every cell populated, empty ones included.
 
         Empty cells render as ``UNVALIDATED`` rather than as a blank, because a
         blank reads as "nothing to report" and the whole point is that "we have
         not measured this here" *is* the report.
+
+        Args:
+            mask_synthetic: Replace the numbers on synthetic envelopes with a
+                marker. Set by the ``RESULTS.md`` renderer, because that is the
+                document a judge reads and a fixture number on it would be a
+                claim about a language model that no language model produced.
+                The standalone ``warrant_matrix.md`` leaves them visible: it is
+                an internal diagnostic, and the status still says which cells
+                are which.
         """
         header = "| detector | " + " | ".join(self.envelopes) + " |"
         divider = "|---|" + "---|" * len(self.envelopes)
@@ -312,6 +321,18 @@ class WarrantMatrix:
             for envelope in self.envelopes:
                 cell = self.cell(WarrantKey(detector, operating_point, envelope))
                 label = cell.status.value
+                # Fail-closed, exactly as the RESULTS renderer does: an
+                # envelope that does not declare a data_source cannot be shown
+                # to be measured, and defaulting to "measured" would let a new
+                # code path that forgets the field print fixture numbers.
+                unverified = (
+                    cell.warrant is not None
+                    and getattr(cell.warrant.envelope, "data_source", None)
+                    != "measured"
+                )
+                if mask_synthetic and unverified:
+                    cells.append(f"{label} · FIXTURE — NOT MEASURED")
+                    continue
                 if cell.status is WarrantStatus.VALID and cell.warrant is not None:
                     recall = cell.warrant.metrics.recall
                     if recall is not None:

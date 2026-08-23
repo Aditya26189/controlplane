@@ -173,8 +173,19 @@ def _rank(warrant: Warrant) -> tuple:
     it. ``DECISIONS.md`` 042.
 
     Ties break on interval width (narrower first, since between two equally
-    provable claims the better-measured one is preferable) and then on detector
-    id, so routing is deterministic.
+    provable claims the better-measured one is preferable) and then on
+    ``detector_id`` alphabetically. The final tiebreak is **stated rather than
+    left to the sort**: Python's sort is stable, so without an explicit last key
+    the winner would depend on the order the matrix happened to yield cells,
+    which depends on dictionary insertion order, which depends on the order
+    warrants were appended to the ledger. Phase 5 calls this under revocation to
+    choose the detector the system falls back *to*, live, so "whatever the sort
+    does" is not good enough.
+
+    ``UNVALIDATED`` cells never reach here. They hold no warrant, so
+    :meth:`WarrantMatrix.valid_warrants` cannot return one, and a cell with no
+    measurement can never outrank one with a measurement however promising it
+    looks. That is invariant 2: an absence is not a weak positive.
     """
     recall = warrant.metrics.recall
     if recall is None:
