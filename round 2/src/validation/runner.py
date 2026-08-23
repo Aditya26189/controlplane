@@ -243,6 +243,7 @@ def validate(
     max_fpr_hard_negatives: Optional[float] = None,
     canary_cache: Optional[ExtractionCache] = None,
     kappa: Optional[float] = None,
+    is_hard_negative_set: bool = False,
     progress: Optional[Callable[[str], None]] = None,
 ) -> ValidationRun:
     """Validate one detector variant on one envelope, and issue or refuse.
@@ -265,6 +266,10 @@ def validate(
         canary_cache: Extraction for ``canary-20``, if available. Absent means
             the canary control *fails* rather than being skipped.
         kappa: Inter-rater agreement, where labels are human.
+        is_hard_negative_set: Whether this eval set *is* the hard-negative set.
+            Only then does its FPR populate ``fpr_hard_negatives`` and face a
+            profile's declared maximum; otherwise the within-set FPR is reported
+            under ``fpr``, because they are different claims (DECISIONS.md 036).
         progress: Optional callback for streaming progress to the demo.
 
     Returns:
@@ -363,6 +368,16 @@ def validate(
     ci = config.validation.ci
     seed = config.seed
 
+    n_negative = int(np.sum(test_labels == 0))
+    false_positives = int(np.sum((test_scores >= threshold) & (test_labels == 0)))
+    within_set_fpr = estimated(
+        "fpr_hard_negatives" if is_hard_negative_set else "fpr",
+        lambda y, s: false_positive_rate_at(y, s, threshold),
+        test_labels, test_scores,
+        n_resamples=boot, ci=ci, seed=seed, groups=test_groups,
+        binomial_events=false_positives, binomial_trials=n_negative,
+    )
+
     metrics = WarrantMetrics(
         auroc=estimated(
             "auroc", auroc, test_labels, test_scores,
@@ -379,18 +394,23 @@ def validate(
         flag_rate=estimated(
             "flag_rate", lambda y, s: flag_rate_at(s, threshold), test_labels, test_scores,
             n_resamples=boot, ci=ci, seed=seed, groups=test_groups,
+            binomial_events=int(np.sum(test_scores >= threshold)),
+            binomial_trials=int(test_index.size),
         ),
         confirmed_errors=exact_count(
             "confirmed_errors",
             int(np.sum((test_scores >= threshold) & (test_labels == 1))),
             n=int(np.sum(test_scores >= threshold)),
         ),
-        fpr_hard_negatives=estimated(
-            "fpr_hard_negatives",
-            lambda y, s: false_positive_rate_at(y, s, threshold),
-            test_labels, test_scores,
-            n_resamples=boot, ci=ci, seed=seed, groups=test_groups,
-        ),
+        # Within-set FPR is NOT hard-negative FPR. The same conflation was fixed
+        # on the text path in DECISIONS.md 036 and left here, which suspended
+        # every profile on every envelope: the probe's own within-set FPR upper
+        # bound (0.029) was being judged against customer_support's declared
+        # hard-negative maximum (0.02), a bar that had never been measured for
+        # this detector. `fpr_hard_negatives` is populated only when the set
+        # under test IS the hard-negative set.
+        fpr_hard_negatives=within_set_fpr if is_hard_negative_set else None,
+        extra=() if is_hard_negative_set else (within_set_fpr,),
     )
 
     envelope = build_envelope(evalset, cache)
