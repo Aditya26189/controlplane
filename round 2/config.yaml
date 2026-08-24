@@ -1,0 +1,103 @@
+# ControlPlane Round 2. Every knob lives here.
+# INVARIANT 6: all economics derive from the single `workload` block below.
+# Mixing figures from two workloads is silently wrong. test_no_scenario_mixing enforces this.
+
+seed: 1729
+
+# ---------------------------------------------------------------- workload
+# The ONE declared scenario. Every economic figure in every document is
+# computed from this block by src/economics/sizing.py. Nothing is typed by hand.
+workload:
+  name: "enterprise-3pct"
+  monthly_interactions: 200000
+  base_error_rate: 0.03          # errors as a fraction of all responses
+  review_minutes_per_item: 3
+  reviewer_monthly_cost_inr: 85000
+  reviewer_productive_hours: 160
+  # Derived by sizing.py: cost_per_review, flag_rate, TP, N_u, q, dR/dq
+
+  # Round 1 measured operating point, carried forward. Do not edit by hand.
+  measured_tpr: 0.1416
+  measured_fpr: 0.0110
+
+model:
+  name: "Qwen/Qwen2.5-7B-Instruct"
+  quantization: "nf4"
+  layer_fractions: [0.29, 0.39, 0.50, 0.61, 0.71, 0.82, 0.93]
+
+probe:
+  aggregations: ["mean_pool", "max_rolling_means"]   # both. mean_pool collapses on long context
+  rolling_window: 64             # tokens per window for max_rolling_means
+  rolling_stride: 32             # 50% overlap, so a local signal cannot fall between windows
+  standardize: true
+  class_weight: "balanced"
+  C_grid: [0.0001, 0.001, 0.01, 0.1, 1.0]
+  positive_class: "incorrect"
+
+evalsets:
+  - id: triviaqa-600
+  - id: triviaqa-longctx-600
+    pad_tokens: [4000, 16000]
+  - id: hinglish-pii-200
+  - id: hard-negatives-200
+  - id: canary-20
+
+validation:
+  bootstrap_samples: 1000
+  ci: 0.95
+  min_n_test: 200
+  min_auroc_lower_ci: 0.55
+  warrant_ttl_hours: 24
+  controls: ["padding_fault", "label_shuffle", "null_feature", "canary", "determinism"]
+  null_control_band: [0.45, 0.55]
+  # A negative control averages over repeats and sizes that count from the
+  # MEASURED spread of its own null, not from a closed form. See DECISIONS.md 031:
+  # a fitted probe's scores are not exchangeable, so the Hanley-McNeil null SE
+  # understates the true spread by 2.1x at d=32 and 8.3x at d=1.
+  null_control_min_repeats: 8
+  null_control_max_repeats: 200
+
+drift:
+  window_size: 200               # minimum requests before any verdict
+  psi_stable: 0.10
+  psi_significant: 0.25
+  mmd_permutations: 500
+  features: ["token_length", "script_mix", "embedding_centroid_distance",
+             "reference_perplexity", "category_mix"]
+
+sampling:
+  allocation_month_one: "proportional"   # Neyman needs q_h we don't have yet
+  allocation_thereafter: "neyman"
+  expected_design_effect: 0.67           # ~1.5x. Measure, don't assume.
+  score_bands: 4
+  double_label_fraction: 0.10
+  recall_margin_tiers: [0.05, 0.02]
+  blind_queue: true                      # never expose flag status/score/stratum
+
+policy:
+  engine: "opa"                          # opa | cedar. Do not write a DSL.
+  fail_closed_on_missing_warrant: true   # NOT a warning
+  weighted_error:
+    w_fpr_benign: 50
+    w_fnr: 5
+    w_fpr_hard_negative: 2
+
+profiles:
+  customer_support:      { inline_budget_ms: 200,  min_recall: 0.10, max_fpr: 0.02 }
+  internal_knowledge:    { inline_budget_ms: 500,  min_recall: 0.25, max_fpr: 0.05 }
+  decision_support:      { inline_budget_ms: 2000, min_recall: 0.50, max_fpr: 0.10 }
+
+detectors:
+  presidio_configs: ["stock", "enabled", "enabled_plus_custom"]
+  qwen3guard: "Qwen/Qwen3Guard-Gen-0.6B"     # Apache-2.0
+  # Llama Guard / ShieldGemma are NOT permissively licensed. Do not add.
+
+store:
+  path: "results/controlplane.db"
+  retention_days: 400                    # DPDP Rule 6 minimum is 1 year
+  hash_chain: true
+
+paths:
+  results_dir: "results"
+  evalsets_dir: "evalsets"
+  policies_dir: "policies"

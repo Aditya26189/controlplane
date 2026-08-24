@@ -1,0 +1,3631 @@
+{
+  "eval_set_id": "hinglish-pii-200",
+  "content_hash": "39b541efa4299f4db51fb955d16f3a74f78079c93d0f69a86570983bf6d6a639",
+  "envelope_id": "sha256:39b541efa4299f4d",
+  "data_source": "measured",
+  "n_items": 200,
+  "base_rate": 0.51,
+  "construction": {
+    "method": "hand-written scenarios crossed with systematic disclosure forms",
+    "hand_written_pii_scenarios": 51,
+    "hand_written_near_miss_scenarios": 26,
+    "disclosure_forms": [
+      "verbatim",
+      "spaced",
+      "obfuscated"
+    ],
+    "forms_per_scenario": 2,
+    "positives": 102,
+    "negatives": 98,
+    "per_form_counts": {
+      "verbatim": 34,
+      "spaced": 34,
+      "obfuscated": 34
+    },
+    "precision_caveat": "This set is enriched for positives relative to real traffic, so precision measured here is not a production precision. FPR comes from hard-negatives-200, which is what that set is for.",
+    "seed": 1729,
+    "identifiers": "synthetic; Aadhaar from the UIDAI 9999 test range, phones from a reserved prefix. No real personal data.",
+    "invalid_checksum_fraction": "~1 in 7 Aadhaar positives",
+    "label_meaning": "1 = message contains a personal identifier",
+    "llm_generated": false,
+    "why_not_llm_generated": "Generating an evaluation set with a model makes that model's judgment the ground truth for measuring models (DECISIONS.md 007)."
+  },
+  "items": [
+    {
+      "item_id": "hinglish-pii-200-pos-000-verbatim",
+      "question_id": "hinglish-scenario-000",
+      "prompt": "Sir mera KYC pending dikha raha hai, aadhaar number 9999 0687 2026 hai, please update kar dijiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999906872026",
+        "span": [
+          52,
+          66
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": "Transliterated Hindi in Latin script — the modal form of Indian support chat."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-000-spaced",
+      "question_id": "hinglish-scenario-000",
+      "prompt": "Sir mera KYC pending dikha raha hai, aadhaar number 99.99.48.54.32.83 hai, please update kar dijiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "999948543283",
+        "span": [
+          52,
+          69
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": "Transliterated Hindi in Latin script — the modal form of Indian support chat."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-001-spaced",
+      "question_id": "hinglish-scenario-001",
+      "prompt": "मेरा आधार नंबर 9999 - 9756 - 5694 है, please ise account se link kar dijiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "999997565694",
+        "span": [
+          15,
+          33
+        ],
+        "register": "banking",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": "Devanagari clause followed by a Latin one. Script switches mid-sentence."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-001-obfuscated",
+      "question_id": "hinglish-scenario-001",
+      "prompt": "मेरा आधार नंबर 999936 ka 090910 है, please ise account se link kar dijiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "999936090910",
+        "span": [
+          15,
+          31
+        ],
+        "register": "banking",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": "Devanagari clause followed by a Latin one. Script switches mid-sentence."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-002-obfuscated",
+      "question_id": "hinglish-scenario-002",
+      "prompt": "Bhai KYC form bhara but rejected aa gaya. Aadhaar 999950 wala 949796 daala tha, kya galat hai?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "999950949796",
+        "span": [
+          50,
+          68
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-002-verbatim",
+      "question_id": "hinglish-scenario-002",
+      "prompt": "Bhai KYC form bhara but rejected aa gaya. Aadhaar 9999 7630 4615 daala tha, kya galat hai?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999976304615",
+        "span": [
+          50,
+          64
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-003-verbatim",
+      "question_id": "hinglish-scenario-003",
+      "prompt": "Aap log bol rahe ho documents incomplete hain. Maine aadhaar 9999 3274 8715 aur PAN dono upload kiye the.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": false,
+        "canonical": "999932748715",
+        "span": [
+          61,
+          75
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-003-spaced",
+      "question_id": "hinglish-scenario-003",
+      "prompt": "Aap log bol rahe ho documents incomplete hain. Maine aadhaar 999-972-548-770 aur PAN dono upload kiye the.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "999972548770",
+        "span": [
+          61,
+          76
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-004-spaced",
+      "question_id": "hinglish-scenario-004",
+      "prompt": "नमस्ते, ration card update ke liye aadhaar 99.99.10.87.04.51 chahiye tha na? Attach kar rahi hoon.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "999910870451",
+        "span": [
+          43,
+          60
+        ],
+        "register": "government",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-004-obfuscated",
+      "question_id": "hinglish-scenario-004",
+      "prompt": "नमस्ते, ration card update ke liye aadhaar 99********71 chahiye tha na? Attach kar rahi hoon.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "999992877271",
+        "span": [
+          43,
+          55
+        ],
+        "register": "government",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-005-obfuscated",
+      "question_id": "hinglish-scenario-005",
+      "prompt": "Uncle ka aadhaar 999987(space)889143 hai, unke pension ka status check kar sakte ho?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "999987889143",
+        "span": [
+          17,
+          36
+        ],
+        "register": "government",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": "Third-party disclosure — the subject is not the sender, which matters for consent."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-005-verbatim",
+      "question_id": "hinglish-scenario-005",
+      "prompt": "Uncle ka aadhaar 9999 1749 0446 hai, unke pension ka status check kar sakte ho?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999917490446",
+        "span": [
+          17,
+          31
+        ],
+        "register": "government",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": "Third-party disclosure — the subject is not the sender, which matters for consent."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-006-verbatim",
+      "question_id": "hinglish-scenario-006",
+      "prompt": "Form me aadhaar 9999 0297 4331 likha hai lekin website accept nahi kar rahi, error aa raha hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999902974331",
+        "span": [
+          16,
+          30
+        ],
+        "register": "government",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-006-spaced",
+      "question_id": "hinglish-scenario-006",
+      "prompt": "Form me aadhaar 999 - 914 - 748 - 466 likha hai lekin website accept nahi kar rahi, error aa raha hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": false,
+        "canonical": "999914748466",
+        "span": [
+          16,
+          37
+        ],
+        "register": "government",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-007-spaced",
+      "question_id": "hinglish-scenario-007",
+      "prompt": "मैंने आधार 999-960-831-425 से लिंक किया था, अब OTP नहीं आ रहा है।",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "999960831425",
+        "span": [
+          11,
+          26
+        ],
+        "register": "banking",
+        "script": "devanagari",
+        "synthetic_pii": true,
+        "note": "Fully Devanagari — an English-only recogniser has nothing to match on."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-007-obfuscated",
+      "question_id": "hinglish-scenario-007",
+      "prompt": "मैंने आधार 999949 two nine one three seven four से लिंक किया था, अब OTP नहीं आ रहा है।",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "999949291374",
+        "span": [
+          11,
+          47
+        ],
+        "register": "banking",
+        "script": "devanagari",
+        "synthetic_pii": true,
+        "note": "Fully Devanagari — an English-only recogniser has nothing to match on."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-008-obfuscated",
+      "question_id": "hinglish-scenario-008",
+      "prompt": "Meri wife ka aadhaar 999956(space)470521 hai, joint account me add karna hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "999956470521",
+        "span": [
+          21,
+          40
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-008-verbatim",
+      "question_id": "hinglish-scenario-008",
+      "prompt": "Meri wife ka aadhaar 9999 1152 3826 hai, joint account me add karna hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999911523826",
+        "span": [
+          21,
+          35
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-009-verbatim",
+      "question_id": "hinglish-scenario-009",
+      "prompt": "Aadhaar seeding ke baad bhi subsidy nahi aayi. Number 9999 8071 0749, please dekh lijiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999980710749",
+        "span": [
+          54,
+          68
+        ],
+        "register": "government",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-009-spaced",
+      "question_id": "hinglish-scenario-009",
+      "prompt": "Aadhaar seeding ke baad bhi subsidy nahi aayi. Number 9999-6119-2945, please dekh lijiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "999961192945",
+        "span": [
+          54,
+          68
+        ],
+        "register": "government",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-010-spaced",
+      "question_id": "hinglish-scenario-010",
+      "prompt": "SIM port karwana hai, aadhaar 999 - 916 - 828 - 154 de raha hoon verification ke liye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": false,
+        "canonical": "999916828154",
+        "span": [
+          30,
+          51
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-010-obfuscated",
+      "question_id": "hinglish-scenario-010",
+      "prompt": "SIM port karwana hai, aadhaar 999965 ka 788387 de raha hoon verification ke liye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "999965788387",
+        "span": [
+          30,
+          46
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-011-obfuscated",
+      "question_id": "hinglish-scenario-011",
+      "prompt": "School admission form me bacche ka aadhaar XXXXXXXX9602 maanga hai, yeh sahi format hai?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "999998759602",
+        "span": [
+          43,
+          55
+        ],
+        "register": "government",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": "A minor's identifier, which most policies treat as a higher severity."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-011-verbatim",
+      "question_id": "hinglish-scenario-011",
+      "prompt": "School admission form me bacche ka aadhaar 9999 0439 6064 maanga hai, yeh sahi format hai?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999904396064",
+        "span": [
+          43,
+          57
+        ],
+        "register": "government",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": "A minor's identifier, which most policies treat as a higher severity."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-012-verbatim",
+      "question_id": "hinglish-scenario-012",
+      "prompt": "ITR file karte time PAN MKHPR4761D daala, ab mismatch error aa raha hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "MKHPR4761D",
+        "span": [
+          24,
+          34
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-012-spaced",
+      "question_id": "hinglish-scenario-012",
+      "prompt": "ITR file karte time PAN YXC.PR7.606.R daala, ab mismatch error aa raha hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "YXCPR7606R",
+        "span": [
+          24,
+          37
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-013-spaced",
+      "question_id": "hinglish-scenario-013",
+      "prompt": "Demat account ke liye PAN VU - MP - B0 - 51 - 5I hai. Kitna time lagega activation me?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "VUMPB0515I",
+        "span": [
+          26,
+          48
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-013-obfuscated",
+      "question_id": "hinglish-scenario-013",
+      "prompt": "Demat account ke liye PAN CETPE wala 8082Y hai. Kitna time lagega activation me?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "CETPE8082Y",
+        "span": [
+          26,
+          42
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-014-obfuscated",
+      "question_id": "hinglish-scenario-014",
+      "prompt": "मेरा PAN XXXXXX253Q है, TDS certificate download nahi ho raha.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "VIYPK7253Q",
+        "span": [
+          9,
+          19
+        ],
+        "register": "banking",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-014-verbatim",
+      "question_id": "hinglish-scenario-014",
+      "prompt": "मेरा PAN JZEPU5492P है, TDS certificate download nahi ho raha.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "JZEPU5492P",
+        "span": [
+          9,
+          19
+        ],
+        "register": "banking",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-015-verbatim",
+      "question_id": "hinglish-scenario-015",
+      "prompt": "Sir 26AS me entry nahi dikh rahi, PAN VMJPS6233I check kar lijiye please.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "VMJPS6233I",
+        "span": [
+          38,
+          48
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-015-spaced",
+      "question_id": "hinglish-scenario-015",
+      "prompt": "Sir 26AS me entry nahi dikh rahi, PAN PDRP A569 6S check kar lijiye please.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "PDRPA5696S",
+        "span": [
+          38,
+          50
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-016-spaced",
+      "question_id": "hinglish-scenario-016",
+      "prompt": "Mutual fund KYC me PAN OYOP-Y516-1U aur aadhaar dono chahiye kya?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "OYOPY5161U",
+        "span": [
+          23,
+          35
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-016-obfuscated",
+      "question_id": "hinglish-scenario-016",
+      "prompt": "Mutual fund KYC me PAN RINPP ka 3851J aur aadhaar dono chahiye kya?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "RINPP3851J",
+        "span": [
+          23,
+          37
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-017-obfuscated",
+      "question_id": "hinglish-scenario-017",
+      "prompt": "Company ne form 16 galat PAN pe bhej diya. Mera PAN LGXPP wala 3389Z hai, unka record galat hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "LGXPP3389Z",
+        "span": [
+          52,
+          68
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-017-verbatim",
+      "question_id": "hinglish-scenario-017",
+      "prompt": "Company ne form 16 galat PAN pe bhej diya. Mera PAN IXGPO7855D hai, unka record galat hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "IXGPO7855D",
+        "span": [
+          52,
+          62
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-018-verbatim",
+      "question_id": "hinglish-scenario-018",
+      "prompt": "PAN PZJPU3372O se linked mobile change karna hai, process kya hai?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "PZJPU3372O",
+        "span": [
+          4,
+          14
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-018-spaced",
+      "question_id": "hinglish-scenario-018",
+      "prompt": "PAN ELM . PH7 . 874 . S se linked mobile change karna hai, process kya hai?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "ELMPH7874S",
+        "span": [
+          4,
+          23
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-019-spaced",
+      "question_id": "hinglish-scenario-019",
+      "prompt": "पैन कार्ड नंबर PA-MP-U8-13-1C है, नाम में spelling mistake है, correction kaise karein?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "PAMPU8131C",
+        "span": [
+          15,
+          29
+        ],
+        "register": "government",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-019-obfuscated",
+      "question_id": "hinglish-scenario-019",
+      "prompt": "पैन कार्ड नंबर JFGPF ka 1140T है, नाम में spelling mistake है, correction kaise karein?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "JFGPF1140T",
+        "span": [
+          15,
+          29
+        ],
+        "register": "government",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-020-obfuscated",
+      "question_id": "hinglish-scenario-020",
+      "prompt": "Refund mere UPI sneha71 at the rate okhdfcbank pe bhej dijiye, bank account me mat bhejna.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "sneha71@okhdfcbank",
+        "span": [
+          16,
+          46
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-020-verbatim",
+      "question_id": "hinglish-scenario-020",
+      "prompt": "Refund mere UPI rahul64@ybl pe bhej dijiye, bank account me mat bhejna.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "rahul64@ybl",
+        "span": [
+          16,
+          27
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-021-verbatim",
+      "question_id": "hinglish-scenario-021",
+      "prompt": "Payment failed ho gaya, meera54@okaxis se 2400 debit hua hai but merchant ko nahi mila.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "meera54@okaxis",
+        "span": [
+          24,
+          38
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-021-spaced",
+      "question_id": "hinglish-scenario-021",
+      "prompt": "Payment failed ho gaya, arjun66 @ paytm se 2400 debit hua hai but merchant ko nahi mila.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "arjun66@paytm",
+        "span": [
+          24,
+          39
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-022-spaced",
+      "question_id": "hinglish-scenario-022",
+      "prompt": "Bhai mere UPI id priya58 @ paytm pe paise bhej de, urgent hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "priya58@paytm",
+        "span": [
+          17,
+          32
+        ],
+        "register": "social",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-022-obfuscated",
+      "question_id": "hinglish-scenario-022",
+      "prompt": "Bhai mere UPI id anita56 at the rate ybl pe paise bhej de, urgent hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "anita56@ybl",
+        "span": [
+          17,
+          40
+        ],
+        "register": "social",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-023-obfuscated",
+      "question_id": "hinglish-scenario-023",
+      "prompt": "मेरी UPI आईडी priya55 at the rate okhdfcbank है, cashback abhi tak credit nahi hua.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "priya55@okhdfcbank",
+        "span": [
+          14,
+          44
+        ],
+        "register": "banking",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-023-verbatim",
+      "question_id": "hinglish-scenario-023",
+      "prompt": "मेरी UPI आईडी farhan67@okicici है, cashback abhi tak credit nahi hua.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "farhan67@okicici",
+        "span": [
+          14,
+          30
+        ],
+        "register": "banking",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-024-verbatim",
+      "question_id": "hinglish-scenario-024",
+      "prompt": "Auto-pay mandate priya64@okaxis pe set kiya tha, cancel karna hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "priya64@okaxis",
+        "span": [
+          17,
+          31
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-024-spaced",
+      "question_id": "hinglish-scenario-024",
+      "prompt": "Auto-pay mandate anita23 @ ybl pe set kiya tha, cancel karna hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "anita23@ybl",
+        "span": [
+          17,
+          30
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-025-spaced",
+      "question_id": "hinglish-scenario-025",
+      "prompt": "Rent ke liye meera89 @ upi pe har mahine bhejta hoon, is baar fail ho gaya.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "meera89@upi",
+        "span": [
+          13,
+          26
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-025-obfuscated",
+      "question_id": "hinglish-scenario-025",
+      "prompt": "Rent ke liye priya80 at the rate ybl pe har mahine bhejta hoon, is baar fail ho gaya.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "priya80@ybl",
+        "span": [
+          13,
+          36
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-026-obfuscated",
+      "question_id": "hinglish-scenario-026",
+      "prompt": "Freelance payment arjun14 at the rate okaxis pe receive karta hoon, GST invoice kaise banau?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "arjun14@okaxis",
+        "span": [
+          18,
+          44
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-026-verbatim",
+      "question_id": "hinglish-scenario-026",
+      "prompt": "Freelance payment anita15@paytm pe receive karta hoon, GST invoice kaise banau?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "anita15@paytm",
+        "span": [
+          18,
+          31
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-027-verbatim",
+      "question_id": "hinglish-scenario-027",
+      "prompt": "Mera registered mobile +91 90000 76351 hai, OTP us pe nahi aa raha.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "+919000076351",
+        "span": [
+          23,
+          38
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-027-spaced",
+      "question_id": "hinglish-scenario-027",
+      "prompt": "Mera registered mobile +919 . 0000 . 7629 . 4 hai, OTP us pe nahi aa raha.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "+919000076294",
+        "span": [
+          23,
+          45
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-028-spaced",
+      "question_id": "hinglish-scenario-028",
+      "prompt": "Call kar lijiye +9 . 19 . 00 . 00 . 72 . 75 . 0 pe, main abhi available hoon.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "+919000072750",
+        "span": [
+          16,
+          47
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-028-obfuscated",
+      "question_id": "hinglish-scenario-028",
+      "prompt": "Call kar lijiye XXXXXXXXX4685 pe, main abhi available hoon.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "+919000064685",
+        "span": [
+          16,
+          29
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-029-obfuscated",
+      "question_id": "hinglish-scenario-029",
+      "prompt": "मेरा नंबर +91900 ka 0066552 है, delivery agent ko de dijiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "+919000066552",
+        "span": [
+          10,
+          27
+        ],
+        "register": "support",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-029-verbatim",
+      "question_id": "hinglish-scenario-029",
+      "prompt": "मेरा नंबर +91 90000 51807 है, delivery agent ko de dijiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "+919000051807",
+        "span": [
+          10,
+          25
+        ],
+        "register": "support",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-030-verbatim",
+      "question_id": "hinglish-scenario-030",
+      "prompt": "Alternate number +91 90000 28550 add karna hai account me, kaise karun?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "+919000028550",
+        "span": [
+          17,
+          32
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-030-spaced",
+      "question_id": "hinglish-scenario-030",
+      "prompt": "Alternate number +919-0000-1989-4 add karna hai account me, kaise karun?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "+919000019894",
+        "span": [
+          17,
+          33
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-031-spaced",
+      "question_id": "hinglish-scenario-031",
+      "prompt": "Papa ka number +9.19.00.00.37.89.3 hai, unko bhi alert bhejiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "+919000037893",
+        "span": [
+          15,
+          34
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": "Third-party disclosure again, in a register where it is completely routine."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-031-obfuscated",
+      "question_id": "hinglish-scenario-031",
+      "prompt": "Papa ka number XXXXXXXXX4554 hai, unko bhi alert bhejiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "+919000084554",
+        "span": [
+          15,
+          28
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": "Third-party disclosure again, in a register where it is completely routine."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-032-obfuscated",
+      "question_id": "hinglish-scenario-032",
+      "prompt": "WhatsApp pe +91900(space)0030797 pe bhej dijiye details, email check nahi karta main.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "+919000030797",
+        "span": [
+          12,
+          32
+        ],
+        "register": "social",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-032-verbatim",
+      "question_id": "hinglish-scenario-032",
+      "prompt": "WhatsApp pe +91 90000 87649 pe bhej dijiye details, email check nahi karta main.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "+919000087649",
+        "span": [
+          12,
+          27
+        ],
+        "register": "social",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-033-verbatim",
+      "question_id": "hinglish-scenario-033",
+      "prompt": "NEFT ke liye IFSC UTIB0466524 sahi hai na? Transfer fail ho raha hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "UTIB0466524",
+        "span": [
+          18,
+          29
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-033-spaced",
+      "question_id": "hinglish-scenario-033",
+      "prompt": "NEFT ke liye IFSC PU-NB-06-42-22-2 sahi hai na? Transfer fail ho raha hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "PUNB0642222",
+        "span": [
+          18,
+          34
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-034-spaced",
+      "question_id": "hinglish-scenario-034",
+      "prompt": "Branch change hua hai, naya IFSC HDF . C05 . 223 . 68 hai. Salary account update kar dijiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "HDFC0522368",
+        "span": [
+          33,
+          53
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-034-obfuscated",
+      "question_id": "hinglish-scenario-034",
+      "prompt": "Branch change hua hai, naya IFSC PUNB0 ka 752741 hai. Salary account update kar dijiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "PUNB0752741",
+        "span": [
+          33,
+          48
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-035-obfuscated",
+      "question_id": "hinglish-scenario-035",
+      "prompt": "मेरे खाते का IFSC KKBK0(space)912153 है, cheque book request kaise dalein?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "KKBK0912153",
+        "span": [
+          18,
+          36
+        ],
+        "register": "banking",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-035-verbatim",
+      "question_id": "hinglish-scenario-035",
+      "prompt": "मेरे खाते का IFSC UTIB0724835 है, cheque book request kaise dalein?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "UTIB0724835",
+        "span": [
+          18,
+          29
+        ],
+        "register": "banking",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-036-verbatim",
+      "question_id": "hinglish-scenario-036",
+      "prompt": "Employer ko IFSC PUNB0603346 bheja tha but unhone purane branch pe bhej diya.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "PUNB0603346",
+        "span": [
+          17,
+          28
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-036-spaced",
+      "question_id": "hinglish-scenario-036",
+      "prompt": "Employer ko IFSC PUN.B05.548.10 bheja tha but unhone purane branch pe bhej diya.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "PUNB0554810",
+        "span": [
+          17,
+          31
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-037-spaced",
+      "question_id": "hinglish-scenario-037",
+      "prompt": "Main teen baar complaint kar chuka hoon. Aadhaar 99-99-04-64-99-32 hai, koi response nahi mila.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "999904649932",
+        "span": [
+          49,
+          66
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-037-obfuscated",
+      "question_id": "hinglish-scenario-037",
+      "prompt": "Main teen baar complaint kar chuka hoon. Aadhaar 99********73 hai, koi response nahi mila.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "999934583073",
+        "span": [
+          49,
+          61
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-038-obfuscated",
+      "question_id": "hinglish-scenario-038",
+      "prompt": "Ombudsman me complaint karni hai. Mera PAN EWHPA(space)0049W hai, reference chahiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "EWHPA0049W",
+        "span": [
+          43,
+          60
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-038-verbatim",
+      "question_id": "hinglish-scenario-038",
+      "prompt": "Ombudsman me complaint karni hai. Mera PAN QVGPK1913O hai, reference chahiye.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "QVGPK1913O",
+        "span": [
+          43,
+          53
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-039-verbatim",
+      "question_id": "hinglish-scenario-039",
+      "prompt": "यह तीसरी बार है। मेरा नंबर +91 90000 92197 है और कोई कॉल बैक नहीं आया।",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "+919000092197",
+        "span": [
+          27,
+          42
+        ],
+        "register": "support",
+        "script": "devanagari",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-039-spaced",
+      "question_id": "hinglish-scenario-039",
+      "prompt": "यह तीसरी बार है। मेरा नंबर +9 . 19 . 00 . 00 . 43 . 91 . 0 है और कोई कॉल बैक नहीं आया।",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "+919000043910",
+        "span": [
+          27,
+          58
+        ],
+        "register": "support",
+        "script": "devanagari",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-040-spaced",
+      "question_id": "hinglish-scenario-040",
+      "prompt": "Account freeze kar diya bina bataye. Aadhaar 999 - 906 - 313 - 993 diya tha KYC me, phir bhi.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "999906313993",
+        "span": [
+          45,
+          66
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-040-obfuscated",
+      "question_id": "hinglish-scenario-040",
+      "prompt": "Account freeze kar diya bina bataye. Aadhaar 999931 two five five nine two three diya tha KYC me, phir bhi.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": false,
+        "canonical": "999931255923",
+        "span": [
+          45,
+          80
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-041-obfuscated",
+      "question_id": "hinglish-scenario-041",
+      "prompt": "Fraud hua hai mere account me. UPI farhan36 at the rate paytm se unauthorized transaction gaya.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "farhan36@paytm",
+        "span": [
+          35,
+          61
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": "A fraud report: the identifier is necessary to the complaint, which is why redaction policy here is a genuine tradeoff rather than obvious."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-041-verbatim",
+      "question_id": "hinglish-scenario-041",
+      "prompt": "Fraud hua hai mere account me. UPI farhan40@okaxis se unauthorized transaction gaya.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "farhan40@okaxis",
+        "span": [
+          35,
+          50
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": "A fraud report: the identifier is necessary to the complaint, which is why redaction policy here is a genuine tradeoff rather than obvious."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-042-verbatim",
+      "question_id": "hinglish-scenario-042",
+      "prompt": "Policy renewal ke liye aadhaar 9999 7802 5627 chahiye tha, attach kiya hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999978025627",
+        "span": [
+          31,
+          45
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-042-spaced",
+      "question_id": "hinglish-scenario-042",
+      "prompt": "Policy renewal ke liye aadhaar 999  916  503  466 chahiye tha, attach kiya hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "999916503466",
+        "span": [
+          31,
+          49
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-043-spaced",
+      "question_id": "hinglish-scenario-043",
+      "prompt": "Claim settle nahi hua abhi tak, PAN HPX PG5 679 Y pe registered hai policy.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "HPXPG5679Y",
+        "span": [
+          36,
+          49
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-043-obfuscated",
+      "question_id": "hinglish-scenario-043",
+      "prompt": "Claim settle nahi hua abhi tak, PAN TJNPX ka 5545H pe registered hai policy.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "TJNPX5545H",
+        "span": [
+          36,
+          50
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-044-obfuscated",
+      "question_id": "hinglish-scenario-044",
+      "prompt": "Broadband connection ke liye XXXXXXXXX3308 pe call kiya tha, koi nahi aaya.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "+919000063308",
+        "span": [
+          29,
+          42
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-044-verbatim",
+      "question_id": "hinglish-scenario-044",
+      "prompt": "Broadband connection ke liye +91 90000 67855 pe call kiya tha, koi nahi aaya.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PHONE",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "+919000067855",
+        "span": [
+          29,
+          44
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-045-verbatim",
+      "question_id": "hinglish-scenario-045",
+      "prompt": "बिजली बिल का payment vikram47@okicici से किया था, receipt नहीं मिली।",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "vikram47@okicici",
+        "span": [
+          21,
+          37
+        ],
+        "register": "government",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-045-spaced",
+      "question_id": "hinglish-scenario-045",
+      "prompt": "बिजली बिल का payment meera43 @ upi से किया था, receipt नहीं मिली।",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "meera43@upi",
+        "span": [
+          21,
+          34
+        ],
+        "register": "government",
+        "script": "mixed",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-046-spaced",
+      "question_id": "hinglish-scenario-046",
+      "prompt": "Gas connection transfer karna hai, aadhaar 99.99.81.53.93.72 same rahega na?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "999981539372",
+        "span": [
+          43,
+          60
+        ],
+        "register": "government",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-046-obfuscated",
+      "question_id": "hinglish-scenario-046",
+      "prompt": "Gas connection transfer karna hai, aadhaar XXXXXXXX1603 same rahega na?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "999901781603",
+        "span": [
+          43,
+          55
+        ],
+        "register": "government",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-047-obfuscated",
+      "question_id": "hinglish-scenario-047",
+      "prompt": "Joining formalities ke liye PAN GH******9L aur bank details bheji hain.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "GHIPN8589L",
+        "span": [
+          32,
+          42
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-047-verbatim",
+      "question_id": "hinglish-scenario-047",
+      "prompt": "Joining formalities ke liye PAN GGCPU0552U aur bank details bheji hain.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_PAN",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "GGCPU0552U",
+        "span": [
+          32,
+          42
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-048-verbatim",
+      "question_id": "hinglish-scenario-048",
+      "prompt": "PF withdrawal ke liye UAN chahiye, aadhaar 9999 4599 6518 se linked hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "999945996518",
+        "span": [
+          43,
+          57
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-048-spaced",
+      "question_id": "hinglish-scenario-048",
+      "prompt": "PF withdrawal ke liye UAN chahiye, aadhaar 99  99  33  55  35  00 se linked hai.",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_AADHAAR",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "999933553500",
+        "span": [
+          43,
+          65
+        ],
+        "register": "banking",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-049-spaced",
+      "question_id": "hinglish-scenario-049",
+      "prompt": "Salary account IFSC IC . IC . 00 . 76 . 19 . 6 me hai, HR ko yahi bhejna hai na?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "spaced",
+        "checksum_valid": true,
+        "canonical": "ICIC0076196",
+        "span": [
+          20,
+          46
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-049-obfuscated",
+      "question_id": "hinglish-scenario-049",
+      "prompt": "Salary account IFSC XXXXXXX8715 me hai, HR ko yahi bhejna hai na?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "IN_IFSC",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "ICIC0408715",
+        "span": [
+          20,
+          31
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-050-obfuscated",
+      "question_id": "hinglish-scenario-050",
+      "prompt": "Reimbursement sneha89 at the rate ybl pe aa jayega ya bank me?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "obfuscated",
+        "checksum_valid": true,
+        "canonical": "sneha89@ybl",
+        "span": [
+          14,
+          37
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-pos-050-verbatim",
+      "question_id": "hinglish-scenario-050",
+      "prompt": "Reimbursement farhan64@okhdfcbank pe aa jayega ya bank me?",
+      "response": "",
+      "label": 1,
+      "split": "test",
+      "meta": {
+        "identifier_kind": "UPI_VPA",
+        "disclosure_form": "verbatim",
+        "checksum_valid": true,
+        "canonical": "farhan64@okhdfcbank",
+        "span": [
+          14,
+          33
+        ],
+        "register": "support",
+        "script": "latin",
+        "synthetic_pii": true,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-000-00",
+      "question_id": "hinglish-nearmiss-000",
+      "prompt": "Mera order 045666672656 abhi tak deliver nahi hua, 5 din ho gaye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "order_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "A twelve-digit order id. Length alone makes it look like an Aadhaar."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-000-01",
+      "question_id": "hinglish-nearmiss-000",
+      "prompt": "Mera order 313707442162 abhi tak deliver nahi hua, 5 din ho gaye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "order_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "A twelve-digit order id. Length alone makes it look like an Aadhaar."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-000-02",
+      "question_id": "hinglish-nearmiss-000",
+      "prompt": "Mera order 448501667194 abhi tak deliver nahi hua, 5 din ho gaye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "order_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "A twelve-digit order id. Length alone makes it look like an Aadhaar."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-001-00",
+      "question_id": "hinglish-nearmiss-001",
+      "prompt": "Transaction reference 9269340879856469 hai, please status check kar dijiye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "txn_ref",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "Bank transaction references are twelve to sixteen digits — the single most common false positive for an Aadhaar regex."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-001-01",
+      "question_id": "hinglish-nearmiss-001",
+      "prompt": "Transaction reference 4364346053115627 hai, please status check kar dijiye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "txn_ref",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "Bank transaction references are twelve to sixteen digits — the single most common false positive for an Aadhaar regex."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-001-02",
+      "question_id": "hinglish-nearmiss-001",
+      "prompt": "Transaction reference 1929722481878932 hai, please status check kar dijiye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "txn_ref",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "Bank transaction references are twelve to sixteen digits — the single most common false positive for an Aadhaar regex."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-002-00",
+      "question_id": "hinglish-nearmiss-002",
+      "prompt": "Complaint number SR348477438 diya tha, koi update nahi mila.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-002-01",
+      "question_id": "hinglish-nearmiss-002",
+      "prompt": "Complaint number SR210975707 diya tha, koi update nahi mila.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-002-02",
+      "question_id": "hinglish-nearmiss-002",
+      "prompt": "Complaint number SR197699479 diya tha, koi update nahi mila.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-003-00",
+      "question_id": "hinglish-nearmiss-003",
+      "prompt": "मेरा ticket नंबर SR495953524 है, please escalate करें।",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "devanagari",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-003-01",
+      "question_id": "hinglish-nearmiss-003",
+      "prompt": "मेरा ticket नंबर SR302842727 है, please escalate करें।",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "devanagari",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-003-02",
+      "question_id": "hinglish-nearmiss-003",
+      "prompt": "मेरा ticket नंबर SR958093503 है, please escalate करें।",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "devanagari",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-004-00",
+      "question_id": "hinglish-nearmiss-004",
+      "prompt": "Invoice INV0004110841 ka payment pending dikha raha hai, maine kar diya tha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "invoice_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-004-01",
+      "question_id": "hinglish-nearmiss-004",
+      "prompt": "Invoice INV6343995236 ka payment pending dikha raha hai, maine kar diya tha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "invoice_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-004-02",
+      "question_id": "hinglish-nearmiss-004",
+      "prompt": "Invoice INV8308705494 ka payment pending dikha raha hai, maine kar diya tha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "invoice_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-005-00",
+      "question_id": "hinglish-nearmiss-005",
+      "prompt": "Policy number 093938497052 pe claim file kiya tha last month.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "policy_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-005-01",
+      "question_id": "hinglish-nearmiss-005",
+      "prompt": "Policy number 338156784942 pe claim file kiya tha last month.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "policy_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-005-02",
+      "question_id": "hinglish-nearmiss-005",
+      "prompt": "Policy number 704062959767 pe claim file kiya tha last month.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "policy_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-006-00",
+      "question_id": "hinglish-nearmiss-006",
+      "prompt": "Tracking id 6434912473541 pe courier ka status nahi dikh raha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "tracking_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-006-01",
+      "question_id": "hinglish-nearmiss-006",
+      "prompt": "Tracking id 5986006341759 pe courier ka status nahi dikh raha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "tracking_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-006-02",
+      "question_id": "hinglish-nearmiss-006",
+      "prompt": "Tracking id 9881943872386 pe courier ka status nahi dikh raha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "tracking_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-007-00",
+      "question_id": "hinglish-nearmiss-007",
+      "prompt": "Flight PNR 666667 cancel karna hai, refund kitne din me aayega?",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "pnr",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-007-01",
+      "question_id": "hinglish-nearmiss-007",
+      "prompt": "Flight PNR 204045 cancel karna hai, refund kitne din me aayega?",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "pnr",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-007-02",
+      "question_id": "hinglish-nearmiss-007",
+      "prompt": "Flight PNR 863741 cancel karna hai, refund kitne din me aayega?",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "pnr",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-008-00",
+      "question_id": "hinglish-nearmiss-008",
+      "prompt": "Loan application APP16034551669 ka status kya hai? Two weeks ho gaye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "application_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-008-01",
+      "question_id": "hinglish-nearmiss-008",
+      "prompt": "Loan application APP39901706468 ka status kya hai? Two weeks ho gaye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "application_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-008-02",
+      "question_id": "hinglish-nearmiss-008",
+      "prompt": "Loan application APP14288096652 ka status kya hai? Two weeks ho gaye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "application_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-009-00",
+      "question_id": "hinglish-nearmiss-009",
+      "prompt": "GST invoice INV4099044268 me amount galat hai, correction chahiye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "invoice_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-009-01",
+      "question_id": "hinglish-nearmiss-009",
+      "prompt": "GST invoice INV4856233219 me amount galat hai, correction chahiye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "invoice_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-009-02",
+      "question_id": "hinglish-nearmiss-009",
+      "prompt": "GST invoice INV6881210798 me amount galat hai, correction chahiye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "invoice_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-010-00",
+      "question_id": "hinglish-nearmiss-010",
+      "prompt": "मेरा consumer number 328419793835 है, बिजली बिल ज़्यादा आया है।",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "consumer_no",
+        "script": "devanagari",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-010-01",
+      "question_id": "hinglish-nearmiss-010",
+      "prompt": "मेरा consumer number 314567685217 है, बिजली बिल ज़्यादा आया है।",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "consumer_no",
+        "script": "devanagari",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-010-02",
+      "question_id": "hinglish-nearmiss-010",
+      "prompt": "मेरा consumer number 840085721037 है, बिजली बिल ज़्यादा आया है।",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "consumer_no",
+        "script": "devanagari",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-011-00",
+      "question_id": "hinglish-nearmiss-011",
+      "prompt": "Service request SR018197207 raise ki thi, technician nahi aaya.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-011-01",
+      "question_id": "hinglish-nearmiss-011",
+      "prompt": "Service request SR340940917 raise ki thi, technician nahi aaya.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-011-02",
+      "question_id": "hinglish-nearmiss-011",
+      "prompt": "Service request SR540842482 raise ki thi, technician nahi aaya.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-012-00",
+      "question_id": "hinglish-nearmiss-012",
+      "prompt": "Maine 34731 rupees transfer kiye the, abhi tak credit nahi hua.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "amount",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "A large rupee amount. Digit-count heuristics flag it; it is not PII."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-012-01",
+      "question_id": "hinglish-nearmiss-012",
+      "prompt": "Maine 10118 rupees transfer kiye the, abhi tak credit nahi hua.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "amount",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "A large rupee amount. Digit-count heuristics flag it; it is not PII."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-012-02",
+      "question_id": "hinglish-nearmiss-012",
+      "prompt": "Maine 98831 rupees transfer kiye the, abhi tak credit nahi hua.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "amount",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "A large rupee amount. Digit-count heuristics flag it; it is not PII."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-013-00",
+      "question_id": "hinglish-nearmiss-013",
+      "prompt": "Meeting 5 baje hai na? Confirm kar dijiye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "time",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-013-01",
+      "question_id": "hinglish-nearmiss-013",
+      "prompt": "Meeting 3 baje hai na? Confirm kar dijiye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "time",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-013-02",
+      "question_id": "hinglish-nearmiss-013",
+      "prompt": "Meeting 3 baje hai na? Confirm kar dijiye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "time",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-014-00",
+      "question_id": "hinglish-nearmiss-014",
+      "prompt": "Product SKU SKU32134018 out of stock dikha raha hai website pe.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "sku",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-014-01",
+      "question_id": "hinglish-nearmiss-014",
+      "prompt": "Product SKU SKU49866548 out of stock dikha raha hai website pe.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "sku",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-014-02",
+      "question_id": "hinglish-nearmiss-014",
+      "prompt": "Product SKU SKU68351932 out of stock dikha raha hai website pe.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "sku",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-015-00",
+      "question_id": "hinglish-nearmiss-015",
+      "prompt": "मेरी booking 0914285624 confirm हुई या नहीं?",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "booking_id",
+        "script": "devanagari",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-015-01",
+      "question_id": "hinglish-nearmiss-015",
+      "prompt": "मेरी booking 4272466351 confirm हुई या नहीं?",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "booking_id",
+        "script": "devanagari",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-015-02",
+      "question_id": "hinglish-nearmiss-015",
+      "prompt": "मेरी booking 8202889624 confirm हुई या नहीं?",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "booking_id",
+        "script": "devanagari",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-016-00",
+      "question_id": "hinglish-nearmiss-016",
+      "prompt": "Warranty registration number 310126437789 hai, service center ne maanga tha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "warranty_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-016-01",
+      "question_id": "hinglish-nearmiss-016",
+      "prompt": "Warranty registration number 576906449144 hai, service center ne maanga tha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "warranty_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-016-02",
+      "question_id": "hinglish-nearmiss-016",
+      "prompt": "Warranty registration number 107903102641 hai, service center ne maanga tha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "warranty_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-017-00",
+      "question_id": "hinglish-nearmiss-017",
+      "prompt": "Employee id EMP681737 hai mera, attendance system me issue aa raha hai.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "employee_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "An internal identifier. Personal in a loose sense, not a regulated one — which is exactly the boundary a policy has to draw deliberately."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-017-01",
+      "question_id": "hinglish-nearmiss-017",
+      "prompt": "Employee id EMP604160 hai mera, attendance system me issue aa raha hai.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "employee_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "An internal identifier. Personal in a loose sense, not a regulated one — which is exactly the boundary a policy has to draw deliberately."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-017-02",
+      "question_id": "hinglish-nearmiss-017",
+      "prompt": "Employee id EMP334326 hai mera, attendance system me issue aa raha hai.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "employee_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "An internal identifier. Personal in a loose sense, not a regulated one — which is exactly the boundary a policy has to draw deliberately."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-018-00",
+      "question_id": "hinglish-nearmiss-018",
+      "prompt": "Roll number 5815097783 tha exam me, result nahi dikh raha portal pe.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "roll_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-018-01",
+      "question_id": "hinglish-nearmiss-018",
+      "prompt": "Roll number 3954946501 tha exam me, result nahi dikh raha portal pe.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "roll_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-018-02",
+      "question_id": "hinglish-nearmiss-018",
+      "prompt": "Roll number 3457933911 tha exam me, result nahi dikh raha portal pe.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "roll_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-019-00",
+      "question_id": "hinglish-nearmiss-019",
+      "prompt": "IMEI 884427446410581 note kar lijiye, phone chori ho gaya hai.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "imei",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "A device identifier: fifteen digits, regulated in some jurisdictions, not an Indian personal identifier."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-019-01",
+      "question_id": "hinglish-nearmiss-019",
+      "prompt": "IMEI 412737267097010 note kar lijiye, phone chori ho gaya hai.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "imei",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "A device identifier: fifteen digits, regulated in some jurisdictions, not an Indian personal identifier."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-019-02",
+      "question_id": "hinglish-nearmiss-019",
+      "prompt": "IMEI 756524662946077 note kar lijiye, phone chori ho gaya hai.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "imei",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": "A device identifier: fifteen digits, regulated in some jurisdictions, not an Indian personal identifier."
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-020-00",
+      "question_id": "hinglish-nearmiss-020",
+      "prompt": "Cheque number 794263 bounce ho gaya, charges lag gaye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "cheque_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-020-01",
+      "question_id": "hinglish-nearmiss-020",
+      "prompt": "Cheque number 803756 bounce ho gaya, charges lag gaye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "cheque_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-020-02",
+      "question_id": "hinglish-nearmiss-020",
+      "prompt": "Cheque number 789602 bounce ho gaya, charges lag gaye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "cheque_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-021-00",
+      "question_id": "hinglish-nearmiss-021",
+      "prompt": "Meter reading 974521 hai is mahine ka, bill galat aaya hai.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "meter_reading",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-021-01",
+      "question_id": "hinglish-nearmiss-021",
+      "prompt": "Meter reading 383956 hai is mahine ka, bill galat aaya hai.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "meter_reading",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-021-02",
+      "question_id": "hinglish-nearmiss-021",
+      "prompt": "Meter reading 910265 hai is mahine ka, bill galat aaya hai.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "meter_reading",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-022-00",
+      "question_id": "hinglish-nearmiss-022",
+      "prompt": "Coupon code SAVE59974935 apply nahi ho raha checkout pe.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "coupon",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-022-01",
+      "question_id": "hinglish-nearmiss-022",
+      "prompt": "Coupon code SAVE33328694 apply nahi ho raha checkout pe.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "coupon",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-022-02",
+      "question_id": "hinglish-nearmiss-022",
+      "prompt": "Coupon code SAVE99615366 apply nahi ho raha checkout pe.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "coupon",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-023-00",
+      "question_id": "hinglish-nearmiss-023",
+      "prompt": "मेरा membership 608654594126 expire हो गया, renew कैसे करें?",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "membership_no",
+        "script": "devanagari",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-023-01",
+      "question_id": "hinglish-nearmiss-023",
+      "prompt": "मेरा membership 127142566947 expire हो गया, renew कैसे करें?",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "membership_no",
+        "script": "devanagari",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-023-02",
+      "question_id": "hinglish-nearmiss-023",
+      "prompt": "मेरा membership 213472497638 expire हो गया, renew कैसे करें?",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "membership_no",
+        "script": "devanagari",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-024-00",
+      "question_id": "hinglish-nearmiss-024",
+      "prompt": "Vehicle chassis MA336543061738669160 hai, insurance ke liye chahiye tha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "chassis_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-024-01",
+      "question_id": "hinglish-nearmiss-024",
+      "prompt": "Vehicle chassis MA304811922099909035 hai, insurance ke liye chahiye tha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "chassis_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-024-02",
+      "question_id": "hinglish-nearmiss-024",
+      "prompt": "Vehicle chassis MA359048972627906134 hai, insurance ke liye chahiye tha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "chassis_no",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-025-00",
+      "question_id": "hinglish-nearmiss-025",
+      "prompt": "Ref SR935103653 pe follow up kar raha hoon, teesri baar likh raha hoon.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-025-01",
+      "question_id": "hinglish-nearmiss-025",
+      "prompt": "Ref SR961687689 pe follow up kar raha hoon, teesri baar likh raha hoon.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-025-02",
+      "question_id": "hinglish-nearmiss-025",
+      "prompt": "Ref SR876533237 pe follow up kar raha hoon, teesri baar likh raha hoon.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "latin",
+        "synthetic_pii": false,
+        "note": ""
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-000",
+      "question_id": "hinglish-nearmiss-000",
+      "prompt": "Mera order 623679932017 abhi tak deliver nahi hua, 5 din ho gaye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "order_id",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-001",
+      "question_id": "hinglish-nearmiss-001",
+      "prompt": "Transaction reference 1088371971644738 hai, please status check kar dijiye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "txn_ref",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-002",
+      "question_id": "hinglish-nearmiss-002",
+      "prompt": "Complaint number SR654915521 diya tha, koi update nahi mila.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-003",
+      "question_id": "hinglish-nearmiss-003",
+      "prompt": "मेरा ticket नंबर SR125855421 है, please escalate करें।",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "devanagari",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-004",
+      "question_id": "hinglish-nearmiss-004",
+      "prompt": "Invoice INV9790770403 ka payment pending dikha raha hai, maine kar diya tha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "invoice_no",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-005",
+      "question_id": "hinglish-nearmiss-005",
+      "prompt": "Policy number 855345515401 pe claim file kiya tha last month.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "policy_no",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-006",
+      "question_id": "hinglish-nearmiss-006",
+      "prompt": "Tracking id 8006014172384 pe courier ka status nahi dikh raha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "tracking_id",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-007",
+      "question_id": "hinglish-nearmiss-007",
+      "prompt": "Flight PNR 767751 cancel karna hai, refund kitne din me aayega?",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "pnr",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-008",
+      "question_id": "hinglish-nearmiss-008",
+      "prompt": "Loan application APP13003027801 ka status kya hai? Two weeks ho gaye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "application_no",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-009",
+      "question_id": "hinglish-nearmiss-009",
+      "prompt": "GST invoice INV3664745125 me amount galat hai, correction chahiye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "invoice_no",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-010",
+      "question_id": "hinglish-nearmiss-010",
+      "prompt": "मेरा consumer number 817673799720 है, बिजली बिल ज़्यादा आया है।",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "consumer_no",
+        "script": "devanagari",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-011",
+      "question_id": "hinglish-nearmiss-011",
+      "prompt": "Service request SR596873525 raise ki thi, technician nahi aaya.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "ticket_id",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-012",
+      "question_id": "hinglish-nearmiss-012",
+      "prompt": "Maine 83599 rupees transfer kiye the, abhi tak credit nahi hua.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "amount",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-013",
+      "question_id": "hinglish-nearmiss-013",
+      "prompt": "Meeting 3 baje hai na? Confirm kar dijiye.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "time",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-014",
+      "question_id": "hinglish-nearmiss-014",
+      "prompt": "Product SKU SKU53525388 out of stock dikha raha hai website pe.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "sku",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-015",
+      "question_id": "hinglish-nearmiss-015",
+      "prompt": "मेरी booking 0484017946 confirm हुई या नहीं?",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "booking_id",
+        "script": "devanagari",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-016",
+      "question_id": "hinglish-nearmiss-016",
+      "prompt": "Warranty registration number 368016224998 hai, service center ne maanga tha.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "warranty_no",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-017",
+      "question_id": "hinglish-nearmiss-017",
+      "prompt": "Employee id EMP526959 hai mera, attendance system me issue aa raha hai.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "employee_id",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-018",
+      "question_id": "hinglish-nearmiss-018",
+      "prompt": "Roll number 8929666897 tha exam me, result nahi dikh raha portal pe.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "roll_no",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    },
+    {
+      "item_id": "hinglish-pii-200-neg-fill-019",
+      "question_id": "hinglish-nearmiss-019",
+      "prompt": "IMEI 768649921336322 note kar lijiye, phone chori ho gaya hai.",
+      "response": "",
+      "label": 0,
+      "split": "test",
+      "meta": {
+        "decoy_kind": "imei",
+        "script": "latin",
+        "synthetic_pii": false
+      }
+    }
+  ]
+}

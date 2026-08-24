@@ -1,0 +1,511 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-23T16:17:56+00:00",
+    "git_commit": "e3622749ec05874f5bb29ac61b43a9c4ab8ed8f9",
+    "git_branch": "main",
+    "dirty": false,
+    "dirty_paths": [],
+    "dirty_excludes": "results",
+    "python": "3.12.10",
+    "libraries": {
+      "torch": "2.9.1+cpu",
+      "transformers": "5.8.0",
+      "scikit-learn": "1.7.2",
+      "numpy": "2.2.6",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "statsmodels": "0.14.6",
+      "presidio-analyzer": null,
+      "bitsandbytes": "0.49.2"
+    },
+    "device": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
+      "cuda_available": false,
+      "device_name": "cpu"
+    },
+    "config_hash": "c89257bc4adc10c2",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "workload": {
+        "name": "enterprise-3pct",
+        "monthly_interactions": 200000,
+        "base_error_rate": 0.03,
+        "review_minutes_per_item": 3.0,
+        "reviewer_monthly_cost_inr": 85000.0,
+        "reviewer_productive_hours": 160.0,
+        "measured_tpr": 0.1416,
+        "measured_fpr": 0.011
+      },
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ]
+      },
+      "probe": {
+        "aggregations": [
+          "mean_pool",
+          "max_rolling_means"
+        ],
+        "rolling_window": 64,
+        "rolling_stride": 32,
+        "standardize": true,
+        "class_weight": "balanced",
+        "C_grid": [
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "evalsets": [
+        {
+          "id": "triviaqa-600",
+          "pad_tokens": null
+        },
+        {
+          "id": "triviaqa-longctx-600",
+          "pad_tokens": [
+            4000,
+            16000
+          ]
+        },
+        {
+          "id": "hinglish-pii-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "hard-negatives-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "canary-20",
+          "pad_tokens": null
+        }
+      ],
+      "validation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_n_test": 200,
+        "min_auroc_lower_ci": 0.55,
+        "warrant_ttl_hours": 24,
+        "controls": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature",
+          "canary",
+          "determinism"
+        ],
+        "null_control_band": [
+          0.45,
+          0.55
+        ],
+        "null_control_min_repeats": 8,
+        "null_control_max_repeats": 200
+      },
+      "drift": {
+        "window_size": 200,
+        "psi_stable": 0.1,
+        "psi_significant": 0.25,
+        "mmd_permutations": 500,
+        "features": [
+          "token_length",
+          "script_mix",
+          "embedding_centroid_distance",
+          "reference_perplexity",
+          "category_mix"
+        ]
+      },
+      "sampling": {
+        "allocation_month_one": "proportional",
+        "allocation_thereafter": "neyman",
+        "expected_design_effect": 0.67,
+        "score_bands": 4,
+        "double_label_fraction": 0.1,
+        "recall_margin_tiers": [
+          0.05,
+          0.02
+        ],
+        "blind_queue": true
+      },
+      "policy": {
+        "engine": "opa",
+        "fail_closed_on_missing_warrant": true,
+        "weighted_error": {
+          "w_fpr_benign": 50.0,
+          "w_fnr": 5.0,
+          "w_fpr_hard_negative": 2.0
+        }
+      },
+      "profiles": {
+        "customer_support": {
+          "inline_budget_ms": 200,
+          "min_recall": 0.1,
+          "max_fpr": 0.02
+        },
+        "internal_knowledge": {
+          "inline_budget_ms": 500,
+          "min_recall": 0.25,
+          "max_fpr": 0.05
+        },
+        "decision_support": {
+          "inline_budget_ms": 2000,
+          "min_recall": 0.5,
+          "max_fpr": 0.1
+        }
+      },
+      "detectors": {
+        "presidio_configs": [
+          "stock",
+          "enabled",
+          "enabled_plus_custom"
+        ],
+        "qwen3guard": "Qwen/Qwen3Guard-Gen-0.6B"
+      },
+      "store": {
+        "path": "results/controlplane.db",
+        "retention_days": 400,
+        "hash_chain": true
+      },
+      "paths": {
+        "results_dir": "results",
+        "evalsets_dir": "evalsets",
+        "policies_dir": "policies"
+      }
+    }
+  },
+  "run_id": "run-2a7ae8c6271d",
+  "detector_id": "probe-qwen2.5-7b-instruct-T2-logprob",
+  "variant": "T2-logprob",
+  "eval_set_id": "triviaqa-600-synthetic",
+  "envelope_id": "sha256:a77861c4e5d1f0c8",
+  "data_source": "synthetic",
+  "started_at": "2026-08-23T16:17:39+00:00",
+  "completed_at": "2026-08-23T16:17:46+00:00",
+  "duration_seconds": 7.062682099989615,
+  "splits": {
+    "train": 1200,
+    "validation": 600,
+    "test": 600
+  },
+  "base_rate": 0.14666666666666667,
+  "test_scored": 1,
+  "probe_fit": {
+    "C": 0.01,
+    "selected_on": "validation",
+    "selection_scores": {
+      "0.0001": 0.747561180724918,
+      "0.001": 0.7480447397191153,
+      "0.01": 0.7483601042805483,
+      "0.1": 0.7470565974266252,
+      "1": 0.7465520141283324
+    },
+    "n_train": 1200,
+    "n_features": 4,
+    "class_weight": "balanced",
+    "base_rate_train": 0.1525
+  },
+  "operating_point": {
+    "operating_point_id": "P-conservative",
+    "detector_id": "probe-qwen2.5-7b-instruct-T2-logprob",
+    "threshold": 0.7630516134745242,
+    "selected_on": "validation",
+    "objective": "flag_rate_budget=0.05",
+    "target_flag_rate": 0.05
+  },
+  "metrics": {
+    "auroc": {
+      "name": "auroc",
+      "value": 0.7513094815340909,
+      "kind": "ESTIMATED",
+      "n": 600,
+      "ci_low": 0.694568482625243,
+      "ci_high": 0.8003647733194372,
+      "ci_level": 0.95,
+      "unit": "ratio",
+      "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+    },
+    "recall": {
+      "name": "recall",
+      "value": 0.17045454545454544,
+      "kind": "ESTIMATED",
+      "n": 600,
+      "ci_low": 0.0975609756097561,
+      "ci_high": 0.25,
+      "ci_level": 0.95,
+      "unit": "rate",
+      "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+    },
+    "precision": {
+      "name": "precision",
+      "value": 0.4838709677419355,
+      "kind": "ESTIMATED",
+      "n": 600,
+      "ci_low": 0.30763888888888896,
+      "ci_high": 0.6666666666666666,
+      "ci_level": 0.95,
+      "unit": "rate",
+      "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+    },
+    "flag_rate": {
+      "name": "flag_rate",
+      "value": 0.051666666666666666,
+      "kind": "ESTIMATED",
+      "n": 600,
+      "ci_low": 0.035,
+      "ci_high": 0.06837499999999996,
+      "ci_level": 0.95,
+      "unit": "rate",
+      "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+    },
+    "confirmed_errors": {
+      "name": "confirmed_errors",
+      "value": 15.0,
+      "kind": "EXACT",
+      "n": 31,
+      "ci_low": null,
+      "ci_high": null,
+      "ci_level": null,
+      "unit": "count",
+      "estimator": null
+    },
+    "fpr_hard_negatives": null,
+    "base_rate": 0.14666666666666667,
+    "extra": [
+      {
+        "name": "fpr",
+        "value": 0.03125,
+        "kind": "ESTIMATED",
+        "n": 600,
+        "ci_low": 0.017240555152634007,
+        "ci_high": 0.0465161523843996,
+        "ci_level": 0.95,
+        "unit": "rate",
+        "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+      }
+    ]
+  },
+  "controls": [
+    {
+      "control": "padding_fault",
+      "passed": true,
+      "measured": 0.9999999999995779,
+      "expected": "left-padded vs unbatched: rel-L2 <= 0.1, cosine >= 0.999; right-padded must be rejected",
+      "margin": 0.000999999999577894,
+      "detail": "left-padded: rel-L2 9.33e-07, cosine 1.000000 -> matches unbatched. right-padded (deliberate fault): rel-L2 1.361, cosine 0.0417 -> REJECTED as required. 4 prompts, max 37 pad tokens.",
+      "applicable": true
+    },
+    {
+      "control": "label_shuffle",
+      "passed": true,
+      "measured": 0.5037069670721173,
+      "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
+      "margin": 0.04629303292788278,
+      "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.5037. 22 repeats; null spread sd 0.1034, SE of mean 0.0220; band +/-0.05 is +/-2.27 SE; measured spread is 3.2x the Hanley-McNeil closed form (0.0324), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal.",
+      "applicable": true
+    },
+    {
+      "control": "null_feature",
+      "passed": true,
+      "measured": 0.5086094525271214,
+      "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
+      "margin": 0.041390547472878625,
+      "detail": "features replaced by Gaussian noise matched per column in mean and variance; labels intact; mean AUROC 0.5086. 8 repeats; null spread sd 0.0186, SE of mean 0.0066; band +/-0.05 is +/-7.58 SE; measured spread is 0.6x the Hanley-McNeil closed form (0.0324), which is why the closed form is not the reference (DECISIONS.md 031).",
+      "applicable": true
+    },
+    {
+      "control": "canary",
+      "passed": true,
+      "measured": 1.0,
+      "expected": "recall == 1.0",
+      "margin": 0.0,
+      "detail": "19/19 canary positives caught at threshold 0.763052",
+      "applicable": true
+    },
+    {
+      "control": "determinism",
+      "passed": true,
+      "measured": 0.0,
+      "expected": "bit-identical scores across two runs at one seed",
+      "margin": 0.0,
+      "detail": "max |difference| = 0.000e+00 over 600 scores; coefficients identical",
+      "applicable": true
+    }
+  ],
+  "warrant": {
+    "warrant_id": "W-57a55eaed7f54661",
+    "detector_id": "probe-qwen2.5-7b-instruct-T2-logprob",
+    "detector_version": "0.1.0+fixture",
+    "operating_point": {
+      "operating_point_id": "P-conservative",
+      "detector_id": "probe-qwen2.5-7b-instruct-T2-logprob",
+      "threshold": 0.7630516134745242,
+      "selected_on": "validation",
+      "objective": "flag_rate_budget=0.05",
+      "target_flag_rate": 0.05
+    },
+    "eval_set_id": "triviaqa-600-synthetic",
+    "validation_run_id": "run-2a7ae8c6271d",
+    "issued_at": "2026-08-23T16:17:39+00:00",
+    "expires_at": "2026-08-24T16:17:39+00:00",
+    "metrics": {
+      "auroc": {
+        "name": "auroc",
+        "value": 0.7513094815340909,
+        "kind": "ESTIMATED",
+        "n": 600,
+        "ci_low": 0.694568482625243,
+        "ci_high": 0.8003647733194372,
+        "ci_level": 0.95,
+        "unit": "ratio",
+        "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+      },
+      "recall": {
+        "name": "recall",
+        "value": 0.17045454545454544,
+        "kind": "ESTIMATED",
+        "n": 600,
+        "ci_low": 0.0975609756097561,
+        "ci_high": 0.25,
+        "ci_level": 0.95,
+        "unit": "rate",
+        "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+      },
+      "precision": {
+        "name": "precision",
+        "value": 0.4838709677419355,
+        "kind": "ESTIMATED",
+        "n": 600,
+        "ci_low": 0.30763888888888896,
+        "ci_high": 0.6666666666666666,
+        "ci_level": 0.95,
+        "unit": "rate",
+        "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+      },
+      "flag_rate": {
+        "name": "flag_rate",
+        "value": 0.051666666666666666,
+        "kind": "ESTIMATED",
+        "n": 600,
+        "ci_low": 0.035,
+        "ci_high": 0.06837499999999996,
+        "ci_level": 0.95,
+        "unit": "rate",
+        "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+      },
+      "confirmed_errors": {
+        "name": "confirmed_errors",
+        "value": 15.0,
+        "kind": "EXACT",
+        "n": 31,
+        "ci_low": null,
+        "ci_high": null,
+        "ci_level": null,
+        "unit": "count",
+        "estimator": null
+      },
+      "fpr_hard_negatives": null,
+      "base_rate": 0.14666666666666667,
+      "extra": [
+        {
+          "name": "fpr",
+          "value": 0.03125,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.017240555152634007,
+          "ci_high": 0.0465161523843996,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        }
+      ]
+    },
+    "n_test": 600,
+    "base_rate": 0.14666666666666667,
+    "envelope": {
+      "envelope_id": "sha256:a77861c4e5d1f0c8",
+      "eval_set_id": "triviaqa-600-synthetic",
+      "n_reference": 2400,
+      "features": [
+        {
+          "name": "token_length",
+          "bin_edges": [
+            95.0,
+            97.0
+          ],
+          "bin_probabilities": [
+            1.0
+          ],
+          "mean": 96.0,
+          "std": 0.0
+        }
+      ],
+      "data_source": "synthetic"
+    },
+    "controls": [
+      {
+        "control": "padding_fault",
+        "passed": true,
+        "measured": 0.9999999999995779,
+        "expected": "left-padded vs unbatched: rel-L2 <= 0.1, cosine >= 0.999; right-padded must be rejected",
+        "margin": 0.000999999999577894,
+        "detail": "left-padded: rel-L2 9.33e-07, cosine 1.000000 -> matches unbatched. right-padded (deliberate fault): rel-L2 1.361, cosine 0.0417 -> REJECTED as required. 4 prompts, max 37 pad tokens.",
+        "applicable": true
+      },
+      {
+        "control": "label_shuffle",
+        "passed": true,
+        "measured": 0.5037069670721173,
+        "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
+        "margin": 0.04629303292788278,
+        "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.5037. 22 repeats; null spread sd 0.1034, SE of mean 0.0220; band +/-0.05 is +/-2.27 SE; measured spread is 3.2x the Hanley-McNeil closed form (0.0324), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal.",
+        "applicable": true
+      },
+      {
+        "control": "null_feature",
+        "passed": true,
+        "measured": 0.5086094525271214,
+        "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
+        "margin": 0.041390547472878625,
+        "detail": "features replaced by Gaussian noise matched per column in mean and variance; labels intact; mean AUROC 0.5086. 8 repeats; null spread sd 0.0186, SE of mean 0.0066; band +/-0.05 is +/-7.58 SE; measured spread is 0.6x the Hanley-McNeil closed form (0.0324), which is why the closed form is not the reference (DECISIONS.md 031).",
+        "applicable": true
+      },
+      {
+        "control": "canary",
+        "passed": true,
+        "measured": 1.0,
+        "expected": "recall == 1.0",
+        "margin": 0.0,
+        "detail": "19/19 canary positives caught at threshold 0.763052",
+        "applicable": true
+      },
+      {
+        "control": "determinism",
+        "passed": true,
+        "measured": 0.0,
+        "expected": "bit-identical scores across two runs at one seed",
+        "margin": 0.0,
+        "detail": "max |difference| = 0.000e+00 over 600 scores; coefficients identical",
+        "applicable": true
+      }
+    ],
+    "access_tier": 2,
+    "status": "VALID",
+    "kappa": null,
+    "status_reason": null,
+    "superseded_by": null
+  },
+  "warrant_status": "VALID",
+  "status_reason": null
+}
