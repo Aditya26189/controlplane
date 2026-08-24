@@ -974,3 +974,47 @@ seq 16,000:  math 13.35 GB   efficient 0.43 GB
 ---
 
 <!-- New entries below. Do not edit anything above this line. -->
+
+## 056 — The logits were the larger allocation, and 053 and 055 both missed them
+
+Third failed GPU session on the same stage. 055's fix worked as far as it went:
+the OOM propagated as an OOM rather than as `generator didn't stop after
+throw()`, and the retry ran. It still ran out of memory at batch size 1.
+
+The forward pass called `Qwen2ForCausalLM`, which applies `lm_head` at **every**
+position and then upcasts to float32 with both copies alive. At Qwen2.5-7B's
+vocabulary of 152,064 that is `seq x 152064 x 6` bytes:
+
+| seq | logits | attention (math backend) |
+|---|---|---|
+| 8,000 | 6.80 GiB | 3.34 GiB |
+| 11,103 | **9.43 GiB** | 6.43 GiB |
+| 14,500 | **12.32 GiB** | 10.97 GiB |
+
+The session reported 10.4 GiB free on card 1. Logits alone exceed it at 11,103
+tokens regardless of what attention does.
+
+The forward now runs the transformer trunk (`model.model`), which produces no
+logits. The probe reads one hidden state from layer 23; the vocabulary
+projection was computed and discarded in full.
+
+**Why two diagnoses missed it.** 053 computed the attention term as 10.97 GiB at
+seq 14,500, compared it against the reported 10.93 GiB, and treated the match as
+identification. The two terms are the same order of magnitude across the whole
+band, so at 14,500 the logits (12.32 GiB) fit the observation at least as well.
+A quantity that matches the observed value is not the cause unless the
+alternatives were also computed. Both were needed; neither alone sufficed.
+
+The OOM message carried the same error and propagated it to the next reader: it
+named only attention and listed "confirm the efficient backend" as the first
+remedy. It now computes both terms from the model's own config and prints peak
+allocated memory per card, so the next failure is read off a measurement rather
+than inferred.
+
+Rejected: narrowing `evalsets.pad_tokens` to `[4000, 8000]`. It would have made
+the pass fit and left both real causes in place, and the band is what produces
+the envelope shift Beat 4 rests on.
+
+Not verifiable on CPU: `test_forward_runs_the_trunk_not_the_causal_lm` asserts
+the wrapper never runs, which pins the code path. Whether the pass now fits in
+16 GiB is confirmed only by the next session completing.
