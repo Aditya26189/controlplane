@@ -150,6 +150,69 @@ def test_assert_left_padding_accepts_left() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# The attention backend context manager
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    "exception",
+    [RuntimeError, MemoryError, ValueError, KeyboardInterrupt],
+)
+def test_efficient_attention_propagates_body_exceptions(exception) -> None:
+    """A failure inside the block must escape it unchanged.
+
+    The first version wrapped ``yield`` in ``except (ImportError, AttributeError,
+    RuntimeError)`` so it could fall back across torch versions. But
+    ``torch.cuda.OutOfMemoryError`` subclasses ``RuntimeError``, so an OOM in the
+    body was caught by the fallback handler, which then yielded a second time:
+
+        RuntimeError: generator didn't stop after throw()
+
+    That replaced the real error with a confusing one **and** defeated the retry
+    logic watching for ``OutOfMemoryError``. ``RuntimeError`` is in the list here
+    because it is the one that actually bit.
+    """
+    from src.extract.activations import efficient_attention
+
+    with pytest.raises(exception, match="boom"):
+        with efficient_attention():
+            raise exception("boom")
+
+
+def test_efficient_attention_exits_cleanly() -> None:
+    """And the ordinary path still works, exactly once."""
+    from src.extract.activations import efficient_attention
+
+    entered = 0
+    with efficient_attention():
+        entered += 1
+    assert entered == 1
+
+
+def test_efficient_attention_yields_once_even_without_torch_support(
+    monkeypatch,
+) -> None:
+    """On a torch with neither API, it degrades to a no-op rather than failing.
+
+    A context manager that raises on an old torch would break extraction for a
+    reason unrelated to memory. It warns and continues, paying the math
+    backend's cost.
+    """
+    import torch
+
+    from src.extract import activations
+
+    monkeypatch.delattr(torch.backends.cuda, "sdp_kernel", raising=False)
+    monkeypatch.setitem(
+        __import__("sys").modules, "torch.nn.attention", None
+    )
+    entered = 0
+    with activations.efficient_attention():
+        entered += 1
+    assert entered == 1
+
+
+# --------------------------------------------------------------------------- #
 # Transfer: what THIS probe is worth on new traffic
 # --------------------------------------------------------------------------- #
 
