@@ -50,6 +50,11 @@ def efficient_attention() -> Iterator[None]:
     a single op. The memory-efficient backend is O(seq) and works on Turing
     (sm_75), which a T4 is. Flash-Attention-2 needs sm_80 and does not apply.
 
+    This is **one of two** large allocations, and it was not the larger one. See
+    :func:`_base_model` for the vocabulary-sized logits, which are bigger at
+    every sequence length in the band. Fixing attention alone did not make the
+    pass fit; both were needed.
+
     **The backend alone is not sufficient**: it declines float attention masks
     and silently falls back to math. See :func:`_hidden_states_at`, which drops
     the redundant mask at batch size 1 so the ``is_causal`` fast path is taken.
@@ -109,6 +114,36 @@ def _decoder_layers(model: Any) -> Any:
         f"cannot locate the decoder layers on {type(model).__name__}. The hook "
         "needs them to capture one layer without materialising all of them."
     )
+
+
+def _base_model(model: Any) -> Any:
+    """The transformer trunk, without the vocabulary projection on top.
+
+    A ``*ForCausalLM`` wrapper runs ``lm_head`` over **every position**, and
+    transformers then upcasts the result to float32 with both copies alive. At
+    Qwen2.5-7B's vocabulary of 152,064 that is ``seq x 152064 x 6`` bytes: 9.43
+    GiB at an 11k-token sequence, against 6.43 GiB for even the math backend's
+    attention matrix. It is the largest allocation in the pass and every byte of
+    it is discarded — the probe reads a hidden state from one layer.
+
+    Returns the wrapper itself if no trunk is recognisable, which costs memory
+    but is never wrong. Calling the trunk is safe because nothing here reads the
+    return value: the activation arrives through a forward hook.
+    """
+    for path in ("model.decoder", "model", "transformer"):
+        target = model
+        for attribute in path.split("."):
+            target = getattr(target, attribute, None)
+            if target is None:
+                break
+        if target is not None and hasattr(target, "forward"):
+            return target
+    _LOG.warning(
+        "cannot find the transformer trunk on %s; running the full causal LM, "
+        "which materialises vocabulary-sized logits that are then discarded",
+        type(model).__name__,
+    )
+    return model
 
 
 def _hidden_states_at(
@@ -184,7 +219,7 @@ def _hidden_states_at(
             forward_inputs.pop("attention_mask", None)
 
         with torch.no_grad(), efficient_attention():
-            loaded.model(**forward_inputs, use_cache=False)
+            _base_model(loaded.model)(**forward_inputs, use_cache=False)
         if "hidden" not in captured:
             raise RuntimeError(
                 f"the forward hook on block {layer - 1} never fired. The model "
