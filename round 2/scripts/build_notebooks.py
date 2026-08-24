@@ -357,18 +357,25 @@ if result.long_evalset is not None:
 The short pass is checkpointed, so re-run only the long half. Three levers, in
 the order worth trying:
 
-1. **Confirm the efficient attention backend was selected.** Left to itself
-   PyTorch uses the *math* backend whenever an explicit attention mask is
-   present, and that materialises `heads x seq x seq` — 28 × 14,500² × 2 bytes
-   is about 11 GB for a single op. `efficient_attention()` forces the O(seq)
-   backend, which a T4 supports. Flash-Attention-2 does not help here: it needs
-   sm_80 and a T4 is sm_75.
-2. **Narrow the band.** `evalsets.pad_tokens` in `config.yaml` is `[4000,
-   16000]`. Lowering the upper bound to 8,000 costs a weaker envelope shift and
-   removes the largest sequences.
-3. **Spread the weights.** With two T4s, `load_model` now caps per-GPU memory so
-   the 5 GB of NF4 weights split rather than piling onto card 0 — which is what
-   happened on the first run, leaving card 1 idle.
+**Read the error before changing anything.** It prints both large allocations
+computed from the model's own config, and peak allocated memory per card. Two
+GPU sessions were lost to fixing the smaller term because it happened to match
+the reported OOM size.
+
+The two terms at an 11k-token sequence:
+
+| | size | avoided by |
+|---|---|---|
+| logits | **9.43 GiB** | running the transformer trunk, so `lm_head` never runs |
+| attention | 6.43 GiB | dropping the mask at batch 1 so SDPA takes the O(seq) backend |
+
+Both fixes are already in `src/extract/activations.py`. If this still fails,
+compare peak against the two figures to see which term is still being paid —
+then narrow `evalsets.pad_tokens` in `config.yaml` (currently `[4000, 16000]`,
+the source of the longest sequences) as a last resort, accepting a weaker
+envelope shift.
+
+Flash-Attention-2 does not help: it needs sm_80 and a T4 is sm_75.
 """
         ),
         code(
