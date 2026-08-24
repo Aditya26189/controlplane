@@ -132,15 +132,67 @@ Full rules in `CONTRIBUTING.md`. The parts you must not get wrong:
 - Phase branches, merged `--no-ff`, tagged at each gate. Tags are the rollback points.
 - Never stage a file over 10 MB. Stop and ask.
 
-## Documentation
+## Documentation — written at the end, not during the build
 
-**Contracts** (`CLAUDE.md`, `SPEC.md`, `TASKS.md`) — a doc change ships **in the same commit** as the code that made it necessary. Never a trailing "update docs" commit. If code contradicts `SPEC.md`, stop: either the code is wrong or the spec needs updating deliberately, first, with reasoning logged.
+**Prose documentation is a closing phase, not a running task.** During the
+build, ship code and tests. Do not write or update `SPEC.md`, `TASKS.md`,
+`README.md`, architecture notes, handover docs, or any other narrative document
+as you go. **`DECISIONS.md` is the single exception** — see below.
 
-**Rationale** (`DECISIONS.md`) — append-only. Log every methodological choice a reviewer could challenge. Never edit or delete; supersede with a new numbered entry. This is the answer sheet for "why did you do it that way?", which is most of what a technical judge asks.
+This is a deliberate reversal of the original rule, which required a doc change
+in the same commit as the code that caused it. That rule produced good
+documents and cost a large fraction of the build time, and the judgement is
+that the time is better spent on code while the code is what is uncertain.
 
-**Generated** (`README.md`, `results/RESULTS.md`) — never hand-edit a number. If a number is wrong, the pipeline is wrong. Prose can be edited; numbers cannot.
+### What is deferred
 
-**Statistical claims carry their derivation.** Any sample size, interval, or projection in a docstring or document states the quantity being estimated and the propagation used. This is the specific discipline that would have caught the prevalence-vs-recall error.
+- **Contracts** (`CLAUDE.md`, `SPEC.md`, `TASKS.md`). Where shipped behaviour
+  diverges from a contract, leave the contract alone and note the divergence in
+  the commit message. Reconcile in the documentation phase.
+- **Narrative documents** — architecture write-ups, handover docs, design
+  notes, anything explaining the system to a reader. None of these during the
+  build.
+- **Generated** (`README.md`, `results/RESULTS.md`). Rendered from `results/`
+  by code and never hand-written; the final render happens once, at the end.
+
+### What still happens during the build
+
+Four things, because each is either irreplaceable or nearly free:
+
+1. **`DECISIONS.md` stays live.** It is the exception, and the reason is that it
+   cannot be written later: it records *why* at the moment a measurement forced
+   a choice, and six weeks on the numbers are recoverable but the reasoning is
+   a reconstruction. It is also the document a technical judge actually reads.
+
+   **Keep entries short.** One decision, the numbers that forced it, the
+   alternative rejected, and the objection a reviewer would raise. Statistical
+   decisions carry their derivation. Everything else — restating context the
+   reader has, motivating the project, explaining the same idea twice — belongs
+   in the documentation phase or nowhere.
+
+2. **Commit messages carry the reasoning.** A commit that moves a measured
+   number states before and after. A commit that makes a methodological choice
+   states the choice and the numbers behind it. `git log` is the second half of
+   the record.
+
+3. **Docstrings.** These are code, not documentation — covered by the coding
+   standards above. A function whose contract lives only in a separate document
+   is a function nobody can call correctly.
+
+4. **Statistical claims carry their derivation**, wherever they appear. A sample
+   size, interval or projection states the quantity being estimated and the
+   propagation used. This is the discipline that catches a prevalence interval
+   labelled as a recall interval, and it is worth its cost at the point the
+   number is produced rather than at the point it is written up.
+
+### The documentation phase
+
+Reconciles the contracts against shipped behaviour, writes the architecture
+and handover material, and renders the generated documents. `DECISIONS.md` is
+already written by then and only needs tidying. The Phase 12
+audit is unchanged: every invariant enforced somewhere in code, every number in
+`README.md` traceable to `results/`, every statistical claim carrying its
+propagation.
 
 ## Definition of done
 

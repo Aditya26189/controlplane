@@ -107,21 +107,30 @@ Sequence: commit code → run script → commit artifacts as a separate `exp:` c
 
 ## Documentation
 
-### Tier 1 — Contracts: `CLAUDE.md`, `SPEC.md`, `TASKS.md`
+### Documentation is deferred to a closing phase
 
-**A doc change ships in the same commit as the code change that made it necessary.** Never a trailing "update docs" commit — by then the reason is forgotten and the doc gets written from the code instead of from the intent.
+**Do not write or update narrative documents during the build.** See
+`CLAUDE.md`, "Documentation — written at the end, not during the build".
 
-If code contradicts `SPEC.md`, stop. Either the code is wrong, or the spec is out of date and needs updating first, deliberately, with reasoning in `DECISIONS.md`.
+This reverses the earlier rule that a doc change shipped in the same commit as
+the code that caused it. That rule produced good documents at a large cost in
+build time.
 
-### Tier 2 — Rationale: `DECISIONS.md`
+**`DECISIONS.md` is the exception and stays live**, because it is the one
+document that cannot be written later — it records why at the moment a
+measurement forced a choice. Keep entries short: the decision, the numbers, the
+alternative rejected, the objection a reviewer would raise. Derivation where
+statistical. Nothing else.
 
-Append-only. **The most important document here for competition purposes** — it is the direct answer to every "why did you do it that way?"
+**Commit messages carry the rest.** A commit that makes a methodological choice
+states the choice and the numbers behind it, in the body, while the reason is
+still known. A one-line commit message is a loss of information rather than a
+stylistic lapse.
 
-One entry per decision, newest at the bottom, never edited. A reversed decision is superseded by a new entry linking back.
-
-Log when a reviewer could reasonably challenge it: eval-set construction, estimator design, allocation strategy, threshold procedure, warrant refusal criteria, what counts as an envelope. Not: variable names, file layout.
-
-**Statistical decisions require the derivation in the entry.** Not a citation to it — the derivation.
+Where shipped behaviour diverges from `SPEC.md`, say so in the commit message
+and leave the spec alone. Reconciling the two is the documentation phase's job,
+and the Phase 12 audit still checks that every section matches shipped
+behaviour.
 
 ### Tier 3 — Generated: `README.md`, `results/RESULTS.md`
 
@@ -166,8 +175,8 @@ Audit at the Phase 12 gate, reported line by line:
 
 - [ ] gate criteria in `TASKS.md` met and reported
 - [ ] tests pass, including the estimator coverage test
-- [ ] docs updated in the same commits as the code
-- [ ] `DECISIONS.md` entry for anything methodological, with derivation where statistical
+- [ ] `DECISIONS.md` entry for anything methodological — short, with the numbers and the derivation where statistical
+- [ ] no narrative documentation written during the build
 - [ ] no file over 10 MB, no real personal data, no secrets, no absolute local paths
 - [ ] any commit that moved a measured number records before and after
 - [ ] `main` still runs `scripts/run_all.py --smoke` end to end

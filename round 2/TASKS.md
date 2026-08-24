@@ -7,8 +7,10 @@ Phases are ordered so **you have a submittable system at the end of every phase*
 Read `CONTRIBUTING.md` before Phase 0. These are part of every gate, not extras:
 
 - Work on `phase/N-name`. Four to ten atomic commits per phase, never one.
-- Documentation changes ship in the same commit as the code that required them.
-- Log anything methodological in `DECISIONS.md` **before** the gate.
+- **Do not write narrative documentation during the build.** Architecture notes,
+  handover docs and contract updates are a closing phase; see `CLAUDE.md`.
+- `DECISIONS.md` is the exception and stays live. Short entries: the decision,
+  the numbers, the alternative rejected.
 - At the gate: clean tree, tests pass, `git merge --no-ff` to `main`, `git tag -a phase-N`.
 - **A phase with uncommitted changes has not passed its gate**, whatever its numbers.
 
