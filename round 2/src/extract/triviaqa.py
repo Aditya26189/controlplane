@@ -26,6 +26,7 @@ from typing import Any, Iterable, Optional, Sequence
 __all__ = [
     "TriviaItem",
     "is_correct",
+    "is_exact_match",
     "load_triviaqa",
     "normalise_answer",
     "split_questions",
@@ -117,6 +118,29 @@ def is_correct(response: str, aliases: Iterable[str]) -> tuple[bool, str]:
         if normalised_alias in normalised_response:
             return True, f"substring match on {normalised_alias!r}"
     return False, "no alias matched"
+
+
+def is_exact_match(response: str, aliases: Iterable[str]) -> bool:
+    """Strict exact match: the whole normalised generation equals an alias.
+
+    Recorded **alongside** the lenient rule, never instead of it, because the
+    gap between them is large and is a property of the matching rule rather
+    than of the model. Round 1 measured lenient accuracy 0.594 against strict
+    0.106 on the same generations — a difference of 0.488, far larger than any
+    effect this project reports.
+
+    A number derived from one rule and compared against a number derived from
+    the other is meaningless, and the only defence is measuring both and
+    labelling which is which.
+
+    Lenient is what labels the probe, because a model answering "Homer wrote
+    the Iliad" to "Who wrote the Iliad?" is correct and strict EM calls it
+    wrong. Strict is what makes the leniency auditable.
+    """
+    normalised = normalise_answer(response)
+    if not normalised:
+        return False
+    return any(normalise_answer(alias) == normalised for alias in aliases)
 
 
 def load_triviaqa(

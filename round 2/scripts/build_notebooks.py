@@ -59,8 +59,19 @@ This session extracts **both** envelopes:
 Both in one run. A two-session plan is a plan where the second session does not
 happen, and Beat 4 has no measured basis without the long-context pass.
 
-**Runtime:** roughly 1–1.5 h for the short pass, 45–60 min for long context on a
-T4. Well inside a Kaggle session, with room for a restart.
+**Runtime, from Round 1's measured throughput** rather than a guess. Round 1
+extracted 3,000 examples in 7,744 s on the same model and card — 0.387
+examples/s, of which generation is 2.37 s/item and prefill only 0.31 s.
+
+| pass | items | dominated by | estimate |
+|---|---|---|---|
+| short context | 2,400 | generation | ~1.7 h |
+| long context | 600 | prefill at 4–16k tokens | ~1–2 h |
+
+Long context needs **no generation** — it reuses the short pass's answers and
+labels, because they are the same questions — so it is prefill only, and prefill
+at 10k tokens is far slower than at Round 1's 192. Budget 3–4 h total and start
+early in a session.
 
 ### Before you start
 - Accelerator: **GPU T4 ×2** (or P100). Internet: **on**, for the model and dataset.
@@ -83,6 +94,10 @@ print(subprocess.run(["nvidia-smi"], capture_output=True, text=True).stdout)
             """
 import torch
 
+# Round 1 measured 2.31 GB peak after load for this model in NF4. The long
+# context pass adds a KV cache (~0.85 GB at 16k) and one captured layer
+# (~0.11 GB). Capturing all 29 hidden states instead would add 3.1 GB, which is
+# why extraction uses a forward hook on the single layer the probe is pinned to.
 assert torch.cuda.is_available(), (
     "No GPU. Extraction needs one; every other stage in this project does not."
 )

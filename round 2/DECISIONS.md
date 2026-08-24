@@ -875,4 +875,25 @@ The cost difference is real and secondary: 2,400 sequences at 4–16k tokens aga
 
 ---
 
+## 052 — Round 1's measured bundle, and what it changed in the Round 2 extraction
+**Status:** accepted
+
+**Context:** A Round 1 results bundle was produced on 2026-08-23, on commit `1284c8b`. Comparing it against the committed Round 1 results: **0 of 11 measured quantities moved** — AUROC 0.855141, base rate 0.388333, flag rate 0.061667, recall 0.141631, precision 0.891892, lift 2.296717, and the confusion matrix (33, 4, 200, 363) are all bit-identical. Only provenance differs. That is the reproducibility property demonstrated across sessions rather than asserted, and it is worth recording as a result in itself.
+
+**What it does not contain:** activations. The caches are gitignored and were not bundled, and Round 1 extracted only the last prompt token, so they could not have supplied Round 2's `mean_pool` and `max_rolling_means` anyway — those need the full sequence. The Round 2 extraction is still required.
+
+**Four things it changed**, each derived from a measured number rather than an estimate:
+
+**1. The single-layer forward hook.** Round 1 records 28 layers and hidden size 3584. `output_hidden_states=True` returns all `L+1` tensors and the probe uses exactly one, so at a 16k-token sequence that is **3.10 GB materialised to use 0.11 GB**. On a 16 GB card, weights (4.5) + KV cache (0.85) + hidden states (3.10) is 8.45 GB before attention workspace, at the length where workspace is largest. Extraction now attaches a forward hook to the single decoder block instead: 5.46 GB. The `hidden_states` indexing convention is preserved, because the layer was chosen by fractional depth against it.
+
+**2. Runtime estimates replaced with measured throughput.** The notebook claimed 1–1.5 h short and 45–60 min long, which was a guess. Round 1 measured 3,000 examples in 7,744 s — 0.387 examples/s, generation 2.37 s/item against prefill 0.31 s. So the short pass is generation-bound at roughly 1.7 h for 2,400, and the long pass is prefill-only (it reuses the short pass's answers, being the same questions) at 4–16k tokens, which is far slower per item than Round 1's 192. Budget 3–4 h.
+
+**3. Strict exact match recorded alongside lenient.** Round 1 measured lenient accuracy 0.594 against strict EM 0.106 on the *same generations* — a gap of **0.488**, larger than any effect this project reports. Lenient is what labels the probe, because "Homer wrote the Iliad" is a correct answer to "Who wrote the Iliad?" and strict EM calls it wrong. But a base rate quoted without saying which rule produced it is uninterpretable, and comparing one against the other is meaningless. Round 2 now records both, as Round 1 did.
+
+**4. The fixture's base rate is optimistic and the real ceiling is tight.** The synthetic fixture uses 0.152; the real test split is **0.388**. Since the lift ceiling is `1 / max(base_rate, flag_rate)` (`DECISIONS.md` 047), the fixture implies a ceiling near 6.6 while the real one is **2.575**. Round 1's measured lift of 2.297 is therefore **89% of everything attainable**, not a modest result — and `MIN_LIFT_LOWER_BOUND = 1.0` has correspondingly less room above it than the fixture suggests. Round 1's lift lower bound of ~2.0 clears the bar comfortably, so the criterion does not threaten the real anchor; but any tier that loses half its recall on the real base rate lands near the floor, which is a live possibility for the long-context cells.
+
+**A reviewer could fairly object** that Round 1's ceiling formula (`1 / base_rate`) and Round 2's (`1 / max(base_rate, flag_rate)`) differ. They agree wherever the base rate binds, which is Round 1's regime (0.388 > 0.062). Round 2's form is the general one and reduces to Round 1's whenever the flag budget is slack.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->
