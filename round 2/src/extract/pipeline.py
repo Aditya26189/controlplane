@@ -601,7 +601,7 @@ def _extract_with_oom_retry(
                 % (logits_gib, vocab),
                 "  attention/1   %.2f GiB (heads %d x seq^2 x 2, unchunked)"
                 % (attention_gib, heads),
-                "  attention/%-4d%.2f GiB (heads x chunk x seq x 2, chunked)"
+                "  attention/%-5d %.2f GiB (heads x chunk x seq x 2, chunked)"
                 % (chunk_tokens or 0, chunked_gib),
                 "",
                 "The forward runs the transformer trunk, so no logits are built,",
