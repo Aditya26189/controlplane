@@ -357,23 +357,29 @@ if result.long_evalset is not None:
 The short pass is checkpointed, so re-run only the long half. Three levers, in
 the order worth trying:
 
-**Read the error before changing anything.** It prints both large allocations
-computed from the model's own config, and peak allocated memory per card. Two
-GPU sessions were lost to fixing the smaller term because it happened to match
-the reported OOM size.
+**This should no longer be reachable, and the pre-flight tells you in seconds
+rather than in forty minutes.**
 
-The two terms at an 11k-token sequence:
+`_extract_long_context` now runs the **longest prompt alone** before the loop
+and logs measured peak memory per card. The worst case is not item 0, which is
+why every earlier failure surfaced deep into the run.
 
-| | size | avoided by |
-|---|---|---|
-| logits | **9.43 GiB** | running the transformer trunk, so `lm_head` never runs |
-| attention | 6.43 GiB | dropping the mask at batch 1 so SDPA takes the O(seq) backend |
+What was actually wrong, after measuring rather than arguing (DECISIONS 057):
 
-Both fixes are already in `src/extract/activations.py`. If this still fails,
-compare peak against the two figures to see which term is still being paid —
-then narrow `evalsets.pad_tokens` in `config.yaml` (currently `[4000, 16000]`,
-the source of the longest sequences) as a last resort, accepting a weaker
-envelope shift.
+| | verdict |
+|---|---|
+| logits `(seq × 152,064)` | **the cause.** The forward ran `Qwen2ForCausalLM`, applying `lm_head` at every position and discarding it. Now runs the trunk. |
+| attention `seq²` | never paid. With sdpa no square tensor is materialised at all. |
+| the attention mask | already skipped by transformers when it is all ones. That "fix" changed nothing. |
+
+The one risk left is the attention implementation: on the **eager** path a
+`heads × seq × seq` matrix is real and the softmax upcasts to float32 — 28.7 GiB
+for a single op at 16k tokens. `load_model` now asks for sdpa explicitly and
+refuses to load on anything else, so that cannot arrive silently.
+
+If it still fails, read the peak figures in the error against the two terms it
+prints, then narrow `evalsets.pad_tokens` in `config.yaml` (currently
+`[4000, 16000]`) as a last resort, accepting a weaker envelope shift.
 
 Flash-Attention-2 does not help: it needs sm_80 and a T4 is sm_75.
 """
