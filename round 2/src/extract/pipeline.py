@@ -21,6 +21,7 @@ after the artifacts have been downloaded.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
@@ -135,6 +136,7 @@ def extract_triviaqa(
     max_new_tokens: int = 32,
     cache_dir: Optional[str] = None,
     long_context: bool = True,
+    checkpoint_dir: Optional[str] = None,
 ) -> ExtractionResult:
     """Extract both TriviaQA envelopes in one session.
 
@@ -157,6 +159,11 @@ def extract_triviaqa(
         long_context: Whether to run the long-context pass. Only turn this off
             to debug the short pass; shipping without it leaves Beat 4 with no
             measured basis.
+        checkpoint_dir: Where to save the short-context eval set and cache
+            **before** the long-context pass runs. Strongly recommended: the
+            short pass is the expensive half — generation dominates at 2.37 s an
+            item — and an OOM in the long pass would otherwise discard it. Learnt
+            the hard way on the first real run.
 
     Returns:
         An :class:`ExtractionResult`.
@@ -262,16 +269,45 @@ def extract_triviaqa(
         extra={**loaded.provenance(), **construction},
     )
 
+    # Checkpoint the expensive half before attempting the fragile one. The short
+    # pass costs ~13 minutes of generation for 2,400 items; the long pass can
+    # exhaust the card. Losing the first to a failure in the second is a bad
+    # trade that only has to happen once.
+    if checkpoint_dir is not None:
+        from ..evalsets import save_evalset
+
+        checkpoint = Path(checkpoint_dir)
+        (checkpoint / "evalsets").mkdir(parents=True, exist_ok=True)
+        (checkpoint / "results").mkdir(parents=True, exist_ok=True)
+        save_evalset(short_evalset, checkpoint / "evalsets")
+        short_cache.save(checkpoint / "results" / "cache-triviaqa-600.npz")
+        _LOG.info(
+            "checkpointed the short-context pass to %s; a failure in the "
+            "long-context pass will not lose it",
+            checkpoint,
+        )
+
     long_evalset = None
     long_cache = None
+    long_error = None
     if long_context:
-        long_evalset, long_cache = _extract_long_context(
-            config,
-            loaded,
-            short_evalset,
-            layer=layer,
-            batch_size=long_batch_size,
-        )
+        try:
+            long_evalset, long_cache = _extract_long_context(
+                config,
+                loaded,
+                short_evalset,
+                layer=layer,
+                batch_size=long_batch_size,
+            )
+        except Exception as exc:  # noqa: BLE001 - re-raised below unless checkpointed
+            long_error = exc
+            if checkpoint_dir is None:
+                raise
+            _LOG.error(
+                "long-context pass failed: %s. The short-context pass is "
+                "checkpointed and intact; re-run only the long pass.",
+                exc,
+            )
 
     report = {
         "layer": layer,
@@ -282,6 +318,7 @@ def extract_triviaqa(
         "token_length_mean": float(token_lengths.mean()),
         "token_length_max": int(token_lengths.max()),
         "long_context": bool(long_context),
+        "long_context_error": None if long_error is None else repr(long_error),
         **loaded.provenance(),
     }
     return ExtractionResult(short_evalset, short_cache, long_evalset, long_cache, report)
@@ -329,7 +366,7 @@ def _extract_long_context(
         build_prompt(loaded.tokenizer, item.prompt, SYSTEM_PROMPT)
         for item in long_evalset.items
     ]
-    features = extract_activations(
+    features = _extract_with_oom_retry(
         loaded,
         prompts,
         layer=layer,
@@ -374,3 +411,62 @@ def _extract_long_context(
         },
     )
     return long_evalset, long_cache
+
+
+def _extract_with_oom_retry(
+    loaded: LoadedModel,
+    prompts: list[str],
+    *,
+    layer: int,
+    aggregations,
+    window: int,
+    stride: int,
+    batch_size: int,
+    min_batch_size: int = 1,
+):
+    """Extract, halving the batch on OOM, and reporting rather than dying quietly.
+
+    The memory-efficient attention backend should make a 16k-token sequence fit
+    on a 16 GB card at batch 1. This is the backstop for the cases it does not:
+    a torch build without that backend, a card with less free memory than
+    expected, or a longer sequence than the band implies.
+
+    Raises with the sequence length that failed, because "CUDA out of memory" on
+    its own does not tell you whether to shorten the band, free the card, or
+    change the backend.
+    """
+    import torch
+
+    current = batch_size
+    while True:
+        try:
+            return extract_activations(
+                loaded,
+                prompts,
+                layer=layer,
+                aggregations=aggregations,
+                window=window,
+                stride=stride,
+                batch_size=current,
+            )
+        except torch.cuda.OutOfMemoryError:
+            torch.cuda.empty_cache()
+            if current > min_batch_size:
+                current = max(min_batch_size, current // 2)
+                _LOG.warning("OOM; retrying long context at batch size %d", current)
+                continue
+            lengths = [len(loaded.tokenizer(p)["input_ids"]) for p in prompts]
+            raise RuntimeError(
+                f"out of memory extracting long context at batch size 1. "
+                f"Prompt lengths run {min(lengths)}-{max(lengths)} tokens.\n"
+                "The attention matrix is heads x seq x seq on the MATH backend "
+                "-- 28 x 14500^2 x 2 bytes is about 11 GB for one op -- so if "
+                "the memory-efficient backend is unavailable this cannot fit.\n"
+                "Options, cheapest first:\n"
+                "  - confirm torch selected the efficient backend (torch >= 2.3 "
+                "exposes torch.nn.attention.sdpa_kernel)\n"
+                "  - narrow evalsets.pad_tokens in config.yaml; the band is "
+                "currently the source of the longest sequences\n"
+                "  - spread the model across both GPUs so more of one card is "
+                "free for the attention workspace"
+            ) from None
