@@ -38,7 +38,13 @@ from ..validation.evalsets import (
 )
 from .activations import capture_padding_evidence, extract_activations, generate_answers
 from .model import LoadedModel, build_prompt
-from .triviaqa import TriviaItem, is_correct, load_triviaqa, split_questions
+from .triviaqa import (
+    TriviaItem,
+    is_correct,
+    is_exact_match,
+    load_triviaqa,
+    split_questions,
+)
 
 __all__ = ["ExtractionResult", "extract_triviaqa"]
 
@@ -82,19 +88,25 @@ def _label_items(items: list[TriviaItem], answers: list[str]) -> dict[str, Any]:
     Label 1 means **incorrect** — the thing the probe should fire on.
     """
     how_counts: dict[str, int] = {}
+    strict_correct = 0
     for item, answer in zip(items, answers):
         item.response = answer
         correct, how = is_correct(answer, item.aliases)
         item.label = 0 if correct else 1
+        strict_correct += int(is_exact_match(answer, item.aliases))
         key = how.split(" on ")[0]
         how_counts[key] = how_counts.get(key, 0) + 1
 
     labels = np.array([item.label for item in items])
     base_rate = float(labels.mean())
+    strict_base_rate = 1.0 - strict_correct / len(items)
     _LOG.info(
-        "labelled %d items: base rate %.4f (fraction INCORRECT), match rules %s",
+        "labelled %d items: base rate %.4f lenient, %.4f strict EM "
+        "(gap %.4f), match rules %s",
         len(items),
         base_rate,
+        strict_base_rate,
+        strict_base_rate - base_rate,
         how_counts,
     )
     if base_rate in (0.0, 1.0):
@@ -103,7 +115,12 @@ def _label_items(items: list[TriviaItem], answers: list[str]) -> dict[str, Any]:
             "alias matching is broken or generation failed; a single-class set "
             "supports no ranking claim and would refuse every warrant."
         )
-    return {"base_rate": base_rate, "match_rules": how_counts}
+    return {
+        "base_rate": base_rate,
+        "base_rate_strict_em": strict_base_rate,
+        "lenient_minus_strict": strict_base_rate - base_rate,
+        "match_rules": how_counts,
+    }
 
 
 def extract_triviaqa(

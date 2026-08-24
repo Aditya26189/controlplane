@@ -38,16 +38,50 @@ __all__ = [
 _LOG = logging.getLogger(__name__)
 
 
+def _decoder_layers(model: Any) -> Any:
+    """Find the list of transformer blocks, whatever the architecture calls it.
+
+    Qwen2, Llama and Mistral all expose ``model.model.layers``; some wrappers
+    nest differently. Raises rather than guessing, because a wrong list means
+    the hook attaches to the wrong module and the activations come from a depth
+    nobody chose.
+    """
+    for path in ("model.layers", "transformer.h", "model.decoder.layers"):
+        target = model
+        for attribute in path.split("."):
+            target = getattr(target, attribute, None)
+            if target is None:
+                break
+        if target is not None:
+            return target
+    raise RuntimeError(
+        f"cannot locate the decoder layers on {type(model).__name__}. The hook "
+        "needs them to capture one layer without materialising all of them."
+    )
+
+
 def _hidden_states_at(
     loaded: LoadedModel, prompts: Sequence[str], layer: int, *, padding: str = "left"
 ) -> tuple[np.ndarray, np.ndarray]:
     """One prefill pass; returns ``(hidden, mask)`` for the requested layer.
 
+    Captures the layer with a **forward hook** rather than
+    ``output_hidden_states=True``. That flag returns all ``L+1`` hidden-state
+    tensors and we use exactly one, which is 28/29 of the memory thrown away.
+    On this model that is 3.1 GB at a 16k-token sequence — against 0.11 GB for
+    the single layer — and at 16k on a 16 GB card the difference is the
+    headroom attention needs. Measured from Round 1's recorded shapes:
+    28 layers, hidden 3584, bfloat16.
+
+    ``layer`` keeps its ``hidden_states`` meaning: 0 is the embedding output and
+    L is the output of transformer block L, so block ``layer - 1``'s output is
+    what the hook captures. Preserving that indexing matters because the layer
+    was chosen by fractional depth against the same convention.
+
     Args:
         loaded: The model and tokenizer.
         prompts: Rendered prompts, already through the chat template.
-        layer: 1-based index into ``hidden_states``, where 0 is the embedding
-            output and L is the output of transformer block L.
+        layer: 1-based index into ``hidden_states``.
         padding: ``"left"`` normally. ``"right"`` **only** for the deliberate
             fault injection, and the caller has to ask for it by name.
 
@@ -57,22 +91,46 @@ def _hidden_states_at(
     """
     import torch
 
+    if layer < 1:
+        raise ValueError(
+            f"layer must be >= 1; layer 0 is the embedding output, which carries "
+            f"no question-time state. Got {layer}."
+        )
+    blocks = _decoder_layers(loaded.model)
+    if layer > len(blocks):
+        raise ValueError(f"layer {layer} exceeds the model's {len(blocks)} blocks")
+
     tokenizer = loaded.tokenizer
     original_side = tokenizer.padding_side
     tokenizer.padding_side = padding
     if padding == "left":
         assert_left_padding(tokenizer, where="_hidden_states_at")
+
+    captured: dict[str, Any] = {}
+
+    def hook(_module: Any, _inputs: Any, output: Any) -> None:
+        # A decoder block returns a tuple whose first element is the hidden
+        # state; some return the tensor directly.
+        tensor = output[0] if isinstance(output, tuple) else output
+        captured["hidden"] = tensor.detach().to(torch.float32).cpu().numpy()
+
+    handle = blocks[layer - 1].register_forward_hook(hook)
     try:
         batch = tokenizer(
             list(prompts), return_tensors="pt", padding=True, truncation=False
         ).to(loaded.model.device)
         with torch.no_grad():
-            outputs = loaded.model(
-                **batch, output_hidden_states=True, use_cache=False
+            loaded.model(**batch, use_cache=False)
+        if "hidden" not in captured:
+            raise RuntimeError(
+                f"the forward hook on block {layer - 1} never fired. The model "
+                "did not run the layer the probe is pinned to, so no activation "
+                "was captured."
             )
-        hidden = outputs.hidden_states[layer].to(torch.float32).cpu().numpy()
+        hidden = captured["hidden"]
         mask = batch["attention_mask"].cpu().numpy().astype(bool)
     finally:
+        handle.remove()
         tokenizer.padding_side = original_side
     return hidden, mask
 
