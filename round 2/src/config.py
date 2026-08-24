@@ -159,9 +159,15 @@ class ModelConfig:
     name: str
     quantization: str
     layer_fractions: tuple[float, ...]
+    prefill_chunk_tokens: int = 2048
 
     def __post_init__(self) -> None:
         _reject_non_permissive(self.name, "model.name")
+        if self.prefill_chunk_tokens < 1:
+            raise ConfigError(
+                "model.prefill_chunk_tokens must be >= 1, got "
+                f"{self.prefill_chunk_tokens}"
+            )
         if self.quantization not in {"nf4", "int8", "fp16", "bf16", "none"}:
             raise ConfigError(
                 "model.quantization must be one of nf4/int8/fp16/bf16/none, got "

@@ -24,6 +24,11 @@ model:
   name: "Qwen/Qwen2.5-7B-Instruct"
   quantization: "nf4"
   layer_fractions: [0.29, 0.39, 0.50, 0.61, 0.71, 0.82, 0.93]
+  # Prefill longer sequences in chunks of this many tokens, carrying a KV cache.
+  # Bounds the attention workspace to heads x chunk x seq instead of heads x
+  # seq^2, on ANY backend -- so long context stops depending on which SDPA
+  # kernel gets picked. Causal attention makes it exact, not an approximation.
+  prefill_chunk_tokens: 2048
 
 probe:
   aggregations: ["mean_pool", "max_rolling_means"]   # both. mean_pool collapses on long context
