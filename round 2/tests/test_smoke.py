@@ -159,6 +159,104 @@ def test_notebook_is_generated_from_its_script(tmp_path: Path) -> None:
     )
 
 
+def test_every_notebook_code_cell_compiles() -> None:
+    """Every code cell in the generated notebook is valid Python.
+
+    Written after shipping a notebook whose repo-detection cell was a syntax
+    error. Two bugs stacked, and neither is visible in a notebook diff:
+
+    * ``source`` entries carried no trailing newline. nbformat defines the field
+      as a list that **concatenates** to the cell body, so a reader that
+      concatenates runs the whole cell onto one line, while Kaggle — which joins
+      with newlines — does not. The same notebook is therefore fine in one place
+      and a syntax error in another.
+    * An escaped newline inside an error message became a *real* newline in the
+      generated source, splitting string literals across lines. That one is a
+      syntax error everywhere, and it survived a review of the generator.
+
+    Compiling the output is the only check that would have caught either.
+
+    IPython magics are not Python; they are replaced with ``pass`` **preserving
+    indentation**, because a magic inside an ``if`` block would otherwise break
+    the block rather than the cell — which is a bug in the checker that looks
+    like a bug in the notebook.
+    """
+    import ast
+    import re
+
+    notebook = json.loads(
+        (PROJECT_ROOT / "notebooks" / "run_on_kaggle.ipynb").read_text(encoding="utf-8")
+    )
+
+    def neutralise(line: str) -> str:
+        match = re.match(r"^(\s*)[!%]", line)
+        return match.group(1) + "pass" if match else line
+
+    failures = []
+    code_cells = [c for c in notebook["cells"] if c["cell_type"] == "code"]
+    assert code_cells, "the notebook has no code cells"
+
+    for index, cell in enumerate(code_cells):
+        source = "".join(cell["source"])
+        cleaned = "\n".join(neutralise(line) for line in source.split("\n"))
+        try:
+            ast.parse(cleaned)
+        except SyntaxError as exc:
+            failures.append("code cell %d: %s at line %s" % (index, exc.msg, exc.lineno))
+
+    assert not failures, "notebook cells do not compile:\n  " + "\n  ".join(failures)
+
+
+def test_notebook_source_entries_keep_their_newlines() -> None:
+    """nbformat requires ``source`` entries to concatenate to the cell body.
+
+    Checked separately from compilation, because a malformed notebook can still
+    compile under a reader that joins with newlines — and the malformed version
+    is the one that breaks somewhere else.
+    """
+    notebook = json.loads(
+        (PROJECT_ROOT / "notebooks" / "run_on_kaggle.ipynb").read_text(encoding="utf-8")
+    )
+    for index, cell in enumerate(notebook["cells"]):
+        source = cell["source"]
+        if len(source) < 2:
+            continue
+        missing = [i for i, line in enumerate(source[:-1]) if not line.endswith("\n")]
+        assert not missing, (
+            "cell %d: %d source entries lack a trailing newline. A reader that "
+            "concatenates rather than joins will run the cell onto one line."
+            % (index, len(missing))
+        )
+
+
+def test_notebook_has_no_stray_real_newlines_in_string_literals() -> None:
+    """The specific corruption: an escape that became a literal line break.
+
+    A string literal opened on one line and closed on the next is the signature.
+    Compilation already catches it, but this names the cause in the failure
+    message rather than reporting "invalid syntax" and leaving the reader to
+    find it.
+    """
+    notebook = json.loads(
+        (PROJECT_ROOT / "notebooks" / "run_on_kaggle.ipynb").read_text(encoding="utf-8")
+    )
+    offenders = []
+    for index, cell in enumerate(notebook["cells"]):
+        if cell["cell_type"] != "code":
+            continue
+        for line_number, line in enumerate(cell["source"], start=1):
+            stripped = line.rstrip("\n")
+            # An odd number of unescaped double quotes means the literal is
+            # still open when the line ends.
+            unescaped = stripped.replace('\\"', "")
+            if unescaped.count('"') % 2 == 1 and '"""' not in stripped:
+                offenders.append("cell %d line %d: %r" % (index, line_number, stripped))
+    assert not offenders, (
+        "string literals left open at end of line -- an escaped newline probably "
+        "became a real one in the generator:\n  " + "\n  ".join(offenders)
+    )
+
+
 def test_extraction_script_imports_cleanly() -> None:
     """The GPU script's module-scope imports resolve without a GPU.
 

@@ -24,8 +24,25 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+def _source_lines(text: str) -> list[str]:
+    """Split into nbformat's `source` list, keeping the trailing newlines.
+
+    nbformat defines `source` as a "multiline string": a list whose entries
+    **concatenate** to the cell body, so every line except the last must end in
+    a newline. Splitting on "\n" and discarding them produces a list that some
+    readers join with newlines anyway — Kaggle does — and others concatenate
+    directly, running the whole cell onto one line.
+
+    That difference is why a notebook can execute fine in one place and be a
+    syntax error in another, which is the worst kind of bug to ship into a
+    3-hour GPU session.
+    """
+    lines = text.strip().split("\n")
+    return [line + "\n" for line in lines[:-1]] + [lines[-1]]
+
+
 def markdown(text: str) -> dict:
-    return {"cell_type": "markdown", "metadata": {}, "source": text.strip().split("\n")}
+    return {"cell_type": "markdown", "metadata": {}, "source": _source_lines(text)}
 
 
 def code(text: str) -> dict:
@@ -34,7 +51,7 @@ def code(text: str) -> dict:
         "execution_count": None,
         "metadata": {},
         "outputs": [],
-        "source": text.strip().split("\n"),
+        "source": _source_lines(text),
     }
 
 
@@ -154,7 +171,7 @@ if CLONE_URL and not Path("/kaggle/working/controlplane").exists():
 
 
 def is_round_two(path: Path) -> bool:
-    \"\"\"Round 2 has an extraction stage and a matrix; Round 1 has neither.\"\"\"
+    # Round 2 has an extraction stage and a matrix; Round 1 has neither.
     return (
         (path / "config.yaml").is_file()
         and (path / "src" / "extract").is_dir()
@@ -164,22 +181,30 @@ def is_round_two(path: Path) -> bool:
 
 PROJECT = next((p for p in CANDIDATES if is_round_two(p)), None)
 if PROJECT is None:
-    raise SystemExit(
-        "Round 2 not found.\n\n"
-        "This repository contains two projects: Round 1 at the root and Round 2\n"
-        "in 'round 2/'. They have separate src/ and config.yaml, and Round 1's\n"
-        "ProbeConfig has no 'aggregations' field -- so running this notebook\n"
-        "against the root fails several cells in, after the model has loaded.\n\n"
-        "Refusing to fall back to the root, because a wrong config that loads is\n"
-        "worse than one that does not (DECISIONS.md 050).\n\n"
-        "Looked in:\n  " + "\n  ".join(str(p) for p in CANDIDATES) + "\n\n"
-        "Fix, whichever is easiest:\n"
-        "  - check CLONE_URL above is reachable and CLONE_BRANCH exists. The\n"
-        "    clone is silent on failure in some Kaggle images, so re-run the\n"
-        "    clone line on its own and read what it prints.\n"
-        "  - or zip 'round 2/' locally, upload it as a Kaggle Dataset, and it\n"
-        "    will be found automatically under /kaggle/input/ with no edit here.\n"
-    )
+    problem = [
+        "Round 2 not found.",
+        "",
+        "This repository holds two projects: Round 1 at the root and Round 2 in",
+        "'round 2/'. They have separate src/ and config.yaml, and Round 1's",
+        "ProbeConfig has no 'aggregations' field -- so pointing this notebook at",
+        "the root fails several cells in, after the model has loaded.",
+        "",
+        "Refusing to fall back to the root: a wrong config that loads is worse",
+        "than one that does not (DECISIONS.md 050).",
+        "",
+        "Looked in:",
+    ]
+    problem += ["  " + str(p) for p in CANDIDATES]
+    problem += [
+        "",
+        "Fix, whichever is easiest:",
+        "  - check CLONE_URL is reachable and CLONE_BRANCH exists. The clone is",
+        "    silent on failure in some Kaggle images, so re-run the clone line",
+        "    on its own and read what it prints.",
+        "  - or zip 'round 2/', upload it as a Kaggle Dataset, and it is found",
+        "    automatically under /kaggle/input/ with no edit here.",
+    ]
+    raise SystemExit(chr(10).join(problem))
 
 # Drop any half-imported Round 1 modules before adding Round 2 to the path.
 # Python caches by module name, so a stale 'src' would shadow the right one and
@@ -233,12 +258,13 @@ missing = [
     if not present
 ]
 if missing:
-    raise SystemExit(
-        f"This is not Round 2's config: {missing} absent.\n"
-        f"Loaded from {Path('config.yaml').resolve()} (hash {config.config_hash}).\n"
-        "Round 1's config hash is c429ce5e92da9a22; Round 2's is c89257bc4adc10c2.\n"
-        "Go back to the previous cell and point PROJECT at 'round 2/'."
-    )
+    raise SystemExit(chr(10).join([
+        "This is not Round 2's config: " + str(missing) + " absent.",
+        "Loaded from " + str(Path("config.yaml").resolve()),
+        "  hash " + config.config_hash,
+        "Round 1's config hash is c429ce5e92da9a22; Round 2's is c89257bc4adc10c2.",
+        "Go back to the previous cell and point PROJECT at 'round 2/'.",
+    ]))
 
 print("config hash:", config.config_hash)
 print("model:", config.model.name, "| quantization:", config.model.quantization)
