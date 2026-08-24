@@ -270,7 +270,7 @@ if missing:
         "This is not Round 2's config: " + str(missing) + " absent.",
         "Loaded from " + str(Path("config.yaml").resolve()),
         "  hash " + config.config_hash,
-        "Round 1's config hash is c429ce5e92da9a22; Round 2's is c89257bc4adc10c2.",
+        "Round 1's config hash is c429ce5e92da9a22; Round 2's is bfb92a89ceacd678.",
         "Go back to the previous cell and point PROJECT at 'round 2/'.",
     ]))
 
@@ -357,8 +357,18 @@ if result.long_evalset is not None:
 The short pass is checkpointed, so re-run only the long half. Three levers, in
 the order worth trying:
 
-**This should no longer be reachable, and the pre-flight tells you in seconds
-rather than in forty minutes.**
+**Long context is now chunked, so this should not depend on the backend at
+all.** Prefill runs in `model.prefill_chunk_tokens`-sized pieces carrying a KV
+cache, which bounds the attention workspace to `heads × chunk × seq` instead of
+`heads × seq²` — 2.55 GiB rather than 12.86 GiB at 11k tokens, on *any* kernel.
+Causal attention makes it exact, not approximate.
+
+The pre-flight tells you in seconds rather than in forty minutes, and now logs
+the attention implementation and chunk size before it runs.
+
+**If you re-ran only this cell, `loaded` is the model from the original load**
+and predates the `attn_implementation="sdpa"` pin. Chunking covers that, but
+re-run the load cell to clear the warning.
 
 `_extract_long_context` now runs the **longest prompt alone** before the loop
 and logs measured peak memory per card. The worst case is not item 0, which is

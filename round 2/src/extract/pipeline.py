@@ -37,7 +37,12 @@ from ..validation.evalsets import (
     EvalSet,
     ExtractionCache,
 )
-from .activations import capture_padding_evidence, extract_activations, generate_answers
+from .activations import (
+    _base_model,
+    capture_padding_evidence,
+    extract_activations,
+    generate_answers,
+)
 from .model import LoadedModel, build_prompt
 from .triviaqa import (
     TriviaItem,
@@ -216,6 +221,7 @@ def extract_triviaqa(
         window=config.probe.rolling_window,
         stride=config.probe.rolling_stride,
         batch_size=batch_size,
+        chunk_tokens=config.model.prefill_chunk_tokens,
     )
 
     token_lengths = np.array(
@@ -373,6 +379,7 @@ def _extract_long_context(
         aggregations=config.probe.aggregations,
         window=config.probe.rolling_window,
         stride=config.probe.rolling_stride,
+        chunk_tokens=config.model.prefill_chunk_tokens,
     )
     features = _extract_with_oom_retry(
         loaded,
@@ -382,6 +389,7 @@ def _extract_long_context(
         window=config.probe.rolling_window,
         stride=config.probe.rolling_stride,
         batch_size=batch_size,
+        chunk_tokens=config.model.prefill_chunk_tokens,
     )
     _LOG.info(
         "long-context token lengths: mean %.0f, min %d, max %d",
@@ -426,6 +434,7 @@ def _preflight_longest(
     aggregations,
     window: int,
     stride: int,
+    chunk_tokens: Optional[int] = None,
 ) -> np.ndarray:
     """Run the single longest prompt before the loop, and report measured peak.
 
@@ -448,6 +457,27 @@ def _preflight_longest(
         [len(loaded.tokenizer(prompt)["input_ids"]) for prompt in prompts], dtype=int
     )
     index = int(np.argmax(token_lengths))
+
+    # Reported, not assumed. `loaded` may predate a code change: re-running one
+    # notebook cell against a live kernel keeps the model object from the
+    # original load, so a fix applied in load_model is not necessarily present
+    # in the model being used.
+    implementation = getattr(loaded.model.config, "_attn_implementation", None)
+    _LOG.info(
+        "pre-flight: attention=%s, chunk_tokens=%s, trunk=%s",
+        implementation,
+        chunk_tokens,
+        type(_base_model(loaded.model)).__name__,
+    )
+    if implementation != "sdpa":
+        _LOG.warning(
+            "attention implementation is %r, not 'sdpa'. Chunked prefill bounds "
+            "the workspace to heads x chunk x seq on any backend, so this "
+            "should still fit -- but eager is slower and was not intended. It "
+            "means this model was loaded before attn_implementation was pinned; "
+            "re-run the load cell to clear it.",
+            implementation,
+        )
     _LOG.info(
         "pre-flight: longest of %d prompts is item %d at %d tokens "
         "(median %d); running it alone before the loop",
@@ -468,6 +498,7 @@ def _preflight_longest(
         window=window,
         stride=stride,
         batch_size=1,
+        chunk_tokens=chunk_tokens,
     )
 
     if torch.cuda.is_available():
@@ -497,6 +528,7 @@ def _extract_with_oom_retry(
     stride: int,
     batch_size: int,
     min_batch_size: int = 1,
+    chunk_tokens: Optional[int] = None,
 ):
     """Extract, halving the batch on OOM, and reporting rather than dying quietly.
 
@@ -522,8 +554,10 @@ def _extract_with_oom_retry(
                 window=window,
                 stride=stride,
                 batch_size=current,
+                chunk_tokens=chunk_tokens,
             )
-        except torch.cuda.OutOfMemoryError:
+        except torch.cuda.OutOfMemoryError as error:
+            original = str(error).strip().splitlines()
             torch.cuda.empty_cache()
             if current > min_batch_size:
                 current = max(min_batch_size, current // 2)
@@ -539,6 +573,9 @@ def _extract_with_oom_retry(
             # wrong fix twice before anyone computed the other term.
             logits_gib = longest * vocab * 6 / 2**30
             attention_gib = heads * longest * longest * 2 / 2**30
+            chunked_gib = (
+                heads * min(chunk_tokens or longest, longest) * longest * 2 / 2**30
+            )
             cards = {
                 index: "%.1f free of %.1f GiB, peak %.1f" % (
                     torch.cuda.mem_get_info(index)[0] / 2**30,
@@ -551,20 +588,25 @@ def _extract_with_oom_retry(
                 "out of memory extracting long context at batch size 1.",
                 "  prompt lengths  %d-%d tokens" % (min(lengths), longest),
                 "  cards           %s" % cards,
+                "  chunk_tokens    %s" % (chunk_tokens,),
                 "",
-                "The two large allocations at the longest sequence, from this",
-                "model's config:",
-                "  logits     %.2f GiB (seq x vocab %d x 6 bytes: fp16 plus the"
-                " fp32 upcast)" % (logits_gib, vocab),
-                "  attention  %.2f GiB (heads %d x seq^2 x 2, MATH backend only;"
-                " O(seq) on the efficient one)" % (attention_gib, heads),
+                "What torch itself said -- the requested size is the number that",
+                "matters, and it is the one an earlier version of this message",
+                "discarded with `from None`:",
+            ] + ["  " + line for line in original[:4]] + [
                 "",
-                "Both should already be avoided: the forward runs the transformer",
-                "trunk rather than the causal LM, so no logits are built, and the",
-                "attention mask is dropped at batch 1 so SDPA takes the efficient",
-                "backend. If this still fails, one of those two is not in effect --",
-                "compare peak above against the two figures to see which.",
+                "Reference figures at the longest sequence, from this model's",
+                "config, for comparison against the request above:",
+                "  logits        %.2f GiB (seq x vocab %d x 6 bytes)"
+                % (logits_gib, vocab),
+                "  attention/1   %.2f GiB (heads %d x seq^2 x 2, unchunked)"
+                % (attention_gib, heads),
+                "  attention/%-5d %.2f GiB (heads x chunk x seq x 2, chunked)"
+                % (chunk_tokens or 0, chunked_gib),
                 "",
-                "Otherwise narrow evalsets.pad_tokens in config.yaml, which is the",
-                "source of the longest sequences.",
-            ])) from None
+                "The forward runs the transformer trunk, so no logits are built,",
+                "and prefill is chunked, so the seq^2 term should not appear on",
+                "any backend. If the request above matches an unchunked figure,",
+                "chunking did not engage -- check model.prefill_chunk_tokens and",
+                "that this process is running the current code.",
+            ])) from error

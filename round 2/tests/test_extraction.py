@@ -350,7 +350,7 @@ def test_base_model_finds_the_trunk_on_a_causal_lm() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _tiny_qwen(vocab: int = 512):
+def _tiny_qwen(vocab: int = 512, attn: str = "sdpa"):
     transformers = pytest.importorskip("transformers")
     import torch
 
@@ -361,7 +361,9 @@ def _tiny_qwen(vocab: int = 512):
         num_hidden_layers=2, num_attention_heads=4, num_key_value_heads=2,
         max_position_embeddings=4096,
     )
-    model = transformers.AutoModelForCausalLM.from_config(config, dtype=torch.float32)
+    model = transformers.AutoModelForCausalLM.from_config(
+        config, dtype=torch.float32, attn_implementation=attn
+    )
     return model.eval()
 
 
@@ -503,6 +505,162 @@ def test_no_seq_squared_tensor_is_materialised() -> None:
         "a seq x seq tensor was materialised: %s. Attention has fallen off the "
         "memory-efficient path and long context will not fit." % (shapes.square,)
     )
+
+
+# --------------------------------------------------------------------------- #
+# Chunked prefill: the bound that does not depend on backend selection
+# --------------------------------------------------------------------------- #
+
+
+def test_chunked_prefill_matches_a_single_pass() -> None:
+    """Chunking must be exact, not an approximation.
+
+    Causal attention means token ``i`` attends only to positions ``<= i``, so a
+    cached prefix produces the same hidden states as having seen it in one pass.
+    If that were merely approximate, every long-context feature would carry an
+    error that no downstream test could distinguish from drift -- which is the
+    signal the whole envelope is measuring.
+
+    Two chunk sizes, because a bug that happens to align with one boundary
+    would survive a single-size test.
+    """
+    pytest.importorskip("transformers")
+    import torch
+
+    from transformers import DynamicCache
+
+    from src.extract.activations import _prefill_in_chunks
+
+    model = _tiny_qwen()
+    trunk = model.model
+    grabbed: list = []
+    handle = trunk.layers[-1].register_forward_hook(
+        lambda module, inputs, output: grabbed.append(
+            (output[0] if isinstance(output, tuple) else output).detach().clone()
+        )
+    )
+    try:
+        torch.manual_seed(0)
+        ids = torch.randint(0, 512, (1, 300))
+        with torch.no_grad():
+            trunk(input_ids=ids, use_cache=False)
+        whole = grabbed[0]
+        for chunk in (64, 128):
+            grabbed.clear()
+            _prefill_in_chunks(trunk, ids, chunk)
+            pieced = torch.cat(grabbed, dim=1)
+            assert pieced.shape == whole.shape
+            assert torch.allclose(pieced, whole, atol=1e-4), (
+                "chunk %d diverged by %.2e" % (chunk, (pieced - whole).abs().max())
+            )
+    finally:
+        handle.remove()
+
+
+def test_chunking_bounds_the_attention_workspace() -> None:
+    """Against **eager** attention, where the ``seq^2`` matrix is real.
+
+    Measured against sdpa this test would be meaningless, and the first version
+    of it was: with sdpa no square tensor is built at all, so chunking cannot
+    reduce the largest tensor -- it slightly *raises* it, by materialising a
+    ``heads x chunk x seq`` score block that the efficient kernel would have
+    avoided entirely.
+
+    That is the point of chunking, stated precisely: it does not beat the best
+    backend, it removes the dependency on getting the best backend. Eager is the
+    case it has to survive, so eager is what this measures. The ratio should be
+    about ``seq / chunk``.
+    """
+    pytest.importorskip("transformers")
+    import torch
+    from torch.utils._python_dispatch import TorchDispatchMode
+
+    from src.extract.activations import _prefill_in_chunks
+
+    seq, chunk = 512, 64
+
+    class Biggest(TorchDispatchMode):
+        def __init__(self) -> None:
+            self.largest = 0
+
+        def __torch_dispatch__(self, func, types, args=(), kwargs=None):
+            out = func(*args, **(kwargs or {}))
+            for item in out if isinstance(out, (tuple, list)) else [out]:
+                if isinstance(item, torch.Tensor):
+                    self.largest = max(self.largest, item.numel())
+            return out
+
+    model = _tiny_qwen(attn="eager")
+    heads = model.config.num_attention_heads
+    ids = torch.zeros(1, seq, dtype=torch.long)
+
+    unchunked = Biggest()
+    with torch.no_grad(), unchunked:
+        model.model(input_ids=ids, use_cache=False)
+    chunked = Biggest()
+    with chunked:
+        _prefill_in_chunks(model.model, ids, chunk)
+
+    assert unchunked.largest >= heads * seq * seq, (
+        "eager did not build the seq^2 matrix, so this test is not measuring "
+        "what it claims: largest was %d" % unchunked.largest
+    )
+    assert chunked.largest <= heads * chunk * seq, (
+        "chunked attention exceeded the heads x chunk x seq bound: %d > %d"
+        % (chunked.largest, heads * chunk * seq)
+    )
+    assert chunked.largest < unchunked.largest / 4, (
+        "chunking barely helped: %d vs %d" % (chunked.largest, unchunked.largest)
+    )
+
+
+def test_chunked_and_unchunked_capture_agree(monkeypatch) -> None:
+    """The whole extraction path, both ways, on the same prompts.
+
+    ``_hidden_states_at`` decides whether to chunk from ``chunk_tokens`` and the
+    batch width. Both routes must return the same array, or the long-context
+    envelope would differ from the short one for a reason that has nothing to
+    do with the traffic.
+    """
+    pytest.importorskip("transformers")
+    import torch
+
+    from src.extract.activations import _hidden_states_at
+    from src.extract.model import LoadedModel
+
+    model = _tiny_qwen()
+    loaded = LoadedModel(
+        model=model, tokenizer=_FakeTokenizer(), name="fake", num_hidden_layers=2,
+        hidden_size=64, quantization="none", device="cpu", dtype="torch.float32",
+    )
+    prompt = ["".join(chr(97 + i % 26) for i in range(200))]
+    plain, _ = _hidden_states_at(loaded, prompt, 2, chunk_tokens=None)
+    pieced, _ = _hidden_states_at(loaded, prompt, 2, chunk_tokens=32)
+    assert plain.shape == pieced.shape
+    assert np.allclose(plain, pieced, atol=1e-4)
+
+
+def test_chunking_is_skipped_for_batches() -> None:
+    """A real batch keeps the single-pass route.
+
+    Per-row cache bookkeeping would be needed to chunk a padded batch and buys
+    nothing: long context runs unbatched because a 16k sequence does not batch
+    on a 16 GiB card at all.
+    """
+    pytest.importorskip("transformers")
+
+    from src.extract.activations import _hidden_states_at
+    from src.extract.model import LoadedModel
+
+    model = _tiny_qwen()
+    loaded = LoadedModel(
+        model=model, tokenizer=_FakeTokenizer(), name="fake", num_hidden_layers=2,
+        hidden_size=64, quantization="none", device="cpu", dtype="torch.float32",
+    )
+    prompts = ["a" * 100, "b" * 200]
+    hidden, mask = _hidden_states_at(loaded, prompts, 2, chunk_tokens=32)
+    assert hidden.shape[0] == 2 and hidden.shape[1] == 200
+    assert mask.shape == (2, 200)
 
 
 # --------------------------------------------------------------------------- #
