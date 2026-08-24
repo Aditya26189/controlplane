@@ -105,6 +105,7 @@ def load_model(
     quantization: str = "nf4",
     device_map: str = "auto",
     trust_remote_code: bool = False,
+    reserve_gib_per_gpu: float = 4.0,
 ) -> LoadedModel:
     """Load a causal LM for activation extraction.
 
@@ -119,6 +120,12 @@ def load_model(
         trust_remote_code: Left False by default. Qwen2.5 does not need it, and
             enabling it by default would execute arbitrary code from a hub
             repository on a machine that is about to handle evaluation data.
+        reserve_gib_per_gpu: Memory left free on each GPU for activations and
+            the attention workspace. With more than one GPU this forces the
+            weights to spread rather than piling onto card 0 — a 7B model in NF4
+            is only ~5 GB and accelerate will happily fit it all on one device,
+            leaving the second idle and the first without headroom for a
+            long-context forward pass.
 
     Returns:
         A :class:`LoadedModel`.
@@ -162,11 +169,26 @@ def load_model(
                 exc,
             )
 
+    max_memory = None
+    if torch.cuda.is_available() and torch.cuda.device_count() > 1:
+        max_memory = {}
+        for index in range(torch.cuda.device_count()):
+            total = torch.cuda.get_device_properties(index).total_memory / 2**30
+            max_memory[index] = f"{max(1.0, total - reserve_gib_per_gpu):.1f}GiB"
+        _LOG.info(
+            "%d GPUs available; capping weights at %s so each card keeps ~%.0f "
+            "GiB free for activations and the attention workspace",
+            torch.cuda.device_count(),
+            max_memory,
+            reserve_gib_per_gpu,
+        )
+
     _LOG.info("loading model %s (quantization=%s)", name, applied)
     model = AutoModelForCausalLM.from_pretrained(
         name,
         quantization_config=quantization_config,
         device_map=device_map,
+        max_memory=max_memory,
         torch_dtype=torch.float16 if quantization_config is None else None,
         trust_remote_code=trust_remote_code,
     )
@@ -185,13 +207,14 @@ def load_model(
         device=device,
         dtype=dtype,
     )
+    devices = sorted({str(p.device) for p in model.parameters()})
     _LOG.info(
-        "loaded %s: %d layers, hidden %d, %s on %s",
+        "loaded %s: %d layers, hidden %d, %s across %s",
         name,
         loaded.num_hidden_layers,
         loaded.hidden_size,
         applied,
-        device,
+        devices,
     )
     return loaded
 

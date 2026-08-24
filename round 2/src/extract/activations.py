@@ -20,8 +20,9 @@ whatever you feed it proves nothing.
 
 from __future__ import annotations
 
+import contextlib
 import logging
-from typing import Any, Optional, Sequence
+from typing import Any, Iterator, Optional, Sequence
 
 import numpy as np
 
@@ -31,11 +32,58 @@ from .model import LoadedModel, assert_left_padding
 
 __all__ = [
     "capture_padding_evidence",
+    "efficient_attention",
     "extract_activations",
     "generate_answers",
 ]
 
 _LOG = logging.getLogger(__name__)
+
+
+@contextlib.contextmanager
+def efficient_attention() -> Iterator[None]:
+    """Force SDPA's memory-efficient backend for the duration of a forward pass.
+
+    **This is what makes long context possible on a 16 GB card.** Left to
+    itself, PyTorch's ``scaled_dot_product_attention`` falls back to the *math*
+    backend whenever it is handed an explicit attention mask, and the math
+    backend materialises the full ``heads x seq x seq`` matrix. At 28 heads and
+    a 14.5k-token sequence in bfloat16 that is **10.9 GiB for one op**, which is
+    the observed failure:
+
+        OutOfMemoryError: Tried to allocate 10.93 GiB
+
+    The memory-efficient backend is O(seq) instead of O(seq squared) and is
+    supported on Turing (sm_75), which a T4 is. Flash-Attention-2 is not — it
+    needs sm_80 or later — so this is the only option that works here.
+
+    Falls back silently to whatever the installed torch offers: the two API
+    spellings differ across versions, and a context manager that raises on an
+    old torch would break extraction for a reason unrelated to memory.
+    """
+    import torch
+
+    try:  # torch >= 2.3
+        from torch.nn.attention import SDPBackend, sdpa_kernel
+
+        with sdpa_kernel([SDPBackend.EFFICIENT_ATTENTION, SDPBackend.MATH]):
+            yield
+        return
+    except (ImportError, AttributeError, RuntimeError):
+        pass
+    try:  # torch 2.0 - 2.2
+        with torch.backends.cuda.sdp_kernel(
+            enable_flash=False, enable_mem_efficient=True, enable_math=True
+        ):
+            yield
+        return
+    except (AttributeError, RuntimeError):
+        pass
+    _LOG.warning(
+        "could not select the memory-efficient attention backend; long-context "
+        "extraction may exhaust the card at the math backend's seq^2 cost"
+    )
+    yield
 
 
 def _decoder_layers(model: Any) -> Any:
@@ -119,7 +167,7 @@ def _hidden_states_at(
         batch = tokenizer(
             list(prompts), return_tensors="pt", padding=True, truncation=False
         ).to(loaded.model.device)
-        with torch.no_grad():
+        with torch.no_grad(), efficient_attention():
             loaded.model(**batch, use_cache=False)
         if "hidden" not in captured:
             raise RuntimeError(

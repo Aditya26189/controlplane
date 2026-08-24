@@ -896,4 +896,49 @@ The cost difference is real and secondary: 2,400 sequences at 4–16k tokens aga
 
 ---
 
+## 053 — Long context needs the memory-efficient attention backend, not a smaller band
+**Status:** accepted
+
+**Context:** The first real extraction completed the short pass (2,400 items, base rate 0.4667 lenient / 0.5342 strict, layer 23) and then died: `OutOfMemoryError: Tried to allocate 10.93 GiB` inside `scaled_dot_product_attention`.
+
+**Diagnosis from the number.** `10.93 GiB` at 28 heads and bfloat16 implies a sequence near 14,500 — it is the full `heads × seq × seq` attention matrix. PyTorch's SDPA falls back to the **math** backend whenever an explicit attention mask is present, and math materialises that matrix. The memory-efficient backend is O(seq) and is supported on Turing (sm_75), which a T4 is; Flash-Attention-2 needs sm_80 and does not apply.
+
+So the fix is the backend, not the band. Narrowing `pad_tokens` to 8,000 would also have worked (3.34 GB) and would have weakened the envelope shift Beat 4 depends on, to work around a two-line configuration problem.
+
+**Decision:** `efficient_attention()` wraps every extraction forward pass, selecting `EFFICIENT_ATTENTION` with a `MATH` fallback, across both the torch ≥ 2.3 and 2.0–2.2 API spellings. `pad_tokens` stays at `[4000, 16000]`.
+
+**Three consequences, one of which is a process fix:**
+
+- **Checkpoint before the fragile step.** `extract_triviaqa` now saves the short-context eval set and cache *before* long context runs. The short pass is the expensive half — generation at 2.37 s/item — and the OOM discarded 17 minutes of completed work that had no reason to be at risk. A failure in the long pass is now recoverable without re-running the short one.
+- **Adaptive retry.** On OOM the batch halves to 1, and at 1 it raises naming the sequence lengths that failed and the three levers, because "CUDA out of memory" alone does not say whether to change the backend, shorten the band, or free the card.
+- **Spread the weights.** With two T4s, `device_map="auto"` put all 5 GB of NF4 weights on card 0 and left card 1 idle, since the model fits. `load_model` now caps per-GPU memory so weights split and each card keeps headroom for the attention workspace.
+
+**A reviewer could fairly object** that the checkpointing is scaffolding rather than method. It is, and it is recorded because the failure it prevents already happened once and cost real GPU time.
+
+---
+
+## 054 — Measured base rate on the real extraction: 0.4667 lenient, 0.5342 strict
+**Status:** accepted
+
+**Context:** First real Round 2 extraction, 2,400 TriviaQA questions through Qwen2.5-7B-Instruct NF4 at layer 23.
+
+**Measured:**
+
+```
+base rate  0.4667 lenient   0.5342 strict EM   gap 0.0675
+match rules: substring 1240, exact-token-on-short-alias 40,
+             no alias matched 1119, empty generation 1
+7,200 distinct questions after dedup (0 near-duplicates dropped)
+```
+
+**Two things worth recording.**
+
+The **lenient/strict gap is 0.0675**, against Round 1's 0.488 on the same dataset and model. Round 1's strict rule was stricter than this one — it required the generation to *be* the answer, where this one normalises first — so the two gaps are not comparable, and the useful reading is that Round 2's lenient rule is close to its strict rule rather than that the model improved.
+
+The **base rate is 0.4667**, against Round 1's 0.388 and the synthetic fixture's 0.152. Since the lift ceiling is `1 / max(base_rate, flag_rate)` (`DECISIONS.md` 047), the real ceiling here is **2.14** — tighter than Round 1's 2.575 and far tighter than the fixture's 6.6. `MIN_LIFT_LOWER_BOUND = 1.0` therefore has less room above it than any fixture run suggested, and a tier that loses recall on long context may land near the floor. That is a real possibility for the long-context cells and is not a reason to move the bar.
+
+**Also noted:** the dedup dropped 0 near-duplicates from 7,200 questions, where Round 1 dropped 7,983 from 17,944. Different pass — Round 1 deduplicated the whole split, this one stops once it has three times the questions it needs — so the counts are not comparable and 0 is not evidence that near-duplicates are absent.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->

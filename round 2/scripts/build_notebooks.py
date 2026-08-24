@@ -266,6 +266,13 @@ pass.
 
 Set `--smoke` equivalent by passing `n_questions=120` first if you want to check
 the wiring before spending the hour.
+
+**`checkpoint_dir="."` saves the short pass before long context is attempted.**
+The short pass is the expensive half — generation dominates at 2.37 s an item —
+and the long pass is the one that can exhaust the card. On the first real run an
+OOM in long context discarded 17 minutes of completed short-context work; it
+will not again. If the long pass fails now, the short results are already on
+disk and the cell below re-runs only the long half.
 """
         ),
         code(
@@ -275,11 +282,12 @@ from src.extract.pipeline import extract_triviaqa
 result = extract_triviaqa(
     config,
     loaded,
-    n_questions=2400,      # 120 for a smoke run
+    n_questions=2400,          # 120 for a smoke run
     batch_size=8,
-    long_batch_size=1,     # a 16k-token sequence does not batch on 16 GiB
+    long_batch_size=1,         # a 16k-token sequence does not batch on 16 GiB
     max_new_tokens=32,
     long_context=True,
+    checkpoint_dir=".",        # saves the short pass BEFORE long context runs
 )
 result.report
 """
@@ -306,6 +314,44 @@ if result.long_evalset is not None:
           f"base rate {result.long_evalset.base_rate:.4f}", result.long_evalset.envelope_id)
     print("long token lengths:", result.long_cache.token_lengths.min(),
           "to", result.long_cache.token_lengths.max())
+"""
+        ),
+        markdown(
+            """
+### If the long-context pass ran out of memory
+
+The short pass is checkpointed, so re-run only the long half. Three levers, in
+the order worth trying:
+
+1. **Confirm the efficient attention backend was selected.** Left to itself
+   PyTorch uses the *math* backend whenever an explicit attention mask is
+   present, and that materialises `heads x seq x seq` — 28 × 14,500² × 2 bytes
+   is about 11 GB for a single op. `efficient_attention()` forces the O(seq)
+   backend, which a T4 supports. Flash-Attention-2 does not help here: it needs
+   sm_80 and a T4 is sm_75.
+2. **Narrow the band.** `evalsets.pad_tokens` in `config.yaml` is `[4000,
+   16000]`. Lowering the upper bound to 8,000 costs a weaker envelope shift and
+   removes the largest sequences.
+3. **Spread the weights.** With two T4s, `load_model` now caps per-GPU memory so
+   the 5 GB of NF4 weights split rather than piling onto card 0 — which is what
+   happened on the first run, leaving card 1 idle.
+"""
+        ),
+        code(
+            """
+# Long-context only. Assumes the short pass is checkpointed in ./results.
+import torch
+from src.extract.pipeline import _extract_long_context
+
+torch.cuda.empty_cache()
+print({i: f"{torch.cuda.mem_get_info(i)[0]/2**30:.1f} GiB free"
+       for i in range(torch.cuda.device_count())})
+
+long_evalset, long_cache = _extract_long_context(
+    config, loaded, result.short_evalset, layer=result.report["layer"], batch_size=1,
+)
+print(long_evalset.eval_set_id, len(long_evalset), long_evalset.envelope_id)
+print("token lengths:", long_cache.token_lengths.min(), "to", long_cache.token_lengths.max())
 """
         ),
         markdown(
