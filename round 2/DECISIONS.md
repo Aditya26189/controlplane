@@ -1069,3 +1069,55 @@ not, and would have been wrong again next time.
 the cause until the alternatives are computed too. Where the code path is
 knowable by execution, execute it — three of the four claims above were settled
 in under a minute by intercepting a function, after two weeks of arguing them.
+
+## 058 — Chunked prefill: stop depending on which attention kernel gets selected
+
+Fourth failed session. The pre-flight from 057 worked and produced the first
+real evidence of the run:
+
+```
+cards {0: '12.7 free of 14.6 GiB, peak 2.9', 1: '10.4 free of 14.6 GiB, peak 3.9'}
+```
+
+**Peak allocation never exceeded 3.9 GiB while 10.4 GiB was free.** This is not
+gradual exhaustion; a single request failed outright, and was large enough to
+fail on a card with 12.7 GiB free. The fp32 softmax over a `seq^2` score matrix
+is `28 x 11103^2 x 4` = 12.86 GiB, which fits that shape and never enters the
+peak because it never succeeded.
+
+**The message discarded the evidence.** `raise ... from None` threw away torch's
+own text, which states the requested size and device — the one number that would
+have identified the allocation without inference. Now chained, with the first
+lines of the original quoted above the reference figures.
+
+**The fix is to stop needing the answer.** Prefill now runs in chunks carrying a
+KV cache, bounding the attention workspace to `heads x chunk x seq`:
+
+| | unchunked | chunked at 2048 |
+|---|---|---|
+| attention workspace at seq 11,103 | 12.86 GiB | 2.55 GiB |
+| KV cache | — | 637 MB |
+
+That bound holds on the eager path, the math backend and the efficient backend
+alike. Four sessions were spent reasoning about which kernel would be selected;
+this makes the answer not matter.
+
+Exact, not approximate: causal attention means a cached prefix produces the same
+hidden states as one pass. Measured at 1.1e-08 max absolute difference across
+two chunk sizes, and pinned by `test_chunked_prefill_matches_a_single_pass`.
+
+**What chunking does not do.** It does not beat the best backend. Against sdpa
+it slightly *raises* the largest tensor, by materialising a `heads x chunk x seq`
+block the efficient kernel avoids entirely. The first version of
+`test_chunking_bounds_the_attention_workspace` asserted a reduction against sdpa
+and failed, correctly. It now measures against eager, where the `seq^2` matrix
+is real, and asserts the bound rather than a win.
+
+Cost: `model.prefill_chunk_tokens` added to config, moving the config hash from
+`c89257bc4adc10c2` to `bfb92a89ceacd678`. Committed artifacts keep the old hash,
+which is what provenance is for — they were produced under that config.
+
+Also: the pre-flight now logs the attention implementation, because re-running a
+single notebook cell against a live kernel keeps the model object from the
+original load. A fix applied in `load_model` is not present in a model that was
+loaded before it.
