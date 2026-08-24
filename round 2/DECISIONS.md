@@ -1018,3 +1018,54 @@ the envelope shift Beat 4 rests on.
 Not verifiable on CPU: `test_forward_runs_the_trunk_not_the_causal_lm` asserts
 the wrapper never runs, which pins the code path. Whether the pass now fits in
 16 GiB is confirmed only by the next session completing.
+
+## 057 — Supersedes 055: the mask fix was a no-op, and 053 and 056 were argued rather than measured
+
+Three GPU sessions were lost on this stage. All three diagnoses were produced by
+computing one candidate quantity, finding it the right order of magnitude, and
+stopping. This entry records what measurement showed and retires the claims.
+
+**055 was a no-op.** It asserted that passing an attention mask forces a 4D float
+mask, which SDPA's memory-efficient kernel declines, falling back to math. That
+is true of a *padded* batch and false of an all-ones one:
+`masking_utils._ignore_causal_mask_sdpa` returns True when `padding_mask.all()`.
+Intercepting `scaled_dot_product_attention` on a real Qwen2:
+
+| call | reaches SDPA as |
+|---|---|
+| all-ones mask passed | `attn_mask=None, is_causal=True` |
+| mask omitted | `attn_mask=None, is_causal=True` |
+| batch 2, real padding | `attn_mask=(2,1,32,32), is_causal=False` |
+
+Identical. The mask-drop is kept as version insurance, demoted in the comment,
+and pinned by `test_all_ones_mask_is_already_skipped`.
+
+**053 was aimed at a term that was never paid.** With sdpa there is no `seq x seq`
+tensor at all — confirmed by enumerating every tensor in a forward pass and
+finding none square. The attention arithmetic in 053 described the eager path,
+which was not in use.
+
+**056 identified the right term but by the same faulty method.** The logits are
+real: counting bytes through `TorchDispatchMode`, the causal LM allocates 5.4x
+the trunk at seq 1024, and its largest tensor is `(seq, vocab)` against
+`(seq, intermediate)` — an 8x ratio at the real model's 152,064 vocabulary,
+before the float32 upcast. The fix stands. The reasoning that produced it did
+not, and would have been wrong again next time.
+
+**What actually changed, beyond the trunk fix:**
+
+- `load_model` now passes `attn_implementation="sdpa"` explicitly and **refuses
+  to load** on anything else. This was the one live risk left: the default is
+  right on the machines checked, and eager would cost `28 x 16000^2 x 4` = 28.7
+  GiB for a single op — the failure being chased, arriving by a path nobody had
+  ruled out. A default that happens to be right is not a guarantee.
+- `_preflight_longest` runs the **longest prompt alone** before the 600-item
+  loop and logs measured peak memory per card. The worst case is not item 0, so
+  every previous failure cost 40 minutes before revealing anything. It now costs
+  seconds and reports a number instead of requiring one to be inferred.
+- The float32 upcast in the capture hook moved off the GPU (229 MB at 16k).
+
+**The rule this stage earns:** a quantity that matches the observed value is not
+the cause until the alternatives are computed too. Where the code path is
+knowable by execution, execute it — three of the four claims above were settled
+in under a minute by intercepting a function, after two weeks of arguing them.

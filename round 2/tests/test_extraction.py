@@ -342,6 +342,170 @@ def test_base_model_finds_the_trunk_on_a_causal_lm() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# What the real transformers code path actually does
+#
+# These run a genuinely small Qwen2 rather than a fake, because the three GPU
+# sessions lost on this stage were all lost to reasoning about the code path
+# instead of executing it.
+# --------------------------------------------------------------------------- #
+
+
+def _tiny_qwen(vocab: int = 512):
+    transformers = pytest.importorskip("transformers")
+    import torch
+
+    from transformers.models.qwen2.configuration_qwen2 import Qwen2Config
+
+    config = Qwen2Config(
+        vocab_size=vocab, hidden_size=64, intermediate_size=128,
+        num_hidden_layers=2, num_attention_heads=4, num_key_value_heads=2,
+        max_position_embeddings=4096,
+    )
+    model = transformers.AutoModelForCausalLM.from_config(config, dtype=torch.float32)
+    return model.eval()
+
+
+def test_all_ones_mask_is_already_skipped(monkeypatch) -> None:
+    """Transformers hands SDPA ``is_causal=True`` when nothing is padded.
+
+    This is the measurement that showed a previous "fix" to be a no-op. The
+    reasoning behind it was that passing an attention mask forces a 4D float
+    mask, which SDPA's memory-efficient kernel declines, falling back to the
+    math backend and its ``seq^2`` allocation. The first half is true of a
+    *padded* batch. It is not true of an all-ones mask: ``masking_utils.
+    _ignore_causal_mask_sdpa`` returns True when ``padding_mask.all()``, and
+    SDPA receives no mask at all.
+
+    A GPU session was spent on that no-op, and it was written up as the fix.
+    The test exists so the claim is checked rather than argued.
+    """
+    import torch
+    import torch.nn.functional as functional
+
+    model = _tiny_qwen()
+    assert model.config._attn_implementation == "sdpa"
+
+    calls = []
+    real = functional.scaled_dot_product_attention
+
+    def spy(query, key, value, attn_mask=None, is_causal=False, **kwargs):
+        calls.append((attn_mask is None, is_causal))
+        return real(query, key, value, attn_mask=attn_mask, is_causal=is_causal, **kwargs)
+
+    import transformers.integrations.sdpa_attention as sdpa_attention
+
+    monkeypatch.setattr(functional, "scaled_dot_product_attention", spy)
+    monkeypatch.setattr(
+        sdpa_attention.torch.nn.functional, "scaled_dot_product_attention", spy
+    )
+
+    ids = torch.zeros(1, 32, dtype=torch.long)
+    with torch.no_grad():
+        model(input_ids=ids, attention_mask=torch.ones(1, 32, dtype=torch.long),
+              use_cache=False)
+    with_mask = calls[0]
+    calls.clear()
+    with torch.no_grad():
+        model(input_ids=ids, use_cache=False)
+    without_mask = calls[0]
+
+    assert with_mask == (True, True), (
+        "an all-ones mask reached SDPA; the version-independence assumed by "
+        "_hidden_states_at no longer holds"
+    )
+    assert with_mask == without_mask, "dropping an all-ones mask changed the call"
+
+    # And the mask must still survive when it carries information, or padded
+    # batches would silently attend to pad tokens.
+    calls.clear()
+    padded = torch.cat([torch.zeros(1, 32), torch.ones(1, 32)]).long()
+    with torch.no_grad():
+        model(input_ids=torch.zeros(2, 32, dtype=torch.long),
+              attention_mask=padded, use_cache=False)
+    assert calls[0] == (False, False), "a real padding mask was discarded"
+
+
+def test_trunk_allocates_far_less_than_the_causal_lm() -> None:
+    """Counted bytes, not estimated ones.
+
+    The causal LM's largest tensor is ``(seq, vocab)``; the trunk's is
+    ``(seq, intermediate)``. At Qwen2.5-7B's real vocabulary of 152,064 against
+    an intermediate size of 18,944 that is an 8x ratio on the largest single
+    allocation, and the logits are then upcast to float32 on top.
+    """
+    pytest.importorskip("transformers")
+    import torch
+    from torch.utils._python_dispatch import TorchDispatchMode
+
+    from src.extract.activations import _base_model
+
+    class Counter(TorchDispatchMode):
+        def __init__(self) -> None:
+            self.total = 0
+            self.largest = 0
+
+        def __torch_dispatch__(self, func, types, args=(), kwargs=None):
+            out = func(*args, **(kwargs or {}))
+            for item in out if isinstance(out, (tuple, list)) else [out]:
+                if isinstance(item, torch.Tensor) and item.numel() > 1:
+                    size = item.numel() * item.element_size()
+                    self.total += size
+                    self.largest = max(self.largest, size)
+            return out
+
+    model = _tiny_qwen(vocab=15206)
+    ids = torch.zeros(1, 1024, dtype=torch.long)
+    measured = {}
+    for label, target in (("full", model), ("trunk", _base_model(model))):
+        counter = Counter()
+        with torch.no_grad(), counter:
+            target(input_ids=ids, use_cache=False)
+        measured[label] = (counter.total, counter.largest)
+
+    assert measured["trunk"][0] < measured["full"][0] / 3, (
+        "the trunk should allocate far less; got %s" % (measured,)
+    )
+    assert measured["trunk"][1] < measured["full"][1] / 8, (
+        "the largest tensor should no longer be vocabulary-sized; got %s" % (measured,)
+    )
+
+
+def test_no_seq_squared_tensor_is_materialised() -> None:
+    """The attention score matrix must never appear as a real tensor.
+
+    On the eager path it does: ``heads x seq x seq``, with the softmax upcast to
+    float32, which is 28.7 GiB for one op at 16k tokens on this model. That is
+    why :func:`load_model` asks for sdpa explicitly and refuses anything else.
+    """
+    pytest.importorskip("transformers")
+    import torch
+    from torch.utils._python_dispatch import TorchDispatchMode
+
+    seq = 256
+
+    class Shapes(TorchDispatchMode):
+        def __init__(self) -> None:
+            self.square = []
+
+        def __torch_dispatch__(self, func, types, args=(), kwargs=None):
+            out = func(*args, **(kwargs or {}))
+            for item in out if isinstance(out, (tuple, list)) else [out]:
+                if isinstance(item, torch.Tensor) and item.dim() >= 2:
+                    if item.shape[-1] == seq and item.shape[-2] == seq:
+                        self.square.append(tuple(item.shape))
+            return out
+
+    model = _tiny_qwen()
+    shapes = Shapes()
+    with torch.no_grad(), shapes:
+        model(input_ids=torch.zeros(1, seq, dtype=torch.long), use_cache=False)
+    assert not shapes.square, (
+        "a seq x seq tensor was materialised: %s. Attention has fallen off the "
+        "memory-efficient path and long context will not fit." % (shapes.square,)
+    )
+
+
+# --------------------------------------------------------------------------- #
 # Transfer: what THIS probe is worth on new traffic
 # --------------------------------------------------------------------------- #
 

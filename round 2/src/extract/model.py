@@ -191,8 +191,25 @@ def load_model(
         max_memory=max_memory,
         torch_dtype=torch.float16 if quantization_config is None else None,
         trust_remote_code=trust_remote_code,
+        # Asked for explicitly rather than left to the default. The eager path
+        # materialises the full heads x seq x seq score matrix and upcasts the
+        # softmax to float32: 28 x 16000^2 x 4 bytes is 28.7 GiB for one op,
+        # against O(seq) for SDPA's memory-efficient kernel. That difference is
+        # invisible at the 100-token sequences of the short pass and fatal at
+        # 16k, so the default being right on one machine proves nothing.
+        attn_implementation="sdpa",
     )
     model.eval()
+
+    implementation = getattr(model.config, "_attn_implementation", None)
+    if implementation != "sdpa":
+        raise RuntimeError(
+            f"attention implementation is {implementation!r}, not 'sdpa'. Long "
+            "context cannot run on the eager path: it builds a heads x seq x "
+            "seq score matrix and upcasts the softmax to float32, which is "
+            "28.7 GiB for a single op at 16k tokens on this model. Refusing "
+            "rather than discovering it 40 minutes into a GPU session."
+        )
 
     config = model.config
     device = str(next(model.parameters()).device)
