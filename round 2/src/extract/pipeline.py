@@ -456,17 +456,41 @@ def _extract_with_oom_retry(
                 _LOG.warning("OOM; retrying long context at batch size %d", current)
                 continue
             lengths = [len(loaded.tokenizer(p)["input_ids"]) for p in prompts]
-            raise RuntimeError(
-                f"out of memory extracting long context at batch size 1. "
-                f"Prompt lengths run {min(lengths)}-{max(lengths)} tokens.\n"
-                "The attention matrix is heads x seq x seq on the MATH backend "
-                "-- 28 x 14500^2 x 2 bytes is about 11 GB for one op -- so if "
-                "the memory-efficient backend is unavailable this cannot fit.\n"
-                "Options, cheapest first:\n"
-                "  - confirm torch selected the efficient backend (torch >= 2.3 "
-                "exposes torch.nn.attention.sdpa_kernel)\n"
-                "  - narrow evalsets.pad_tokens in config.yaml; the band is "
-                "currently the source of the longest sequences\n"
-                "  - spread the model across both GPUs so more of one card is "
-                "free for the attention workspace"
-            ) from None
+            longest = max(lengths)
+            vocab = int(getattr(loaded.model.config, "vocab_size", 0))
+            heads = int(getattr(loaded.model.config, "num_attention_heads", 0))
+            # Both terms, computed from this model's own config rather than
+            # asserted. The first version of this message named only attention,
+            # and attention was the smaller of the two -- so it pointed at the
+            # wrong fix twice before anyone computed the other term.
+            logits_gib = longest * vocab * 6 / 2**30
+            attention_gib = heads * longest * longest * 2 / 2**30
+            cards = {
+                index: "%.1f free of %.1f GiB, peak %.1f" % (
+                    torch.cuda.mem_get_info(index)[0] / 2**30,
+                    torch.cuda.get_device_properties(index).total_memory / 2**30,
+                    torch.cuda.max_memory_allocated(index) / 2**30,
+                )
+                for index in range(torch.cuda.device_count())
+            }
+            raise RuntimeError(chr(10).join([
+                "out of memory extracting long context at batch size 1.",
+                "  prompt lengths  %d-%d tokens" % (min(lengths), longest),
+                "  cards           %s" % cards,
+                "",
+                "The two large allocations at the longest sequence, from this",
+                "model's config:",
+                "  logits     %.2f GiB (seq x vocab %d x 6 bytes: fp16 plus the"
+                " fp32 upcast)" % (logits_gib, vocab),
+                "  attention  %.2f GiB (heads %d x seq^2 x 2, MATH backend only;"
+                " O(seq) on the efficient one)" % (attention_gib, heads),
+                "",
+                "Both should already be avoided: the forward runs the transformer",
+                "trunk rather than the causal LM, so no logits are built, and the",
+                "attention mask is dropped at batch 1 so SDPA takes the efficient",
+                "backend. If this still fails, one of those two is not in effect --",
+                "compare peak above against the two figures to see which.",
+                "",
+                "Otherwise narrow evalsets.pad_tokens in config.yaml, which is the",
+                "source of the longest sequences.",
+            ])) from None
