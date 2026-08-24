@@ -55,9 +55,10 @@ def efficient_attention() -> Iterator[None]:
     every sequence length in the band. Fixing attention alone did not make the
     pass fit; both were needed.
 
-    **The backend alone is not sufficient**: it declines float attention masks
-    and silently falls back to math. See :func:`_hidden_states_at`, which drops
-    the redundant mask at batch size 1 so the ``is_causal`` fast path is taken.
+    In practice transformers hands SDPA ``attn_mask=None, is_causal=True``
+    whenever the padding mask is all ones, so on the supported versions the math
+    backend is never reached at batch size 1 anyway. This manager stays as a
+    guard for versions that behave differently; it is not load-bearing.
 
     The manager is *constructed* inside the try, and the body runs outside it.
     The first version wrapped ``yield`` in ``except RuntimeError`` — and
@@ -198,7 +199,10 @@ def _hidden_states_at(
         # A decoder block returns a tuple whose first element is the hidden
         # state; some return the tensor directly.
         tensor = output[0] if isinstance(output, tuple) else output
-        captured["hidden"] = tensor.detach().to(torch.float32).cpu().numpy()
+        # .cpu() before .float(): upcasting on the device would allocate
+        # seq x hidden x 4 bytes of GPU memory (229 MB at 16k tokens) purely to
+        # copy it off again.
+        captured["hidden"] = tensor.detach().cpu().to(torch.float32).numpy()
 
     handle = blocks[layer - 1].register_forward_hook(hook)
     try:
@@ -207,13 +211,12 @@ def _hidden_states_at(
         ).to(loaded.model.device)
         mask = batch["attention_mask"].cpu().numpy().astype(bool)
 
-        # A single sequence is never padded, so its attention mask is all ones
-        # and carries no information -- but passing it forces transformers to
-        # build a 4D float mask, which SDPA's memory-efficient backend declines,
-        # falling back to math and its seq^2 allocation. Dropping it lets
-        # transformers take the is_causal fast path, which the efficient backend
-        # handles natively. This is what actually makes 16k tokens fit; the
-        # backend selection alone does not.
+        # A single sequence is never padded, so its mask is all ones and carries
+        # no information. Transformers already drops such a mask -- measured, in
+        # test_all_ones_mask_is_already_skipped -- and passes is_causal=True to
+        # SDPA, so this is insurance against a version that stops doing so, not
+        # a fix for anything observed. An earlier comment here claimed it was
+        # "what actually makes 16k tokens fit"; that was wrong (DECISIONS 057).
         forward_inputs = dict(batch)
         if len(prompts) == 1:
             forward_inputs.pop("attention_mask", None)
