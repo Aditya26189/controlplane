@@ -366,6 +366,14 @@ def _extract_long_context(
         build_prompt(loaded.tokenizer, item.prompt, SYSTEM_PROMPT)
         for item in long_evalset.items
     ]
+    token_lengths = _preflight_longest(
+        loaded,
+        prompts,
+        layer=layer,
+        aggregations=config.probe.aggregations,
+        window=config.probe.rolling_window,
+        stride=config.probe.rolling_stride,
+    )
     features = _extract_with_oom_retry(
         loaded,
         prompts,
@@ -374,9 +382,6 @@ def _extract_long_context(
         window=config.probe.rolling_window,
         stride=config.probe.rolling_stride,
         batch_size=batch_size,
-    )
-    token_lengths = np.array(
-        [len(loaded.tokenizer(prompt)["input_ids"]) for prompt in prompts], dtype=int
     )
     _LOG.info(
         "long-context token lengths: mean %.0f, min %d, max %d",
@@ -411,6 +416,75 @@ def _extract_long_context(
         },
     )
     return long_evalset, long_cache
+
+
+def _preflight_longest(
+    loaded: LoadedModel,
+    prompts: list[str],
+    *,
+    layer: int,
+    aggregations,
+    window: int,
+    stride: int,
+) -> np.ndarray:
+    """Run the single longest prompt before the loop, and report measured peak.
+
+    Long-context extraction fails on the worst case, not the average one, and
+    the worst case is not item 0. Three GPU sessions were spent discovering an
+    out-of-memory 40 minutes in and then reasoning about which term caused it
+    from the number in the traceback -- where the two candidate terms were the
+    same order of magnitude and the arithmetic did not distinguish them.
+
+    So: the longest prompt runs first, alone, and the peak is measured rather
+    than predicted. If it fits, every other prompt fits. If it does not, the
+    session ends in seconds with a real number attached.
+
+    Returns:
+        Token lengths for every prompt, so the caller does not tokenise twice.
+    """
+    import torch
+
+    token_lengths = np.array(
+        [len(loaded.tokenizer(prompt)["input_ids"]) for prompt in prompts], dtype=int
+    )
+    index = int(np.argmax(token_lengths))
+    _LOG.info(
+        "pre-flight: longest of %d prompts is item %d at %d tokens "
+        "(median %d); running it alone before the loop",
+        len(prompts),
+        index,
+        token_lengths[index],
+        int(np.median(token_lengths)),
+    )
+    if torch.cuda.is_available():
+        for device in range(torch.cuda.device_count()):
+            torch.cuda.reset_peak_memory_stats(device)
+
+    _extract_with_oom_retry(
+        loaded,
+        [prompts[index]],
+        layer=layer,
+        aggregations=aggregations,
+        window=window,
+        stride=stride,
+        batch_size=1,
+    )
+
+    if torch.cuda.is_available():
+        peaks = {
+            device: "%.2f GiB peak of %.1f" % (
+                torch.cuda.max_memory_allocated(device) / 2**30,
+                torch.cuda.get_device_properties(device).total_memory / 2**30,
+            )
+            for device in range(torch.cuda.device_count())
+        }
+        _LOG.info(
+            "pre-flight passed at %d tokens: %s. Every remaining prompt is "
+            "shorter, so the loop fits.",
+            token_lengths[index],
+            peaks,
+        )
+    return token_lengths
 
 
 def _extract_with_oom_retry(
