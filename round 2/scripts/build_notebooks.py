@@ -123,9 +123,9 @@ An earlier version of this cell fell back to the root when `round 2/` was
 missing. That is the failure mode this project is about: an absence reading as
 presence (`DECISIONS.md` 050). It now refuses.
 
-**If the clone below produces no `round 2/` directory, the branch you cloned
-does not contain Round 2.** Push it, or attach it as a Kaggle Dataset — see the
-error message for both.
+The clone below is pre-filled and should need no editing. If it produces no
+`round 2/` directory, the cell says what it searched and how to fix it rather
+than proceeding with the wrong half.
 """
         ),
         code(
@@ -133,12 +133,12 @@ error message for both.
 import os, sys
 from pathlib import Path
 
-# Point this at wherever Round 2 lives. Three ways, in order of preference:
-#   1. clone a branch that contains it        -> CLONE_URL / CLONE_BRANCH below
-#   2. attach the repo as a Kaggle Dataset    -> /kaggle/input/<name>/round 2
-#   3. upload a zip and unpack it into /kaggle/working
-CLONE_URL = ""          # e.g. "https://github.com/you/controlplane.git"
-CLONE_BRANCH = "round-2"
+# Round 2 lives in "round 2/" on main. Clone it and the rest of the notebook
+# finds it. Override only if you are running a fork or a work-in-progress
+# branch; attaching the repo as a Kaggle Dataset also works, and CANDIDATES
+# below searches /kaggle/input for it without any edit here.
+CLONE_URL = "https://github.com/Aditya26189/controlplane.git"
+CLONE_BRANCH = "main"
 
 CANDIDATES = [
     Path("/kaggle/working/controlplane/round 2"),
@@ -174,10 +174,11 @@ if PROJECT is None:
         "worse than one that does not (DECISIONS.md 050).\n\n"
         "Looked in:\n  " + "\n  ".join(str(p) for p in CANDIDATES) + "\n\n"
         "Fix, whichever is easiest:\n"
-        "  - push a branch containing 'round 2/' and set CLONE_URL above:\n"
-        "        git push origin main:round-2      # new ref, no force needed\n"
+        "  - check CLONE_URL above is reachable and CLONE_BRANCH exists. The\n"
+        "    clone is silent on failure in some Kaggle images, so re-run the\n"
+        "    clone line on its own and read what it prints.\n"
         "  - or zip 'round 2/' locally, upload it as a Kaggle Dataset, and it\n"
-        "    will be found automatically under /kaggle/input/\n"
+        "    will be found automatically under /kaggle/input/ with no edit here.\n"
     )
 
 # Drop any half-imported Round 1 modules before adding Round 2 to the path.
