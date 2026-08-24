@@ -147,8 +147,53 @@ def _base_model(model: Any) -> Any:
     return model
 
 
+def _prefill_in_chunks(trunk: Any, input_ids: Any, chunk_tokens: int) -> None:
+    """Prefill a long sequence in pieces, carrying a KV cache between them.
+
+    A single forward over ``S`` tokens needs an attention workspace of
+    ``heads x S x S``. Chunked, it needs ``heads x chunk x S`` — at 11k tokens
+    and a 2048 chunk that is 2.55 GiB against 12.86 GiB on the worst backend,
+    and the KV cache it carries costs 637 MB.
+
+    The point is that the bound holds on **any** backend. Three GPU sessions
+    were lost to reasoning about which SDPA kernel would be selected; this
+    stops the answer mattering.
+
+    Exact, not approximate: causal attention means token ``i`` attends only to
+    positions ``<= i``, so a cached prefix produces the same result as having
+    seen it in one pass. Verified numerically in
+    ``test_chunked_prefill_matches_a_single_pass``.
+
+    The caller collects the hidden states through a forward hook, one array per
+    chunk, and concatenates them.
+    """
+    import torch
+
+    try:
+        from transformers import DynamicCache
+    except ImportError as exc:  # pragma: no cover - depends on the environment
+        raise RuntimeError(
+            "chunked prefill needs transformers.DynamicCache, which this "
+            "version does not expose. Set model.prefill_chunk_tokens to a "
+            "value above the longest sequence to disable chunking, and expect "
+            "the seq^2 attention workspace back."
+        ) from exc
+
+    cache = DynamicCache()
+    total = int(input_ids.shape[1])
+    for start in range(0, total, chunk_tokens):
+        piece = input_ids[:, start : start + chunk_tokens]
+        with torch.no_grad(), efficient_attention():
+            trunk(input_ids=piece, past_key_values=cache, use_cache=True)
+
+
 def _hidden_states_at(
-    loaded: LoadedModel, prompts: Sequence[str], layer: int, *, padding: str = "left"
+    loaded: LoadedModel,
+    prompts: Sequence[str],
+    layer: int,
+    *,
+    padding: str = "left",
+    chunk_tokens: Optional[int] = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """One prefill pass; returns ``(hidden, mask)`` for the requested layer.
 
@@ -193,7 +238,7 @@ def _hidden_states_at(
     if padding == "left":
         assert_left_padding(tokenizer, where="_hidden_states_at")
 
-    captured: dict[str, Any] = {}
+    captured: dict[str, list[np.ndarray]] = {"chunks": []}
 
     def hook(_module: Any, _inputs: Any, output: Any) -> None:
         # A decoder block returns a tuple whose first element is the hidden
@@ -202,7 +247,7 @@ def _hidden_states_at(
         # .cpu() before .float(): upcasting on the device would allocate
         # seq x hidden x 4 bytes of GPU memory (229 MB at 16k tokens) purely to
         # copy it off again.
-        captured["hidden"] = tensor.detach().cpu().to(torch.float32).numpy()
+        captured["chunks"].append(tensor.detach().cpu().to(torch.float32).numpy())
 
     handle = blocks[layer - 1].register_forward_hook(hook)
     try:
@@ -210,26 +255,41 @@ def _hidden_states_at(
             list(prompts), return_tensors="pt", padding=True, truncation=False
         ).to(loaded.model.device)
         mask = batch["attention_mask"].cpu().numpy().astype(bool)
+        trunk = _base_model(loaded.model)
 
-        # A single sequence is never padded, so its mask is all ones and carries
-        # no information. Transformers already drops such a mask -- measured, in
-        # test_all_ones_mask_is_already_skipped -- and passes is_causal=True to
-        # SDPA, so this is insurance against a version that stops doing so, not
-        # a fix for anything observed. An earlier comment here claimed it was
-        # "what actually makes 16k tokens fit"; that was wrong (DECISIONS 057).
-        forward_inputs = dict(batch)
-        if len(prompts) == 1:
-            forward_inputs.pop("attention_mask", None)
+        width = int(batch["input_ids"].shape[1])
+        chunked = (
+            chunk_tokens is not None
+            and len(prompts) == 1
+            and width > chunk_tokens
+        )
+        if chunked:
+            _prefill_in_chunks(trunk, batch["input_ids"], chunk_tokens)
+        else:
+            # A single sequence is never padded, so its mask is all ones and
+            # carries no information. Transformers already drops such a mask --
+            # measured, in test_all_ones_mask_is_already_skipped -- and passes
+            # is_causal=True to SDPA. Dropping it here is insurance against a
+            # version that stops doing so, not a fix for anything observed.
+            forward_inputs = dict(batch)
+            if len(prompts) == 1:
+                forward_inputs.pop("attention_mask", None)
+            with torch.no_grad(), efficient_attention():
+                trunk(**forward_inputs, use_cache=False)
 
-        with torch.no_grad(), efficient_attention():
-            _base_model(loaded.model)(**forward_inputs, use_cache=False)
-        if "hidden" not in captured:
+        if not captured["chunks"]:
             raise RuntimeError(
                 f"the forward hook on block {layer - 1} never fired. The model "
                 "did not run the layer the probe is pinned to, so no activation "
                 "was captured."
             )
-        hidden = captured["hidden"]
+        hidden = np.concatenate(captured["chunks"], axis=1)
+        if hidden.shape[1] != width:
+            raise RuntimeError(
+                f"captured {hidden.shape[1]} positions for a {width}-token "
+                f"batch. Chunked prefill dropped or duplicated a chunk, which "
+                "would misalign every pooled feature against its token."
+            )
     finally:
         handle.remove()
         tokenizer.padding_side = original_side
@@ -246,6 +306,7 @@ def extract_activations(
     stride: int,
     batch_size: int = 8,
     progress: bool = True,
+    chunk_tokens: Optional[int] = None,
 ) -> dict[str, np.ndarray]:
     """Pool question-time activations for every prompt, per aggregation.
 
@@ -262,6 +323,11 @@ def extract_activations(
         batch_size: Prompts per forward pass. Long-context extraction needs a
             small one; the caller sizes it.
         progress: Show a tqdm bar.
+        chunk_tokens: Prefill sequences longer than this in chunks, carrying a
+            KV cache, so the attention workspace stays ``heads x chunk x seq``
+            rather than ``heads x seq^2``. Only applies at batch size 1, since
+            a batch would need per-row cache bookkeeping for no benefit — long
+            context runs unbatched anyway.
 
     Returns:
         Mapping of ``"T1-<aggregation>"`` to ``(n_prompts, hidden_size)``.
@@ -282,7 +348,9 @@ def extract_activations(
 
     for start in iterator:
         chunk = prompts[start : start + batch_size]
-        hidden, mask = _hidden_states_at(loaded, chunk, layer, padding="left")
+        hidden, mask = _hidden_states_at(
+            loaded, chunk, layer, padding="left", chunk_tokens=chunk_tokens
+        )
         for row in range(hidden.shape[0]):
             real = mask[row]
             sequence = hidden[row]
