@@ -597,10 +597,10 @@ def _extract_with_oom_retry(
                 "",
                 "Reference figures at the longest sequence, from this model's",
                 "config, for comparison against the request above:",
-                "  logits        %.2f GiB (seq x vocab %d x 6 bytes)"
+                "  logits          %.2f GiB (seq x vocab %d x 6 bytes)"
                 % (logits_gib, vocab),
-                "  attention/1   %.2f GiB (heads %d x seq^2 x 2, unchunked)"
-                % (attention_gib, heads),
+                "  attention/%-5d %.2f GiB (heads %d x seq^2 x 2, unchunked)"
+                % (1, attention_gib, heads),
                 "  attention/%-5d %.2f GiB (heads x chunk x seq x 2, chunked)"
                 % (chunk_tokens or 0, chunked_gib),
                 "",
