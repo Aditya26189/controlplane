@@ -213,6 +213,135 @@ def test_efficient_attention_yields_once_even_without_torch_support(
 
 
 # --------------------------------------------------------------------------- #
+# The forward pass must not build logits it throws away
+# --------------------------------------------------------------------------- #
+
+
+def _fake_causal_lm():
+    """A three-block causal LM that counts vocabulary projections."""
+    import torch
+
+    class Block(torch.nn.Module):
+        def forward(self, hidden, **kwargs):
+            return (hidden + 1.0,)
+
+    class Trunk(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.layers = torch.nn.ModuleList([Block() for _ in range(3)])
+
+        def forward(self, input_ids=None, attention_mask=None, **kwargs):
+            hidden = input_ids.unsqueeze(-1).float().repeat(1, 1, 4)
+            for block in self.layers:
+                hidden = block(hidden)[0]
+            return hidden
+
+    class CausalLM(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.model = Trunk()
+            self.lm_head_calls = 0
+
+        @property
+        def device(self):
+            return torch.device("cpu")
+
+        def forward(self, **kwargs):
+            hidden = self.model(**kwargs)
+            # Stands in for lm_head: seq x vocab, the allocation being avoided.
+            self.lm_head_calls += 1
+            return hidden
+
+    return CausalLM()
+
+
+class _FakeBatch(dict):
+    def to(self, _device):
+        return self
+
+
+class _FakeTokenizer:
+    padding_side = "left"
+
+    def __call__(self, prompts, return_tensors=None, padding=None, truncation=None):
+        import torch
+
+        if isinstance(prompts, str):
+            prompts = [prompts]
+        width = max(len(p) for p in prompts)
+        ids, mask = [], []
+        for prompt in prompts:
+            pad = width - len(prompt)
+            ids.append([0] * pad + [ord(c) % 97 + 1 for c in prompt])
+            mask.append([0] * pad + [1] * len(prompt))
+        return _FakeBatch(
+            input_ids=torch.tensor(ids), attention_mask=torch.tensor(mask)
+        )
+
+
+def test_forward_runs_the_trunk_not_the_causal_lm() -> None:
+    """The vocabulary projection must never run during extraction.
+
+    ``*ForCausalLM`` applies ``lm_head`` at **every position** and transformers
+    upcasts the result to float32 with both copies alive. At Qwen2.5-7B's
+    152,064-token vocabulary that is ``seq x 152064 x 6`` bytes — 9.43 GiB at an
+    11k-token sequence, larger than even the math backend's attention matrix at
+    the same length (6.43 GiB). Every byte is discarded: the probe reads one
+    hidden state from one layer.
+
+    Two GPU sessions were lost to this. The first diagnosis computed the
+    attention term, matched it against the reported OOM size, and stopped —
+    the two terms are the same order of magnitude, so a plausible match is not
+    evidence that the other term is small.
+    """
+    from src.extract.activations import _hidden_states_at
+    from src.extract.model import LoadedModel
+
+    model = _fake_causal_lm()
+    loaded = LoadedModel(
+        model=model,
+        tokenizer=_FakeTokenizer(),
+        name="fake",
+        num_hidden_layers=3,
+        hidden_size=4,
+        quantization="none",
+        device="cpu",
+        dtype="torch.float32",
+    )
+    hidden, mask = _hidden_states_at(loaded, ["abc", "abcdef"], 2, padding="left")
+
+    assert model.lm_head_calls == 0, (
+        "the causal-LM wrapper ran, so vocabulary-sized logits were built and "
+        "discarded -- this is what exhausts the card at long context"
+    )
+    assert hidden.shape == (2, 6, 4)
+    assert mask.tolist() == [[0, 0, 0, 1, 1, 1], [1, 1, 1, 1, 1, 1]]
+
+
+def test_base_model_falls_back_rather_than_guessing() -> None:
+    """An unrecognised architecture costs memory; it must not be silently wrong.
+
+    Returning the wrapper is safe because nothing reads the return value — the
+    activation arrives through a forward hook.
+    """
+    from src.extract.activations import _base_model
+
+    class Opaque:
+        def forward(self):
+            pass
+
+    opaque = Opaque()
+    assert _base_model(opaque) is opaque
+
+
+def test_base_model_finds_the_trunk_on_a_causal_lm() -> None:
+    from src.extract.activations import _base_model
+
+    model = _fake_causal_lm()
+    assert _base_model(model) is model.model
+
+
+# --------------------------------------------------------------------------- #
 # Transfer: what THIS probe is worth on new traffic
 # --------------------------------------------------------------------------- #
 
