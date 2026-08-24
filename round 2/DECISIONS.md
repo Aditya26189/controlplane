@@ -941,4 +941,36 @@ The **base rate is 0.4667**, against Round 1's 0.388 and the synthetic fixture's
 
 ---
 
+## 055 — Selecting the efficient attention backend is not enough; the mask has to go
+**Status:** accepted · **corrects 053, which fixed half the problem**
+
+**Context:** Entry 053 wrapped extraction in `efficient_attention()` to select SDPA's memory-efficient backend. The long-context pass failed again with the *same* allocation, 10.93 GiB, plus a second error on top:
+
+```
+OutOfMemoryError: Tried to allocate 10.93 GiB
+During handling of the above exception, another exception occurred:
+RuntimeError: generator didn't stop after throw()
+```
+
+**Two bugs, and the second hid the first.**
+
+**The context manager swallowed the OOM.** It wrapped `yield` in `except (ImportError, AttributeError, RuntimeError)` so it could fall back across torch API versions. `torch.cuda.OutOfMemoryError` **subclasses `RuntimeError`**, so an OOM in the body was caught by the fallback handler, which then yielded a second time. That produced `generator didn't stop after throw()`, replaced the real error with a confusing one, and defeated the retry logic that was watching for `OutOfMemoryError`. Fixed by *constructing* the manager inside the try and running the body outside it.
+
+**Selecting the backend does not use it.** The memory-efficient kernel **declines float attention masks** and falls back to math silently. Transformers builds a 4D float mask whenever `attention_mask` is passed — and at batch size 1 that mask is all ones and carries no information at all, because a single sequence is never padded. Dropping it lets transformers take the `is_causal` path, which the efficient kernel handles natively.
+
+```
+seq 14,500:  math 10.97 GB   efficient 0.39 GB
+seq 16,000:  math 13.35 GB   efficient 0.43 GB
+```
+
+**Decision:** at batch size 1, `attention_mask` is removed from the forward inputs and the all-ones mask is reconstructed locally for pooling. `pad_tokens` stays `[4000, 16000]`.
+
+**Also set** `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` in the notebook's pre-flight, before the first CUDA allocation. Long-context extraction allocates and frees large tensors per item, and the default allocator fragments under that pattern — a forward can fail for want of a contiguous block while plenty of total memory is free.
+
+**What this cost:** two failed GPU sessions. The first was a real diagnosis with an incomplete fix; the second failed for the same reason wearing a different error. The lesson is narrow and worth stating: *requesting* a backend is not *using* one, and a fallback that is silent by design needs a check that it did not fire.
+
+**A reviewer could fairly object** that none of this is verifiable without a GPU. True — the context-manager bug is now pinned by `test_efficient_attention_propagates_body_exceptions` with `RuntimeError` explicitly in the list, because that is the one that bit. The mask behaviour cannot be tested on CPU and is verified only by the next session completing.
+
+---
+
 <!-- New entries below. Do not edit anything above this line. -->

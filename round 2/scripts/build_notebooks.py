@@ -109,6 +109,14 @@ print(subprocess.run(["nvidia-smi"], capture_output=True, text=True).stdout)
         ),
         code(
             """
+import os
+
+# Long-context extraction allocates and frees large tensors per item, and the
+# default allocator fragments under that pattern -- a 16k-token forward can fail
+# for want of a contiguous block while plenty of total memory is free. Must be
+# set before the first CUDA allocation, so this cell comes before load_model.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 import torch
 
 # Round 1 measured 2.31 GB peak after load for this model in NF4. The long

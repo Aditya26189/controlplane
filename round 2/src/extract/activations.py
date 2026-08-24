@@ -42,48 +42,51 @@ _LOG = logging.getLogger(__name__)
 
 @contextlib.contextmanager
 def efficient_attention() -> Iterator[None]:
-    """Force SDPA's memory-efficient backend for the duration of a forward pass.
+    """Select SDPA's memory-efficient backend for one forward pass.
 
-    **This is what makes long context possible on a 16 GB card.** Left to
-    itself, PyTorch's ``scaled_dot_product_attention`` falls back to the *math*
-    backend whenever it is handed an explicit attention mask, and the math
-    backend materialises the full ``heads x seq x seq`` matrix. At 28 heads and
-    a 14.5k-token sequence in bfloat16 that is **10.9 GiB for one op**, which is
-    the observed failure:
+    Left to itself, ``scaled_dot_product_attention`` uses the *math* backend
+    whenever it is handed an explicit attention mask, and math materialises the
+    full ``heads x seq x seq`` matrix — 28 x 14500^2 x 2 bytes, about 11 GB for
+    a single op. The memory-efficient backend is O(seq) and works on Turing
+    (sm_75), which a T4 is. Flash-Attention-2 needs sm_80 and does not apply.
 
-        OutOfMemoryError: Tried to allocate 10.93 GiB
+    **The backend alone is not sufficient**: it declines float attention masks
+    and silently falls back to math. See :func:`_hidden_states_at`, which drops
+    the redundant mask at batch size 1 so the ``is_causal`` fast path is taken.
 
-    The memory-efficient backend is O(seq) instead of O(seq squared) and is
-    supported on Turing (sm_75), which a T4 is. Flash-Attention-2 is not — it
-    needs sm_80 or later — so this is the only option that works here.
-
-    Falls back silently to whatever the installed torch offers: the two API
-    spellings differ across versions, and a context manager that raises on an
-    old torch would break extraction for a reason unrelated to memory.
+    The manager is *constructed* inside the try, and the body runs outside it.
+    The first version wrapped ``yield`` in ``except RuntimeError`` — and
+    ``torch.cuda.OutOfMemoryError`` subclasses ``RuntimeError``, so an OOM in the
+    body was caught by the fallback handler, which then yielded a second time.
+    That produced ``RuntimeError: generator didn't stop after throw()`` and hid
+    the real error underneath it, including from the retry logic that was
+    watching for OutOfMemoryError.
     """
     import torch
 
-    try:  # torch >= 2.3
+    manager = None
+    try:
         from torch.nn.attention import SDPBackend, sdpa_kernel
 
-        with sdpa_kernel([SDPBackend.EFFICIENT_ATTENTION, SDPBackend.MATH]):
-            yield
+        manager = sdpa_kernel([SDPBackend.EFFICIENT_ATTENTION, SDPBackend.MATH])
+    except (ImportError, AttributeError):
+        try:
+            manager = torch.backends.cuda.sdp_kernel(
+                enable_flash=False, enable_mem_efficient=True, enable_math=True
+            )
+        except AttributeError:
+            manager = None
+
+    if manager is None:
+        _LOG.warning(
+            "no way to select the attention backend on this torch; long-context "
+            "extraction will pay the math backend's seq^2 cost"
+        )
+        yield
         return
-    except (ImportError, AttributeError, RuntimeError):
-        pass
-    try:  # torch 2.0 - 2.2
-        with torch.backends.cuda.sdp_kernel(
-            enable_flash=False, enable_mem_efficient=True, enable_math=True
-        ):
-            yield
-        return
-    except (AttributeError, RuntimeError):
-        pass
-    _LOG.warning(
-        "could not select the memory-efficient attention backend; long-context "
-        "extraction may exhaust the card at the math backend's seq^2 cost"
-    )
-    yield
+
+    with manager:
+        yield
 
 
 def _decoder_layers(model: Any) -> Any:
@@ -167,8 +170,21 @@ def _hidden_states_at(
         batch = tokenizer(
             list(prompts), return_tensors="pt", padding=True, truncation=False
         ).to(loaded.model.device)
+        mask = batch["attention_mask"].cpu().numpy().astype(bool)
+
+        # A single sequence is never padded, so its attention mask is all ones
+        # and carries no information -- but passing it forces transformers to
+        # build a 4D float mask, which SDPA's memory-efficient backend declines,
+        # falling back to math and its seq^2 allocation. Dropping it lets
+        # transformers take the is_causal fast path, which the efficient backend
+        # handles natively. This is what actually makes 16k tokens fit; the
+        # backend selection alone does not.
+        forward_inputs = dict(batch)
+        if len(prompts) == 1:
+            forward_inputs.pop("attention_mask", None)
+
         with torch.no_grad(), efficient_attention():
-            loaded.model(**batch, use_cache=False)
+            loaded.model(**forward_inputs, use_cache=False)
         if "hidden" not in captured:
             raise RuntimeError(
                 f"the forward hook on block {layer - 1} never fired. The model "
@@ -176,7 +192,6 @@ def _hidden_states_at(
                 "was captured."
             )
         hidden = captured["hidden"]
-        mask = batch["attention_mask"].cpu().numpy().astype(bool)
     finally:
         handle.remove()
         tokenizer.padding_side = original_side
