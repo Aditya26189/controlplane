@@ -664,6 +664,75 @@ def test_chunking_is_skipped_for_batches() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# Resuming a long pass that was interrupted
+# --------------------------------------------------------------------------- #
+
+
+def test_long_context_resumes_from_a_partial(tmp_path, monkeypatch) -> None:
+    """An interrupted long pass restarts from the partial, not from zero.
+
+    600 items at ten to thirty seconds each is hours, and the pass had no
+    per-item save: a session killed at item 500 lost all 500. The short-context
+    checkpoint existed because that pass was expensive; this one was expected to
+    fail fast on memory rather than to run long, so nobody added it. Once memory
+    stopped being the constraint, duration became one.
+    """
+    from src.extract import pipeline
+
+    calls: list[int] = []
+
+    def fake_extract(loaded, prompts, **kwargs):
+        calls.append(len(prompts))
+        base = len(calls) * 1000
+        return {
+            "T1-mean_pool": np.arange(
+                base, base + len(prompts) * 4, dtype=float
+            ).reshape(len(prompts), 4)
+        }
+
+    monkeypatch.setattr(pipeline, "_extract_with_oom_retry", fake_extract)
+    partial = tmp_path / "results" / "cache-longctx-partial.npz"
+    prompts = ["p%d" % i for i in range(10)]
+
+    whole = pipeline._extract_resumable(
+        None, prompts, layer=1, aggregations=["mean_pool"], window=4, stride=2,
+        chunk_tokens=None, slice_size=4, partial_path=partial,
+    )
+    assert calls == [4, 4, 2]
+    assert whole["T1-mean_pool"].shape == (10, 4)
+    assert partial.exists()
+
+    # A second run with the partial in place must do no work at all.
+    calls.clear()
+    again = pipeline._extract_resumable(
+        None, prompts, layer=1, aggregations=["mean_pool"], window=4, stride=2,
+        chunk_tokens=None, slice_size=4, partial_path=partial,
+    )
+    assert calls == [], "resumed run re-extracted items it already had"
+    assert np.array_equal(again["T1-mean_pool"], whole["T1-mean_pool"])
+
+
+def test_partial_from_a_different_run_is_refused(tmp_path, monkeypatch) -> None:
+    """A partial holding more rows than requested describes another eval set.
+
+    Truncating it would silently misalign every feature against its label, which
+    is the failure this repo exists to refuse rather than to survive.
+    """
+    from src.extract import pipeline
+
+    partial = tmp_path / "results" / "cache-longctx-partial.npz"
+    partial.parent.mkdir(parents=True)
+    np.savez(partial, **{"T1-mean_pool": np.zeros((20, 4))})
+
+    with pytest.raises(RuntimeError, match="different eval set"):
+        pipeline._extract_resumable(
+            None, ["p%d" % i for i in range(10)], layer=1,
+            aggregations=["mean_pool"], window=4, stride=2,
+            chunk_tokens=None, slice_size=4, partial_path=partial,
+        )
+
+
+# --------------------------------------------------------------------------- #
 # Transfer: what THIS probe is worth on new traffic
 # --------------------------------------------------------------------------- #
 

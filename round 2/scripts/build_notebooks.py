@@ -370,6 +370,23 @@ the attention implementation and chunk size before it runs.
 and predates the `attn_implementation="sdpa"` pin. Chunking covers that, but
 re-run the load cell to clear the warning.
 
+**The long pass now saves every 25 items** to
+`results/cache-longctx-partial.npz` and resumes from it, so an interrupted run
+costs at most 25 items rather than everything done so far.
+
+**If it is running but too slow to finish**, raise `model.prefill_chunk_tokens`
+in `config.yaml`. NF4 dequantises the full weight set on *every* forward, so the
+chunk count multiplies that cost directly:
+
+| chunk | forwards/item at 7k tok | attention peak at 11k tok |
+|---|---|---|
+| 2048 | 4 | 2.37 GiB |
+| 4096 | 2 | 4.74 GiB |
+| 6144 | 2 | 7.12 GiB |
+
+4096 halves the dequant overhead and still fits comfortably in the ~10 GiB free
+on a T4.
+
 `_extract_long_context` now runs the **longest prompt alone** before the loop
 and logs measured peak memory per card. The worst case is not item 0, which is
 why every earlier failure surfaced deep into the run.

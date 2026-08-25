@@ -304,6 +304,7 @@ def extract_triviaqa(
                 short_evalset,
                 layer=layer,
                 batch_size=long_batch_size,
+                checkpoint_dir=checkpoint_dir,
             )
         except Exception as exc:  # noqa: BLE001 - re-raised below unless checkpointed
             long_error = exc
@@ -337,6 +338,7 @@ def _extract_long_context(
     *,
     layer: int,
     batch_size: int,
+    checkpoint_dir: Optional[str] = None,
 ) -> tuple[EvalSet, ExtractionCache]:
     """Build and extract the long-context envelope, test split only.
 
@@ -381,15 +383,21 @@ def _extract_long_context(
         stride=config.probe.rolling_stride,
         chunk_tokens=config.model.prefill_chunk_tokens,
     )
-    features = _extract_with_oom_retry(
+    partial_path = (
+        None
+        if checkpoint_dir is None
+        else Path(checkpoint_dir) / "results" / "cache-longctx-partial.npz"
+    )
+    features = _extract_resumable(
         loaded,
         prompts,
         layer=layer,
         aggregations=config.probe.aggregations,
         window=config.probe.rolling_window,
         stride=config.probe.rolling_stride,
-        batch_size=batch_size,
         chunk_tokens=config.model.prefill_chunk_tokens,
+        slice_size=25,
+        partial_path=partial_path,
     )
     _LOG.info(
         "long-context token lengths: mean %.0f, min %d, max %d",
@@ -424,6 +432,85 @@ def _extract_long_context(
         },
     )
     return long_evalset, long_cache
+
+
+def _extract_resumable(
+    loaded: LoadedModel,
+    prompts: list[str],
+    *,
+    layer: int,
+    aggregations,
+    window: int,
+    stride: int,
+    chunk_tokens: Optional[int],
+    slice_size: int,
+    partial_path: Optional[Path],
+):
+    """Extract in slices, saving after each, and resume from what exists.
+
+    The long-context pass has no generation to amortise and runs at roughly ten
+    to thirty seconds an item, so 600 items is hours. Without this, a session
+    that is killed at item 500 -- by a timeout, a disconnect, or an operator who
+    cannot tell progress from a hang -- loses all 500.
+
+    That is the same failure the short-context checkpoint was added to stop, one
+    stage later. It was left here because the long pass was expected to fail
+    fast on memory, not to run long; once memory stopped being the constraint,
+    duration became one.
+
+    Resumption is keyed on **count**, which is safe only because the prompt list
+    is built deterministically from a content-hashed eval set. A partial holding
+    more rows than requested is refused rather than truncated: it describes a
+    different run.
+    """
+    import numpy as np
+
+    done: dict[str, np.ndarray] = {}
+    if partial_path is not None and partial_path.exists():
+        with np.load(partial_path) as saved:
+            done = {name: saved[name] for name in saved.files}
+        have = len(next(iter(done.values()))) if done else 0
+        if have > len(prompts):
+            raise RuntimeError(
+                f"{partial_path} holds {have} rows for a {len(prompts)}-prompt "
+                "run. It came from a different eval set; delete it rather than "
+                "resuming, or the features will not align with the labels."
+            )
+        _LOG.info(
+            "resuming long context from %s: %d of %d items already extracted",
+            partial_path,
+            have,
+            len(prompts),
+        )
+
+    start = len(next(iter(done.values()))) if done else 0
+    while start < len(prompts):
+        stop = min(start + slice_size, len(prompts))
+        piece = _extract_with_oom_retry(
+            loaded,
+            prompts[start:stop],
+            layer=layer,
+            aggregations=aggregations,
+            window=window,
+            stride=stride,
+            batch_size=1,
+            chunk_tokens=chunk_tokens,
+        )
+        for name, matrix in piece.items():
+            done[name] = (
+                matrix if name not in done else np.vstack([done[name], matrix])
+            )
+        start = stop
+        if partial_path is not None:
+            partial_path.parent.mkdir(parents=True, exist_ok=True)
+            np.savez(partial_path, **done)
+            _LOG.info(
+                "long context: %d/%d items saved to %s",
+                start,
+                len(prompts),
+                partial_path.name,
+            )
+    return done
 
 
 def _preflight_longest(
