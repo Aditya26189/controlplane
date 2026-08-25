@@ -110,6 +110,52 @@ def test_smoke_matrix(tmp_path: Path) -> None:
     assert "Outstanding measurement" in results
 
 
+def test_kaggle_runner_refuses_before_it_can_spend_quota() -> None:
+    """The two guards on the batch runner, exercised rather than assumed.
+
+    A push costs GPU quota and the Kaggle CLI has no cancel verb, so the only
+    protection against an accidental run is a refusal that actually fires.
+    Nothing here touches the network: both paths must fail before any CLI call.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "kaggle_run", PROJECT_ROOT / "scripts" / "kaggle_run.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    with pytest.raises(SystemExit, match="--yes"):
+        module.push(accelerator=None, timeout=None, yes=False)
+
+    # The kernel id must resolve from committed metadata, not from a guess.
+    kernel_id = module._kernel_id()
+    assert "/" in kernel_id and not kernel_id.startswith("KAGGLE_USERNAME")
+
+    metadata = json.loads(module.METADATA.read_text(encoding="utf-8"))
+    # Case-sensitive, and the server silently falls back to a P100 when it does
+    # not recognise the value -- which is sm_60, below this PyTorch build's
+    # floor, so the run dies inside a bitsandbytes kernel two minutes in.
+    assert metadata["machine_shape"] == "NvidiaTeslaT4", (
+        "machine_shape must be exactly 'NvidiaTeslaT4'; an unrecognised value "
+        "is not reported, it is ignored"
+    )
+
+
+def test_notebook_refuses_a_gpu_below_sm_70() -> None:
+    """The pre-flight names the unsupported card instead of dying in CUDA."""
+    notebook = json.loads(
+        (PROJECT_ROOT / "notebooks" / "run_on_kaggle.ipynb").read_text(encoding="utf-8")
+    )
+    source = "\n".join(
+        "".join(cell["source"])
+        for cell in notebook["cells"]
+        if cell["cell_type"] == "code"
+    )
+    assert "get_device_capability" in source, "no GPU capability check in the notebook"
+    assert "(7, 0)" in source, "the sm_70 floor is not asserted"
+
+
 def test_every_script_has_a_smoke_test() -> None:
     """A new script without a smoke test is the gap this file exists to close.
 
@@ -121,7 +167,13 @@ def test_every_script_has_a_smoke_test() -> None:
         for path in (PROJECT_ROOT / "scripts").glob("*.py")
         if not path.name.startswith("_")
     }
-    covered = {"01_build_evalsets.py", "02_validate.py", "03_matrix.py"}
+    covered = {
+        "01_build_evalsets.py",
+        "02_validate.py",
+        "03_matrix.py",
+        # test_kaggle_runner_refuses_before_it_can_spend_quota
+        "kaggle_run.py",
+    }
     exempt = {
         # Needs a GPU; its wiring is checked by the notebook's own self-check
         # and by tests/test_extraction.py for everything that runs on CPU.
