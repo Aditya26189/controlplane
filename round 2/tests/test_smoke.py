@@ -198,6 +198,20 @@ def test_every_notebook_code_cell_compiles() -> None:
 
     for index, cell in enumerate(code_cells):
         source = "".join(cell["source"])
+        # Try the source as written FIRST. Neutralising magics unconditionally
+        # produced a false positive: a format continuation like
+        #     "unsupported GPU: %s, sm %d.%d"
+        #     % (name, major, minor),
+        # begins a line with "%" and was rewritten to "pass", breaking an
+        # expression that had been valid all along. IPython treats "%" as a
+        # magic only at the start of a statement, never as a bracketed
+        # continuation. A cell that parses as written needs no rewriting; only
+        # one that fails can hold a magic, and there the rewrite is worth trying.
+        try:
+            ast.parse(source)
+            continue
+        except SyntaxError:
+            pass
         cleaned = "\n".join(neutralise(line) for line in source.split("\n"))
         try:
             ast.parse(cleaned)

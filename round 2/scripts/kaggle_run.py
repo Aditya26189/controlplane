@@ -145,7 +145,13 @@ def main() -> None:
 
     push_parser = sub.add_parser("push", help="upload and start a run")
     push_parser.add_argument("--yes", action="store_true", help="confirm the quota cost")
-    push_parser.add_argument("--accelerator", default="nvidiaTeslaT4")
+    # Case-sensitive, and the server neither validates nor reports an
+    # unrecognised value: it silently falls back to enable_gpu, which is a
+    # P100. A P100 is sm_60, below this PyTorch build's sm_70 floor, and
+    # bitsandbytes has no sm_60 NF4 kernel -- so the run dies two minutes in
+    # with "named symbol not found". Read off a kernel that ran on T4 x2
+    # (kaggle kernels pull -m) rather than guessed.
+    push_parser.add_argument("--accelerator", default="NvidiaTeslaT4")
     push_parser.add_argument("--timeout", type=int, default=None)
 
     sub.add_parser("status", help="latest run status")

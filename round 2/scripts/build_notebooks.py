@@ -119,6 +119,34 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import torch
 
+# Refuse an unsupported card immediately. Kaggle's machine_shape is a free
+# string the server does not validate: a typo silently falls back to a P100,
+# which is sm_60. This PyTorch build floors at sm_70 and bitsandbytes ships no
+# sm_60 NF4 kernel, so the run does not fail here -- it dies two minutes later
+# inside ops.cu with "named symbol not found" and a dead Jupyter kernel, which
+# names neither the cause nor the fix.
+if torch.cuda.is_available():
+    _major, _minor = torch.cuda.get_device_capability(0)
+    if (_major, _minor) < (7, 0):
+        raise SystemExit(
+            chr(10).join([
+                "unsupported GPU: %s, compute capability %d.%d"
+                % (torch.cuda.get_device_name(0), _major, _minor),
+                "",
+                "NF4 via bitsandbytes needs sm_70 or newer; this is a P100 if it",
+                "says 6.0. The accelerator was not applied.",
+                "",
+                "Fix: push with machine_shape NvidiaTeslaT4 (case-sensitive --",
+                "the server ignores an unrecognised value rather than erroring),",
+                "or pick GPU T4 x2 in the notebook settings.",
+            ])
+        )
+    print("GPU ok: %s, sm_%d%d" % (torch.cuda.get_device_name(0), _major, _minor))
+else:
+    raise SystemExit(
+        "no GPU. This notebook loads a 7B model in NF4 and cannot run on CPU."
+    )
+
 # Round 1 measured 2.31 GB peak after load for this model in NF4. The long
 # context pass adds a KV cache (~0.85 GB at 16k) and one captured layer
 # (~0.11 GB). Capturing all 29 hidden states instead would add 3.1 GB, which is
