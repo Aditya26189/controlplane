@@ -50,3 +50,8 @@ evalsets/*-longctx.json
 # Extraction caches: large, regenerable on a GPU, and the evidence they support
 # is the validation run rather than the activations themselves.
 results/cache-*.npz
+
+# Kaggle API credentials -- account tokens, never committed
+kaggle/access_token
+kaggle/kaggle.json
+kaggle/run_on_kaggle.ipynb
