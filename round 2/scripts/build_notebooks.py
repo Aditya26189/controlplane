@@ -413,19 +413,31 @@ Flash-Attention-2 does not help: it needs sm_80 and a T4 is sm_75.
         ),
         code(
             """
-# Long-context only. Assumes the short pass is checkpointed in ./results.
+# Recovery only. Guarded, because running this after a successful pass repeats
+# three hours of work -- which is exactly how one session was spent.
 import torch
 from src.extract.pipeline import _extract_long_context
 
-torch.cuda.empty_cache()
-print({i: f"{torch.cuda.mem_get_info(i)[0]/2**30:.1f} GiB free"
-       for i in range(torch.cuda.device_count())})
-
-long_evalset, long_cache = _extract_long_context(
-    config, loaded, result.short_evalset, layer=result.report["layer"], batch_size=1,
-)
-print(long_evalset.eval_set_id, len(long_evalset), long_evalset.envelope_id)
-print("token lengths:", long_cache.token_lengths.min(), "to", long_cache.token_lengths.max())
+if result.long_cache is not None:
+    print("long-context pass already complete:",
+          result.long_evalset.eval_set_id, len(result.long_evalset),
+          "-- nothing to do")
+else:
+    torch.cuda.empty_cache()
+    print({i: f"{torch.cuda.mem_get_info(i)[0]/2**30:.1f} GiB free"
+           for i in range(torch.cuda.device_count())})
+    long_evalset, long_cache = _extract_long_context(
+        config, loaded, result.short_evalset,
+        layer=result.report["layer"], batch_size=1,
+        checkpoint_dir=".",
+    )
+    # ExtractionResult is a plain mutable object, so assign directly. An
+    # earlier version used _replace() behind a hasattr guard, which would have
+    # silently left `result` stale and sent section 7 to validate nothing.
+    result.long_evalset, result.long_cache = long_evalset, long_cache
+    print(long_evalset.eval_set_id, len(long_evalset), long_evalset.envelope_id)
+    print("token lengths:", long_cache.token_lengths.min(),
+          "to", long_cache.token_lengths.max())
 """
         ),
         markdown(
@@ -534,7 +546,52 @@ if result.long_evalset is not None:
         ),
         markdown(
             """
-## 6 — What to download
+## 6 — Validate, and build the warrant matrix
+
+The measured numbers. Each script is a thin wrapper over `src/`; they are run
+as subprocesses with `check=True` so a failure stops the notebook rather than
+leaving a run that looks successful and is missing artifacts.
+
+Two eval sets, two envelopes. `triviaqa-600` is the anchor; `triviaqa-longctx-600`
+is the same questions padded to 4–16k tokens, and the difference between them is
+the envelope shift the drift story rests on.
+"""
+        ),
+        code(
+            """
+import subprocess, sys
+
+STAGES = [
+    ["scripts/02_validate.py", "--config", "config.yaml",
+     "--cache", "results/cache-triviaqa-600.npz",
+     "--eval-set", "triviaqa-600"],
+    ["scripts/02_validate.py", "--config", "config.yaml",
+     "--cache", "results/cache-triviaqa-longctx-600.npz",
+     "--eval-set", "triviaqa-longctx-600"],
+    ["scripts/03_matrix.py", "--config", "config.yaml"],
+]
+for stage in STAGES:
+    print("=" * 70)
+    print(">>>", " ".join(stage))
+    done = subprocess.run([sys.executable, *stage], text=True,
+                          capture_output=True)
+    print(done.stdout[-4000:])
+    if done.returncode != 0:
+        print(done.stderr[-4000:])
+        raise SystemExit("stage failed: " + " ".join(stage))
+"""
+        ),
+        code(
+            """
+from pathlib import Path
+
+matrix = Path("results/warrant_matrix.md")
+print(matrix.read_text() if matrix.exists() else "no warrant matrix written")
+"""
+        ),
+        markdown(
+            """
+## 7 — What to download
 
 Take all four. The caches are the expensive part and everything else in the
 project runs from them on a laptop.
@@ -559,11 +616,23 @@ two envelopes appear, and the matrix cells stop reading `FIXTURE — NOT MEASURE
         ),
         code(
             """
-import shutil
-shutil.make_archive("/kaggle/working/controlplane-extraction", "zip", ".",
-                    base_dir=None, root_dir=".",
-                    )
-print("bundle written to /kaggle/working/controlplane-extraction.zip")
+import shutil, os
+from pathlib import Path
+
+# results/ and evalsets/ only. Zipping "." would sweep in .git and the model
+# cache, and Kaggle's output has a size cap.
+staging = Path("/kaggle/working/bundle")
+shutil.rmtree(staging, ignore_errors=True)
+for name in ("results", "evalsets"):
+    if Path(name).exists():
+        shutil.copytree(name, staging / name)
+archive = shutil.make_archive("/kaggle/working/controlplane-results", "zip",
+                              root_dir=str(staging))
+print("bundle:", archive, "%.1f MiB" % (os.path.getsize(archive) / 2**20))
+for path in sorted(staging.rglob("*")):
+    if path.is_file():
+        print("  %-56s %8.2f MiB" % (path.relative_to(staging),
+                                     path.stat().st_size / 2**20))
 """
         ),
     ]
