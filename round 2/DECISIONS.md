@@ -1186,3 +1186,56 @@ appear in the matrix at all. Also mine: `04_transfer` used a bare
 `probe-{variant}` id, putting the same measurement in the matrix twice under two
 names. Unified on the model-qualified id, because a probe reads one specific
 model's residual stream and a model change invalidates the warrant.
+
+## 061 — A canary for the activation probe, and the first VALID measured warrants
+
+`canary_control` fails **closed** on an absent set, and the only canary in the
+repo was Presidio's `canary-20-pii`. So every measured activation-tier warrant
+was refused on that control alone — a refusal that said nothing about the probe
+and buried the one that did (059).
+
+`scripts/05_canary.py` freezes `canary-20-triviaqa`: 20 known-incorrect items
+from the **train split only**, chosen by the probe's own score, with their
+activations sliced out of the existing cache. No GPU.
+
+**What it proves and does not.** Items are chosen by the current probe, so the
+current probe catches them by construction. Circular as a measurement, correct
+as a tripwire: it detects *change* — a moved threshold, a reordered dataset, a
+swapped model — not quality. It is not independent evidence the probe works, and
+the construction record says so.
+
+Train only: selecting on validation or test would be selection on the splits
+those exist to protect.
+
+Two bugs found while building it, both mine:
+
+- The first version fitted with `C_grid[0]` while the validated run selects
+  `C=0.001` on validation. A canary chosen by a probe nobody runs is a tripwire
+  for the wrong thing. Now selects C the same way `validate()` does.
+- It froze without checking the canary could pass. A pre-tripped canary refuses
+  every warrant forever and says nothing — the exact failure it exists to end.
+  It now refuses to freeze one whose items do not clear the operating threshold.
+
+I also raised a false alarm in between: I compared scores from a C=0.0001 probe
+against the threshold belonging to the C=0.001 probe and concluded the canary
+could not pass. Measured properly, all 20 clear both thresholds.
+
+**Result.** All five controls pass and the first VALID measured warrants are
+issued:
+
+| detector | triviaqa-600 | triviaqa-longctx-600 |
+|---|---|---|
+| `probe-...-T1-max_rolling_means` | VALID R=0.08 [0.05, 0.12] | REFUSED |
+| `probe-...-T1-mean_pool` | VALID R=0.08 [0.05, 0.11] | REFUSED |
+
+Same detector, same operating point, two envelopes, opposite verdicts. The
+refusals are now on merit:
+
+- `mean_pool`: `auroc_lower_ci 0.4546, required > 0.55`
+- `max_rolling_means`: `auroc_lower_ci 0.5105` **and** `lift_lower_ci 1.076
+  [0.969, 1.182] at flag rate 0.5433, required > 1.0`
+
+The lift interval straddles 1.0. That criterion caught a detector flagging 54%
+of traffic that is not demonstrably better than random sampling at the same
+budget — which is what it was added for, and it fired on the first real
+measurement rather than on a fixture.

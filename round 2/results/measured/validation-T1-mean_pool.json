@@ -1,17 +1,14 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-26T19:46:29+00:00",
-    "git_commit": "49f4f78ae735a8eb83965f837c93423e60c9543b",
+    "timestamp_utc": "2026-08-26T20:23:51+00:00",
+    "git_commit": "29c80a065464b66533888518b016a4d8e43873d2",
     "git_branch": "main",
     "dirty": true,
     "dirty_paths": [
       "results_bundle (3)",
-      "round 2/evalsets/triviaqa-600.json",
-      "round 2/evalsets/triviaqa-longctx-600.json",
-      "round 2/klog2.txt",
+      "round 2/evalsets/canary-20-triviaqa.json",
       "round 2/scripts/02_validate.py",
-      "round 2/scripts/03_matrix.py",
-      "round 2/scripts/04_transfer.py"
+      "round 2/scripts/05_canary.py"
     ],
     "dirty_excludes": "results",
     "python": "3.12.10",
@@ -200,9 +197,9 @@
   "eval_set_id": "triviaqa-600",
   "envelope_id": "sha256:e77c64f908491ad1",
   "data_source": "measured",
-  "started_at": "2026-08-26T19:46:11+00:00",
-  "completed_at": "2026-08-26T19:46:28+00:00",
-  "duration_seconds": 16.953152199974284,
+  "started_at": "2026-08-26T20:23:33+00:00",
+  "completed_at": "2026-08-26T20:23:50+00:00",
+  "duration_seconds": 16.61813690001145,
   "splits": {
     "train": 1200,
     "validation": 600,
@@ -335,11 +332,11 @@
     },
     {
       "control": "canary",
-      "passed": false,
-      "measured": 0.0,
+      "passed": true,
+      "measured": 1.0,
       "expected": "recall == 1.0",
-      "margin": -1.0,
-      "detail": "canary-20 not available to this run, so the tripwire did not fire and did not not-fire. Refusing rather than reporting a control that never ran.",
+      "margin": 0.0,
+      "detail": "20/20 canary positives caught at threshold 0.905095",
       "applicable": true
     },
     {
@@ -366,8 +363,8 @@
     },
     "eval_set_id": "triviaqa-600",
     "validation_run_id": "run-125a6697b40c",
-    "issued_at": "2026-08-26T19:46:11+00:00",
-    "expires_at": "2026-08-27T19:46:11+00:00",
+    "issued_at": "2026-08-26T20:23:33+00:00",
+    "expires_at": "2026-08-27T20:23:33+00:00",
     "metrics": {
       "auroc": {
         "name": "auroc",
@@ -506,11 +503,11 @@
       },
       {
         "control": "canary",
-        "passed": false,
-        "measured": 0.0,
+        "passed": true,
+        "measured": 1.0,
         "expected": "recall == 1.0",
-        "margin": -1.0,
-        "detail": "canary-20 not available to this run, so the tripwire did not fire and did not not-fire. Refusing rather than reporting a control that never ran.",
+        "margin": 0.0,
+        "detail": "20/20 canary positives caught at threshold 0.905095",
         "applicable": true
       },
       {
@@ -524,11 +521,11 @@
       }
     ],
     "access_tier": 1,
-    "status": "REFUSED",
+    "status": "VALID",
     "kappa": null,
-    "status_reason": "control:canary: measured 0.0000 (margin -1.0000), required recall == 1.0",
+    "status_reason": null,
     "superseded_by": null
   },
-  "warrant_status": "REFUSED",
-  "status_reason": "control:canary: measured 0.0000 (margin -1.0000), required recall == 1.0"
+  "warrant_status": "VALID",
+  "status_reason": null
 }
