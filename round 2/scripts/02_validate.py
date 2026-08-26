@@ -21,6 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
+from src.evalsets.registry import load_evalset
 from src.report.plots import plot_tier_ladder
 from src.store import Ledger, RecordKind
 from src.validation.ablation import run_ablation
@@ -58,6 +59,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--smoke", action="store_true", help="tiny sizes, for the end-to-end check"
+    )
+    parser.add_argument(
+        "--evalset-path",
+        default=None,
+        help="frozen eval set JSON; defaults to evalsets/<eval-set>.json",
     )
     parser.add_argument("--out", default=None, help="results directory override")
     return parser.parse_args(argv)
@@ -112,13 +118,50 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 2
         cache = ExtractionCache.load(args.cache)
-        _LOG.error(
-            "loading a measured eval set is Phase 3 work; %s carries %d items but "
-            "the registry that turns it back into an EvalSet does not exist yet",
-            args.cache,
-            cache.n_items,
+        evalset_path = (
+            Path(args.evalset_path)
+            if args.evalset_path
+            else PROJECT_ROOT / "evalsets" / f"{args.eval_set}.json"
         )
-        return 2
+        if not evalset_path.exists():
+            _LOG.error(
+                "no frozen eval set at %s. The cache carries %d items of "
+                "activations but not the prompts, labels or splits they belong "
+                "to; those live in the eval set that 00_extract.py froze beside "
+                "it. Point --evalset-path at it.",
+                evalset_path,
+                cache.n_items,
+            )
+            return 2
+        evalset = load_evalset(evalset_path)
+
+        # The hash is the envelope id and the third element of every warrant key
+        # (invariant 1). A cache paired with the wrong eval set would attach
+        # real activations to someone else's labels and report a number for a
+        # detector-envelope pair that was never measured.
+        if cache.eval_set_hash != evalset.content_hash:
+            _LOG.error(
+                "cache/eval-set mismatch: %s records eval_set_hash %s but %s "
+                "hashes to %s. These describe different data.",
+                args.cache,
+                cache.eval_set_hash,
+                evalset_path,
+                evalset.content_hash,
+            )
+            return 2
+        # No canary exists for the activation probe -- evalsets/canary-20-pii
+        # is Presidio's. canary_control fails closed on an absent set rather
+        # than skipping, so every measured warrant here is refused on that
+        # control alone until one is built. That refusal is correct and is not
+        # a statement about the probe.
+        canary_cache = None
+        _LOG.info(
+            "validating %s (%d items, %s) against cache %s",
+            evalset.eval_set_id,
+            len(evalset),
+            evalset.content_hash,
+            args.cache,
+        )
 
     ladder = run_ablation(
         config,

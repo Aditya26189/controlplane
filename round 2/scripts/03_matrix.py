@@ -154,14 +154,25 @@ def main(argv: list[str] | None = None) -> int:
             "triviaqa-600",
             "triviaqa-longctx-600",
         ]
-        detectors = sorted(
-            {
-                f"probe-{variant}"
-                for ladder in ladders
-                for variant in [r.variant for r in ladder.runs]
-            }
-            | {detector.detector_id}
-        )
+        # Declared UNION what the ledger actually holds. Declared alone renders
+        # a row per detector we have thought about, so an unmeasured cell shows
+        # as UNVALIDATED rather than vanishing. But it is built from the fixture
+        # ladders' variant names ("probe-T1-mean_pool") while 02_validate writes
+        # measured warrants under a model-qualified id
+        # ("probe-qwen2.5-7b-instruct-T1-mean_pool"). Without the union those
+        # measured warrants match no row and their cells render UNVALIDATED --
+        # a measured REFUSAL displayed as "never tested", which is the one
+        # reading the matrix exists to prevent.
+        declared = {
+            f"probe-{variant}"
+            for ladder in ladders
+            for variant in [r.variant for r in ladder.runs]
+        } | {detector.detector_id}
+        in_ledger = {
+            ledger.get_warrant(record.record_id).detector_id
+            for record in ledger.query(kind=RecordKind.WARRANT)
+        }
+        detectors = sorted(declared | in_ledger)
         matrix = WarrantMatrix.from_ledger(
             ledger, detectors=detectors, envelopes=envelopes
         )
