@@ -1121,3 +1121,68 @@ Also: the pre-flight now logs the attention implementation, because re-running a
 single notebook cell against a live kernel keeps the model object from the
 original load. A fix applied in `load_model` is not present in a model that was
 loaded before it.
+
+## 059 — Beat 4 measured: both aggregations fail the envelope shift, in opposite directions
+
+The first measured extraction (2400 questions, 600 long-context, 3.2 h on 2x T4)
+transferred to the long-context envelope. Probe fitted on `triviaqa-600`, scored
+unchanged on `triviaqa-longctx-600`; nothing refitted, nothing reselected.
+
+| variant | AUROC source | AUROC target | flag rate | lift |
+|---|---|---|---|---|
+| `T1-mean_pool` | 0.785 [0.750, 0.821] | 0.502 [0.455, 0.548] | 0.040 -> 0.000 | 1.99 -> n/a |
+| `T1-max_rolling_means` | 0.785 [0.750, 0.821] | 0.555 [0.511, 0.602] | 0.042 -> 0.543 | 1.99 -> 1.08 |
+
+Base rate 0.4617, lift ceiling 2.166. On the source envelope both reach 92% of
+that ceiling. On the shifted envelope both fail, and the failures are not alike:
+
+- `mean_pool` **fails silent**. Scores drop below the frozen threshold, nothing
+  is flagged, and the system reports clean traffic.
+- `max_rolling_means` **fails expensive**. Scores inflate, 54.3% of traffic is
+  flagged (13x the budget) at precision 0.497 against a base rate of 0.462 —
+  random sampling with a detector's name on it.
+
+`max_rolling_means` was built specifically to survive long-context shift
+(CLAUDE.md's silent-failure list). It does not. It degrades differently, not
+better, and its lower CI of 0.511 still falls short of the 0.55 floor. Reporting
+only the aggregation that was supposed to work would have left the claim
+untested exactly where it matters.
+
+Both warrants REFUSED, which is the layer doing its job.
+
+**Caveat that must travel with these numbers.** Every measured warrant is also
+refused on `canary`, which fails *closed* on an absent set. There is no TriviaQA
+canary — `evalsets/canary-20-pii.json` is Presidio's. That refusal is correct
+behaviour and says nothing about the probe; only `auroc_lower_ci` on the
+long-context envelope is a measurement. Building the canary is outstanding.
+
+## 060 — Three ways the deliverable hid its own measurements
+
+Found while wiring the measured extraction through validation. Each let a
+measured result read as something else.
+
+**`02_validate` refused measured eval sets** with "the registry that turns it
+back into an EvalSet does not exist yet". `load_evalset` has existed at
+`src/evalsets/registry.py:82` since the eval sets were first frozen; the guard
+was stale. This is what stopped the Kaggle run after 2.6 h of successful
+extraction. Now wired, with a hash check refusing a cache/eval-set mismatch —
+pairing a cache with the wrong eval set would attach real activations to someone
+else's labels.
+
+**The matrix rendered rows that could not match the measured warrants.**
+`03_matrix` built its detector list as `probe-{variant}` from the fixture
+ladders; `02_validate` writes `probe-{model}-{variant}`. So `triviaqa-600`
+displayed UNVALIDATED while a REFUSED warrant sat in the ledger — a measured
+refusal shown as "never tested", which is the one reading the matrix exists to
+prevent. Now `declared UNION ledger`.
+
+The first attempt at that fix read `detector_id` off the `LedgerRecord`. The
+column exists in SQL; the attribute does not. The script raised, and left the
+previous `warrant_matrix.md` in place — so the output looked unchanged rather
+than broken. Read off the warrant now.
+
+**Transfer warrants were never written to the ledger**, so Beat 4 could not
+appear in the matrix at all. Also mine: `04_transfer` used a bare
+`probe-{variant}` id, putting the same measurement in the matrix twice under two
+names. Unified on the model-qualified id, because a probe reads one specific
+model's residual stream and a model change invalidates the warrant.

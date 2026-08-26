@@ -55,3 +55,9 @@ results/cache-*.npz
 kaggle/access_token
 kaggle/kaggle.json
 kaggle/run_on_kaggle.ipynb
+
+# Measured extraction: caches and the long-context eval set exceed the 10 MB
+# staging limit. cache-*.npz is already covered; the padded eval set is not.
+evalsets/triviaqa-longctx-600.json
+results/kaggle/
+results/measured/*.npz
