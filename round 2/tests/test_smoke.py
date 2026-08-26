@@ -142,6 +142,48 @@ def test_kaggle_runner_refuses_before_it_can_spend_quota() -> None:
     )
 
 
+def test_transfer_refuses_a_mismatched_cache(tmp_path) -> None:
+    """A cache paired with the wrong eval set must not be scored.
+
+    The content hash is the envelope id and the third element of every warrant
+    key. Pairing a cache with another eval set would attach real activations to
+    someone else's labels and publish a number for a detector-envelope pair
+    nobody measured — with nothing in the output saying so.
+    """
+    import importlib.util
+
+    from src.evalsets.registry import save_evalset
+    from src.validation.synthetic import synthetic_cache, synthetic_evalset
+
+    spec = importlib.util.spec_from_file_location(
+        "transfer_script", PROJECT_ROOT / "scripts" / "04_transfer.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    evalset = synthetic_evalset(
+        eval_set_id="mismatch-check", n_items=40, base_rate=0.3, seed=1
+    )
+    other = synthetic_evalset(
+        eval_set_id="mismatch-check", n_items=40, base_rate=0.7, seed=2
+    )
+    assert evalset.content_hash != other.content_hash
+
+    registry = tmp_path / "evalsets"
+    registry.mkdir()
+    save_evalset(evalset, registry)
+    cache = synthetic_cache(other, seed=2, window=8, stride=4)
+    cache_path = cache.save(tmp_path / "cache.npz")
+
+    monkey = module.PROJECT_ROOT
+    try:
+        module.PROJECT_ROOT = tmp_path
+        with pytest.raises(SystemExit, match="mismatch"):
+            module._load("mismatch-check", str(cache_path))
+    finally:
+        module.PROJECT_ROOT = monkey
+
+
 def test_notebook_refuses_a_gpu_below_sm_70() -> None:
     """The pre-flight names the unsupported card instead of dying in CUDA."""
     notebook = json.loads(
@@ -173,6 +215,8 @@ def test_every_script_has_a_smoke_test() -> None:
         "03_matrix.py",
         # test_kaggle_runner_refuses_before_it_can_spend_quota
         "kaggle_run.py",
+        # test_transfer_refuses_a_mismatched_cache
+        "04_transfer.py",
     }
     exempt = {
         # Needs a GPU; its wiring is checked by the notebook's own self-check
