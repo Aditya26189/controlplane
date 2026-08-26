@@ -1,0 +1,515 @@
+{
+  "eval_set_id": "canary-20-triviaqa",
+  "content_hash": "32408aeb2ff3a57e965325b7aea9ad87d34cfe2fc111510b3a2329964001112e",
+  "envelope_id": "sha256:32408aeb2ff3a57e",
+  "data_source": "measured",
+  "n_items": 20,
+  "base_rate": 1.0,
+  "construction": {
+    "derived_from": "triviaqa-600",
+    "derived_from_hash": "e77c64f908491ad1751ccbc0a05f85343591cd0f9b876022f1b7342bedde31b0",
+    "split_used": "train",
+    "selected_by": "highest probe score on T1-mean_pool",
+    "C": 0.001,
+    "threshold_cleared": 0.9030993378020319,
+    "n_items": 20,
+    "purpose": "regression tripwire: recall must be 1.0 at the frozen threshold. Chosen by the probe's own score, so it detects change rather than quality, and is not independent evidence that the probe works."
+  },
+  "items": [
+    {
+      "item_id": "triviaqa-tc_1609",
+      "question_id": "tc_1609",
+      "prompt": "Mickey Braddock in the 50s series Circus Boy found fame with which surname in which pop band?",
+      "response": "Mick Jagger in The Rolling Stones",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Mickey Dolenz (The Monkees)",
+          "mickey dolenz monkees"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-qz_688",
+      "question_id": "qz_688",
+      "prompt": "Which ITV magazine style show ran from 1968 to 1980 and featured presenters including Jenny Hanley, Mick Robertson and Tommy Boyd?",
+      "response": "This Kind of Woman",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Chatterpie",
+          "Magpie",
+          "Magpies",
+          "chatterpie",
+          "magpie",
+          "magpies"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-qz_5235",
+      "question_id": "qz_5235",
+      "prompt": "Following that year's April Budget, Alderman Sir Cuthbert Ackroyd, who later became Lord Mayor of London, bought the first what on 1 November 1956?",
+      "response": "parking meter",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "ERNIE",
+          "Electronic Random Number Indicator Equipment",
+          "Premium Bond",
+          "Premium Bonds",
+          "Premium bond",
+          "Premium bonds",
+          "electronic random number indicator equipment",
+          "ernie",
+          "premium bond",
+          "premium bonds"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-qb_5618",
+      "question_id": "qb_5618",
+      "prompt": "In the UK television series ‘Dad’s Army’, what was Lance-Corpopal Jack Jones occupation?",
+      "response": "farmer",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Boning",
+          "Boucherie",
+          "Butcher",
+          "Butcher shop",
+          "Butcher shops",
+          "Butcher's shop",
+          "Butcher's shops",
+          "Butchered",
+          "Butchering",
+          "Butchers",
+          "Butchers shop",
+          "Butchers shops",
+          "Butchers' shop",
+          "Butchers' shops",
+          "Butchery",
+          "Secondary butchering",
+          "Secondary butchery",
+          "The Butcher",
+          "The butcher",
+          "boning",
+          "boucherie",
+          "butcher",
+          "butcher s shop",
+          "butcher s shops",
+          "butcher shop",
+          "butcher shops",
+          "butchered",
+          "butchering",
+          "butchers",
+          "butchers shop",
+          "butchers shops",
+          "butchery",
+          "secondary butchering",
+          "secondary butchery"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-qb_9361",
+      "question_id": "qb_9361",
+      "prompt": "At the age of 86, which US actor married 40 year old make up artist Arlene Silver in 2012?",
+      "response": "Kirk Douglas",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Dick Van Dike",
+          "Dick Van Dyk",
+          "Dick Van Dyke",
+          "Dick VanDyke",
+          "Dick van Dyke",
+          "Dick van dyke",
+          "Dr. Sloan",
+          "Dyck Van Dike",
+          "Learn Not to Burn",
+          "Richard Van Dyke",
+          "Richard Wayne Van Dyke",
+          "dick van dike",
+          "dick van dyk",
+          "dick van dyke",
+          "dick vandyke",
+          "dr sloan",
+          "dyck van dike",
+          "learn not to burn",
+          "richard van dyke",
+          "richard wayne van dyke"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-dpql_424",
+      "question_id": "dpql_424",
+      "prompt": "Which Thornbridge beer, gravity 5.9%, is named after an Indian city?",
+      "response": "Thornbridge Jaggery Pale Ale",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Evergreen School (Jaipur, Rajasthan, India)",
+          "Evergreen School , Jaipur",
+          "JAIPUR",
+          "Jaipur",
+          "Jaipur, India",
+          "Jaipur, Rajasthan",
+          "Pink City",
+          "Pink city",
+          "Pinkcity",
+          "evergreen school jaipur",
+          "evergreen school jaipur rajasthan india",
+          "jaipur",
+          "jaipur india",
+          "jaipur rajasthan",
+          "pink city",
+          "pinkcity",
+          "जयपुर"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-wh_154",
+      "question_id": "wh_154",
+      "prompt": "\"Which Coronation Street character, who \"\"died\"\" in 2006, apparently had 25 girlfriends at various times and four wives?\"",
+      "response": "Bill Roach",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "MIKE BALDWIN",
+          "Mike Baldwin",
+          "Mike Baldwin (disambiguation)",
+          "mike baldwin",
+          "mike baldwin disambiguation"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-wh_2133",
+      "question_id": "wh_2133",
+      "prompt": "Which T.V. Quiz show host used the catchphrase :- If its' up there, I'll give you the money myself ?",
+      "response": "Ken Dodd",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "LES DENNIS",
+          "Les Dennis",
+          "les dennis"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-wh_2790",
+      "question_id": "wh_2790",
+      "prompt": "Living from 1924 to 2006 what was the name of the Detective Police Superintendant of Scotland Yard who famously tracked down Great Train Robber Ronnie Biggs after he escaped from prison in 1965, although he had to leave without arresting him ?",
+      "response": "Donald Peirson",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Jack SLIPPER",
+          "Jack Slipper",
+          "jack slipper"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-qw_2583",
+      "question_id": "qw_2583",
+      "prompt": "Who married Sarah Hugill in 1972, had two children, divorced in 1983, married Sarah Brightman in 1984, divorced in 1990, married Madeleine Gurdon in 1991, and had three children?",
+      "response": "Frankie Goes to Hollywood",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Andrew Lloyd Webber",
+          "Andrew Lloyd Webber Foundation",
+          "Andrew Lloyd Webber, Baron Lloyd-Webber",
+          "Andrew Lloyd Weber",
+          "Andrew Lloyd-Webber",
+          "Andrew Lloyd-Weber",
+          "Andrew Loyd Webber",
+          "Baron Lloyd-Webber",
+          "Lloyd Webber, Andrew",
+          "Lord Andrew Lloyd Webber",
+          "Lord Lloyd Webber",
+          "Lord Lloyd-Webber",
+          "Sir Andrew Lloyd Webber",
+          "andrew lloyd webber",
+          "andrew lloyd webber baron lloyd webber",
+          "andrew lloyd webber foundation",
+          "andrew lloyd weber",
+          "andrew loyd webber",
+          "baron lloyd webber",
+          "lloyd webber andrew",
+          "lord andrew lloyd webber",
+          "lord lloyd webber",
+          "sir andrew lloyd webber"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-qw_14134",
+      "question_id": "qw_14134",
+      "prompt": "Bob Hoskins, an English actor awarded and acclaimed for roles in TV and film ranging from gangsters to playing opposite a cartoon, died in April 2014 at 71; he also, at the age of over 60, played something very close to a romantic interest in which film?",
+      "response": "Philomena",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Mrs Henderson Presents",
+          "Mrs. Henderson Presents",
+          "mrs henderson presents"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-sfq_298",
+      "question_id": "sfq_298",
+      "prompt": "Which side did Lancashire beat in the last match of the 2008 County Cricket Championship, thus staving off all thoughts of relegation?",
+      "response": "Sussex",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "County of Somerset",
+          "Highway, Somerset",
+          "Nether Wessex",
+          "Outer Wessex",
+          "SOMERSET",
+          "Somerset",
+          "Somerset (rump)",
+          "Somerset, England",
+          "Somersetshire",
+          "Somersetshire, England",
+          "Somersett",
+          "Sormersetshire",
+          "Town of Somerset",
+          "Villages in Somerset",
+          "county of somerset",
+          "highway somerset",
+          "nether wessex",
+          "outer wessex",
+          "somerset",
+          "somerset england",
+          "somerset rump",
+          "somersetshire",
+          "somersetshire england",
+          "somersett",
+          "sormersetshire",
+          "town of somerset",
+          "villages in somerset"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-sfq_4818",
+      "question_id": "sfq_4818",
+      "prompt": "Which Booker Prize winning novelist wrote the Advertising slogan 'That will do nicely' for American Express?",
+      "response": "Kazuo Ishiguro",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Ahmed Rushdie",
+          "Ahmed Salman Rushdie",
+          "Marriane Wiggins",
+          "RUSHDIE, SALMAN",
+          "Rushdian",
+          "Rushdiean",
+          "SALMAN RUSHDIE",
+          "Salman Rashdi",
+          "Salman Rushdee",
+          "Salman Rushdi",
+          "Salman Rushdie",
+          "Salman Rushdie's",
+          "Salman rushdie",
+          "Salmon Rushdi",
+          "Salmon Rushdie",
+          "Samuel Rushdi",
+          "Samuel Rushdie",
+          "Sir Salman",
+          "Sir Salman Rushdie",
+          "Solomon Rushdie",
+          "ahmed rushdie",
+          "ahmed salman rushdie",
+          "marriane wiggins",
+          "rushdian",
+          "rushdie salman",
+          "rushdiean",
+          "salman rashdi",
+          "salman rushdee",
+          "salman rushdi",
+          "salman rushdie",
+          "salman rushdie s",
+          "salmon rushdi",
+          "salmon rushdie",
+          "samuel rushdi",
+          "samuel rushdie",
+          "sir salman",
+          "sir salman rushdie",
+          "solomon rushdie"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-sfq_6944",
+      "question_id": "sfq_6944",
+      "prompt": "\"Who was appointed Chief Constable of Merseyside in 2004, and left the post in 2009, after being made an \"\"Inspector of Constabulary\"\" by the Queen?\"",
+      "response": "David Keane",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "BERNARD HOGAN-HOWE",
+          "Bernard Hogan Howe",
+          "Bernard Hogan-Howe",
+          "Hogan-Howe",
+          "Sir Bernard Hogan-Howe",
+          "bernard hogan howe",
+          "hogan howe",
+          "sir bernard hogan howe"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-sfq_6978",
+      "question_id": "sfq_6978",
+      "prompt": "\"In the TV series, \"\"Dad's Army\"\", what was the name of Captain Mainwaring's wife?\"",
+      "response": "Worthington Wilkins' Wife",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Babeth",
+          "ELIZABETH",
+          "Elisabeth",
+          "Elisabeth (disambiguation)",
+          "Elishaba",
+          "Elishabha",
+          "Elishava",
+          "Elishebha",
+          "Elizabet",
+          "Elizabeta",
+          "Elizabeta (disambiguation)",
+          "Elizabeth",
+          "Elizabeth (city, United States)",
+          "Elizabeth (disambiguation)",
+          "babeth",
+          "elisabeth",
+          "elisabeth disambiguation",
+          "elishaba",
+          "elishabha",
+          "elishava",
+          "elishebha",
+          "elizabet",
+          "elizabeta",
+          "elizabeta disambiguation",
+          "elizabeth",
+          "elizabeth city united states",
+          "elizabeth disambiguation",
+          "Élisabeth",
+          "élisabeth"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-sfq_11790",
+      "question_id": "sfq_11790",
+      "prompt": "Opened in 1963, which London nightclub did Mark Birley name after his then wife?",
+      "response": "Savages Club",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "ANNABELS",
+          "Annabel's",
+          "annabel s",
+          "annabels"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-sfq_13585",
+      "question_id": "sfq_13585",
+      "prompt": "Which former cabinet minister was debarred from Parliament because of irregularities in his 2010 election campaign for his Oldham East and Saddleworth constituency?",
+      "response": "George Galloway",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "PHIL WOOLAS",
+          "Phil Woolas",
+          "Philip James Woolas",
+          "Woolas",
+          "phil woolas",
+          "philip james woolas",
+          "woolas"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-sfq_16394",
+      "question_id": "sfq_16394",
+      "prompt": "In Channel 4's 1987 adaptation of Tom Sharpe's novel 'Porterhouse Blue', who played the part of Skullion the Head Porter?",
+      "response": "Clive Swift",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "David Jason",
+          "David Jason filmography",
+          "Filmography of David Jason",
+          "Sir David Jason",
+          "david jason",
+          "david jason filmography",
+          "filmography of david jason",
+          "sir david jason"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-sfq_22766",
+      "question_id": "sfq_22766",
+      "prompt": "What name is shared by a former Manchester City FC manager (1965-1971) and a champion flat jockey who used to ride for the Queen?",
+      "response": "Sir Bobby Robson",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Joe Mercer",
+          "Joseph Mercer",
+          "joe mercer",
+          "joseph mercer"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-sfq_23110",
+      "question_id": "sfq_23110",
+      "prompt": "Which racehorse, unbeaten in 14 races, won an unprecedented 9 consecutive Group One races including the 2,000 Guineas in 2011 and is the highest ever rated by Timeform?",
+      "response": "Golden Horn",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Franckel",
+          "Frankel",
+          "franckel",
+          "frankel"
+        ]
+      }
+    }
+  ]
+}
