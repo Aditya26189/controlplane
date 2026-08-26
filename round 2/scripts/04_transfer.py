@@ -90,6 +90,20 @@ def main(argv: list[str] | None = None) -> int:
         retention_days=config.store.retention_days,
     )
 
+    # Without a canary, canary_control fails closed and refuses every warrant
+    # for a reason unrelated to the envelope -- which would bury the one real
+    # refusal this script exists to surface.
+    canary_cache = None
+    canary_path = Path(args.source_cache).parent / "cache-canary-20-triviaqa.npz"
+    if canary_path.exists():
+        canary_cache = ExtractionCache.load(canary_path)
+        _LOG.info("canary %s: %d items", canary_cache.eval_set_id, canary_cache.n_items)
+    else:
+        _LOG.warning(
+            "no canary at %s; every warrant below will be refused on that "
+            "control alone. Build one with scripts/05_canary.py.", canary_path,
+        )
+
     rows = []
     for variant in sorted(source_cache.variants):
         _LOG.info("fitting %s on %s", variant, source_evalset.eval_set_id)
@@ -108,6 +122,7 @@ def main(argv: list[str] | None = None) -> int:
             detector_version="0.1.0",
             variant=variant,
             target_flag_rate=args.target_flag_rate,
+            canary_cache=canary_cache,
         )
         # Refit with the C the source run selected, on the source TRAIN split
         # only. ValidationRun records how the probe was fitted, not the fitted
