@@ -184,6 +184,71 @@ def test_transfer_refuses_a_mismatched_cache(tmp_path) -> None:
         module.PROJECT_ROOT = monkey
 
 
+def test_canary_is_all_positive_and_clears_its_own_threshold(tmp_path) -> None:
+    """A canary must be catchable, and must be drawn only from train.
+
+    ``canary_control`` requires recall == 1.0, so a canary holding an item the
+    probe does not catch refuses every warrant forever, for a reason that has
+    nothing to do with the run being validated — which is the failure the
+    canary exists to end, reintroduced by the fix for it.
+
+    Drawing from validation or test would be selection on the splits those
+    exist to protect, and every downstream number would inherit it.
+    """
+    import importlib.util
+
+    import numpy as np
+
+    from src.evalsets.registry import load_evalset, save_evalset
+    from src.validation.evalsets import TRAIN, split_by_question
+    from src.validation.synthetic import synthetic_cache, synthetic_evalset
+
+    spec = importlib.util.spec_from_file_location(
+        "canary_script", PROJECT_ROOT / "scripts" / "05_canary.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    evalset = synthetic_evalset(
+        eval_set_id="canary-src", n_items=400, base_rate=0.4, seed=3,
+        items_per_question=2, declare_splits=True,
+    )
+    registry = tmp_path / "evalsets"
+    registry.mkdir()
+    save_evalset(evalset, registry)
+    cache = synthetic_cache(evalset, seed=3, window=8, stride=4)
+    cache_path = cache.save(tmp_path / "cache.npz")
+
+    original = module.PROJECT_ROOT
+    try:
+        module.PROJECT_ROOT = tmp_path
+        assert module.main([
+            "--config", str(PROJECT_ROOT / "config.yaml"),
+            "--cache", str(cache_path),
+            "--eval-set", "canary-src",
+            "--variant", sorted(cache.variants)[0],
+            "--n-items", "10",
+            "--canary-id", "canary-under-test",
+            "--evalsets-out", str(registry),
+            "--out", str(tmp_path),
+        ]) == 0
+    finally:
+        module.PROJECT_ROOT = original
+
+    canary = load_evalset(registry / "canary-under-test.json")
+    assert len(canary) == 10
+    assert all(item.label == 1 for item in canary.items), (
+        "a canary item labelled correct is not a known positive"
+    )
+
+    # Every canary item must come from the source TRAIN split.
+    splits = split_by_question(evalset, seed=1729)
+    train_ids = {evalset.items[int(i)].item_id for i in np.asarray(splits[TRAIN])}
+    assert {item.item_id for item in canary.items} <= train_ids, (
+        "canary drew from outside train; that is selection on a protected split"
+    )
+
+
 def test_notebook_refuses_a_gpu_below_sm_70() -> None:
     """The pre-flight names the unsupported card instead of dying in CUDA."""
     notebook = json.loads(
@@ -217,6 +282,8 @@ def test_every_script_has_a_smoke_test() -> None:
         "kaggle_run.py",
         # test_transfer_refuses_a_mismatched_cache
         "04_transfer.py",
+        # test_canary_is_all_positive_and_clears_its_own_threshold
+        "05_canary.py",
     }
     exempt = {
         # Needs a GPU; its wiring is checked by the notebook's own self-check

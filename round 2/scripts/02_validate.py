@@ -65,6 +65,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="frozen eval set JSON; defaults to evalsets/<eval-set>.json",
     )
+    parser.add_argument(
+        "--canary-cache",
+        default=None,
+        help="canary extraction cache; defaults to cache-canary-20-triviaqa.npz "
+             "beside --cache",
+    )
     parser.add_argument("--out", default=None, help="results directory override")
     return parser.parse_args(argv)
 
@@ -149,12 +155,29 @@ def main(argv: list[str] | None = None) -> int:
                 evalset.content_hash,
             )
             return 2
-        # No canary exists for the activation probe -- evalsets/canary-20-pii
-        # is Presidio's. canary_control fails closed on an absent set rather
-        # than skipping, so every measured warrant here is refused on that
-        # control alone until one is built. That refusal is correct and is not
-        # a statement about the probe.
+        # The canary is a regression tripwire and canary_control fails CLOSED
+        # without one, so an absent canary refuses every warrant for a reason
+        # that has nothing to do with the run. Loaded when present; still
+        # absent-and-refusing when not, which stays visible rather than
+        # silently passing.
         canary_cache = None
+        canary_path = Path(args.canary_cache) if args.canary_cache else (
+            Path(args.cache).parent / "cache-canary-20-triviaqa.npz"
+        )
+        if canary_path.exists():
+            canary_cache = ExtractionCache.load(canary_path)
+            _LOG.info(
+                "canary %s: %d items from %s",
+                canary_cache.eval_set_id, canary_cache.n_items, canary_path,
+            )
+        else:
+            _LOG.warning(
+                "no canary cache at %s. canary_control fails closed, so every "
+                "warrant below will be refused on that control alone -- a "
+                "refusal that says nothing about the detector. Build one with "
+                "scripts/05_canary.py.",
+                canary_path,
+            )
         _LOG.info(
             "validating %s (%d items, %s) against cache %s",
             evalset.eval_set_id,
