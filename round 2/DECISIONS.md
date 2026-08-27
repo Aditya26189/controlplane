@@ -1826,3 +1826,30 @@ would make survival invisible and so indistinguishable from endorsement.
 
 Same distinction as 029, 031 and 070: a number quoted outside the conditions it
 was measured under is a different number, not a weaker one.
+
+
+## 075 - The demo reports INSUFFICIENT_DATA, and Beat 4 has to be long enough
+
+Wiring the real drift monitor into the demo session replaced a hardcoded
+`INSIDE` / `max_psi=0.0` / `n_window=1` with a scored window, and immediately
+exposed a conflict between two things already decided.
+
+`config.drift.window_size` is 200 (SPEC.md 5.2: do not revoke on noise). Demo
+streams are 2-40 events. So every demo certificate now reports
+`INSUFFICIENT_DATA`.
+
+That is the correct answer, not a degraded one. The stream is drawn from the
+warrant's own test rows, so the traffic genuinely is inside the envelope -- but
+at n=10 the system has no evidence of that, and certifying `INSIDE` would
+assert a stability it never measured. This is the same rule as entry 070's null
+band and the ladder's fourth rung: absence of evidence is not a verdict.
+
+**Consequence for Phase 10:** Beat 4 shows a revocation, so its long-context
+segment must carry at least `window_size` events. A 40-event Beat 4 would show
+`INSUFFICIENT_DATA` for its whole length and prove nothing. The alternative --
+lowering `window_size` for the demo -- was rejected: a threshold tuned to make a
+demo work is the exact failure this project argues against, and the false-alarm
+guard would refuse the configuration anyway.
+
+The right pane says `"10 of 200 requests -- no envelope verdict yet"` rather
+than printing `max PSI 0.000`, which would read as a measured stability.

@@ -15,7 +15,7 @@ import pytest
 from src.config import Config
 from src.demo.session import DemoSession
 from src.demo.stream import Stream, record_stream
-from src.model import Action, WarrantStatus
+from src.model import Action, EnvelopeState, WarrantStatus
 from src.store import Ledger, RecordKind
 from src.validation.evalsets import TEST, split_by_question
 from src.validation.synthetic import synthetic_cache, synthetic_evalset
@@ -200,6 +200,32 @@ def test_a_flagged_request_escalates_and_names_its_finding(
         assert resolution.action is Action.ESCALATE
         assert resolution.triggering_finding_ids
         assert resolution.rationale
+
+
+def test_the_envelope_verdict_is_measured_and_not_assumed(
+    session, demo_evalset, demo_cache, config: Config
+) -> None:
+    """The demo scores a real PSI window, and says so when it has no verdict.
+
+    The stream is drawn from the warrant's own test rows, so the traffic really
+    is inside the envelope. Below ``config.drift.window_size`` the system has no
+    evidence of that and must report ``INSUFFICIENT_DATA`` rather than
+    ``INSIDE`` — the difference between "no shift" and "no evidence yet" is the
+    whole reason the fourth envelope state exists. Until Phase 5 this field was
+    a hardcoded ``INSIDE`` with ``max_psi=0.0`` and ``n_window=1``.
+    """
+    assert config.drift.window_size > 10, "this test assumes a window it cannot fill"
+    stream = record_stream(demo_evalset, demo_cache, n_events=10, seed=config.seed)
+    outcomes = [session.handle(event) for event in stream]
+
+    for position, outcome in enumerate(outcomes, start=1):
+        match = outcome.certificate.envelope_match
+        assert match.state is EnvelopeState.INSUFFICIENT_DATA
+        assert match.n_window == position, "the window must advance per request"
+        assert match.max_psi == 0.0
+
+    assert "no envelope verdict yet" in outcomes[-1].right.envelope
+    assert str(config.drift.window_size) in outcomes[-1].right.envelope
 
 
 def test_certificates_record_what_was_not_checked(
