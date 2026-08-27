@@ -1688,3 +1688,74 @@ a drift signal requiring no embedding computation at all — a counter and a
 target. It catches *that the operating point is no longer the operating point*,
 where PSI on token length catches *why the input distribution moved*. The second
 is the diagnosis; the first is the alarm, and it is one division.
+
+## 070 — PSI's 0.10/0.25 bands are not scale-free, and the monitor checks its own null
+
+PSI is the right measure for this audience — Indian banking risk teams read it
+natively (`SPEC.md` §5.2). Its bands are a credit-scoring rule of thumb, and
+they are always quoted without a sample size. They are not scale-free: under the
+null, a window drawn from the very distribution the reference was built from has
+PSI of roughly `(k-1)/n`.
+
+Measured, by drawing both the window **and** the reference:
+
+| bins | window | null p95 | P(PSI > 0.10) |
+|---|---|---|---|
+| 5 | 200 | 0.062 | 0.004 |
+| 10 | 200 | 0.114 | **0.101** |
+| 20 | 200 | 0.215 | **0.760** |
+| 20 | 2000 | 0.066 | 0.001 |
+
+At twenty bins and the configured 200-request window, **three windows in four
+report `MODERATE_SHIFT` on traffic that has not moved.** `SPEC.md` §5.2 says *do
+not revoke on noise*; a monitor alarming at that rate gets switched off, which
+is the same outcome as never building it.
+
+**The shipped configuration is fine, and I overstated the alarm first.** The real
+envelope uses 8 bins against a 2400-item reference: false-alarm rate 0.005 at a
+200-window. My initial measurement used 10 bins from 600 items — a harsher
+configuration than the repo actually runs — and I reported 8% before checking
+what was deployed. The finding stands; the panic did not.
+
+So `DriftMonitor` simulates its own null at construction and **refuses a
+configuration whose false-alarm rate exceeds `drift.max_false_alarm_rate`**
+(0.05). The band is checked against the envelope it will actually be used with,
+rather than trusted because it is conventional.
+
+**Both sides are resampled.** Holding the stored bin probabilities exact put the
+false-alarm rate at 0.02 where resampling the underlying values measured 0.08 —
+the reference's own estimation error is part of the noise a live window is
+scored against, and a guard built on the optimistic number would pass a
+configuration alarming four times as often as promised. Drawing the reference at
+`n_reference` as well reproduces the empirical rate (0.101 against 0.08 measured,
+0.760 against 0.79).
+
+Same shape as 029 and 031, where a fixed negative-control band was wrong at the
+sample size actually used and had to be sized from the measured null. Third
+instance of the same lesson: **a threshold quoted without its sample size is a
+threshold that has not been checked.**
+
+## 071 — A PSI driven by empty bins is a claim about missing data
+
+`ln(0)` diverges, so every PSI implementation floors empty bins at an epsilon,
+and that constant silently sets the magnitude. Measured on the real envelopes —
+long-context traffic against short-context bins, 9 of 10 bins empty:
+
+| epsilon | long context (9/10 floored) | 50/50 mixed (0 floored) |
+|---|---|---|
+| 1e-3 | 6.14 | 1.0140 |
+| 1e-6 | 12.37 | 1.0140 |
+| 1e-8 | 16.50 | 1.0140 |
+
+**The floored number moves 2.7× across plausible epsilons; the measured one does
+not move at all.** Both revoke, so the *decision* is unaffected — but only one
+magnitude is quotable, and "PSI 12.37" would be quoting the smoothing constant.
+
+`PsiResult` therefore reports `bins_smoothed`, `smoothed_share` and
+`driven_by_smoothing`, and the verdict's reason says so in words: the finding is
+that traffic left the reference support, not that the shift measured that size.
+
+Out-of-range values are clipped into the edge bins rather than dropped.
+Discarding them would compute PSI over the surviving subset and report stability
+for traffic that had left the distribution entirely — which is the failure mode
+this whole module exists to catch.
