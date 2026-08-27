@@ -203,8 +203,9 @@ def render_results(
         ]
     else:
         lines += [
-            "| detector | envelope | status | AUROC | recall | precision | lift | n |",
-            "|---|---|---|---|---|---|---|---|",
+            "| detector | envelope | status | AUROC | recall | precision | "
+            "flag rate | base rate | lift | n |",
+            "|---|---|---|---|---|---|---|---|---|---|",
         ]
         for warrant in measured:
             metrics = warrant.metrics
@@ -218,11 +219,20 @@ def render_results(
                         f" — {metrics.lift_fraction_of_ceiling:.0%} of the "
                         f"{ceiling:.2f} ceiling at base rate {metrics.base_rate:.3f}"
                     )
+            # Flag rate and base rate travel with recall, always. Recall moves
+            # with the budget spent, so a row showing recall rising without the
+            # flag rate beside it reads as a detector improving when the
+            # detector may not have changed at all: last_token's recall goes
+            # 0.079 -> 0.126 across the envelope shift purely because the frozen
+            # threshold flags 25 items on one and 39 on the other, and its lift
+            # -- the budget-normalised quantity -- is flat (DECISIONS 067).
             lines.append(
                 f"| `{warrant.detector_id}` | `{warrant.eval_set_id}` | "
                 f"{warrant.status.value} | {render_metric(metrics.auroc, digits=3)} | "
                 f"{render_metric(metrics.recall, digits=3)} | "
-                f"{render_metric(metrics.precision, digits=3)} | {lift} | "
+                f"{render_metric(metrics.precision, digits=3)} | "
+                f"{render_metric(metrics.flag_rate, digits=4)} | "
+                f"{metrics.base_rate:.4f} | {lift} | "
                 f"{warrant.n_test} |"
             )
         lines.append("")
