@@ -249,6 +249,52 @@ def test_canary_is_all_positive_and_clears_its_own_threshold(tmp_path) -> None:
     )
 
 
+def test_reconciliation_branches_are_fixed_constants() -> None:
+    """The pre-registered decision rule must not be adjustable by a later run.
+
+    A rule written down and then applied by hand is a rule with a thumb
+    available to it, and this is the case that most invites one: a public
+    handover asserts 0.1416 and Round 2 measured 0.0794. So the branch bounds
+    are module constants rather than arguments — a run cannot widen its own
+    acceptance region — and the classifier is exercised at its boundaries here
+    rather than trusted.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "reconcile_script", PROJECT_ROOT / "scripts" / "06_reconcile.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    # The bounds are Round 1's published CI. If these ever change, the
+    # pre-registration changed, and that needs an entry rather than an edit.
+    assert module.ROUND1_CI == (0.8216804377990431, 0.8878182998424411)
+    assert module.DECLARED_VARIANT == "T1-last_token", (
+        "the Beat 4 aggregation was declared in DECISIONS 065 before the "
+        "numbers existed; changing it here is selection on the test set at the "
+        "level of detector architecture"
+    )
+
+    # No argparse flag may reach the bounds or the declared variant.
+    argv = module.parse_args(["--cache", "x.npz"])
+    for forbidden in ("round1_ci", "declared_variant", "pooled_auroc", "tolerance"):
+        assert not hasattr(argv, forbidden), (
+            "%s is settable from the command line; the acceptance region must "
+            "not be adjustable by the run being judged" % forbidden
+        )
+
+    assert module.classify(0.8551)[0] == "A"
+    assert module.classify(module.ROUND1_CI[0])[0] == "A"
+    assert module.classify(module.ROUND1_CI[1])[0] == "A"
+    assert module.classify(0.7854)[0] == "B"
+    assert module.classify(0.7700)[0] == "B"
+    # Deliberate gap between the pooled band and Round 1's interval: neither
+    # branch, which is what C exists for.
+    assert module.classify(0.8150)[0] == "C"
+    assert module.classify(0.9500)[0] == "C"
+
+
 def test_results_is_measured_only() -> None:
     """``results/`` is the deliverable and holds no fixture artifacts.
 
@@ -360,6 +406,8 @@ def test_every_script_has_a_smoke_test() -> None:
         "04_transfer.py",
         # test_canary_is_all_positive_and_clears_its_own_threshold
         "05_canary.py",
+        # test_reconciliation_branches_are_fixed_constants
+        "06_reconcile.py",
     }
     exempt = {
         # Needs a GPU; its wiring is checked by the notebook's own self-check
