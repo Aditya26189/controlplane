@@ -1759,3 +1759,61 @@ Out-of-range values are clipped into the edge bins rather than dropped.
 Discarding them would compute PSI over the surviving subset and report stability
 for traffic that had left the distribution entirely — which is the failure mode
 this whole module exists to catch.
+
+
+## 072 - MMD is scoped out of Phase 5, and the field that promised it says so
+
+`SPEC.md` 5.2 declares two drift checks: per-feature PSI, and MMD on embeddings
+with a permutation test. **Only the first is implemented.** The multivariate
+check is not built and is not planned before submission.
+
+The reasoning is that MMD would not have changed a single decision on the
+envelopes actually measured. The shift that matters here -- short-context
+TriviaQA against its long-context variant -- is a univariate token-length move
+so large that 9 of 10 reference bins are empty (entry 071). PSI revokes on it at
+every epsilon tried. A multivariate test earns its place when the marginals look
+stable and the joint has moved; nothing in the measured evalsets has that shape,
+so building it would produce a second confirmation of a verdict already reached
+rather than new coverage.
+
+**The cost of scoping it out is a gap in what the system can detect**, and that
+gap is disclosed rather than left implicit:
+
+- `config.drift.mmd_permutations` remains declared and unused. It is kept, not
+  deleted, because deleting it would remove the only trace that a check was
+  specified and dropped.
+- `EnvelopeMatchResult.mmd_p_value` stays `None` and is **never defaulted to a
+  passing p-value**. A 1.0 there would read as a test that ran and found
+  nothing, which is a stronger claim than "no test ran".
+- Every drift certificate names the omission in `unchecked`, in words, next to
+  the verdict it qualifies.
+
+Rejected alternative: implementing a cheap MMD on the same univariate features
+PSI already uses. That would be a multivariate test in name only, and reporting
+it as the SPEC's check would misrepresent the coverage.
+
+## 073 - An action may name a warrant-level trigger, not only a finding
+
+`Resolution` required `triggering_finding_ids` for any action other than
+`ALLOW`, on the reasoning that an action nobody can trace to a finding is an
+action nobody can appeal. That reasoning is right and the requirement was too
+narrow.
+
+The drift certificate is the counterexample. When a revoked warrant escalates a
+request, **nothing was found in that request**. The system stopped being able to
+say what its checks were worth. Satisfying the old rule would have meant
+constructing a `Finding` -- which requires a `Category` from an enum of PII,
+HALLUCINATION, INJECTION, UNSAFE, COST and BIAS_SIGNAL, none of which describes
+a distribution shift. That is a fabricated content claim, in the one record
+whose whole purpose is to prevent fabricated claims.
+
+So `Resolution` gains `triggered_by: Optional[str]`, and the rule becomes: a
+non-`ALLOW` action must name **a** trigger, of which there are two kinds --
+content triggers (findings) and warrant-level triggers
+(`"envelope:SIGNIFICANT_SHIFT"`). The traceability requirement is unchanged in strength;
+only the assumption that every trigger is a content finding is dropped.
+
+Rejected alternatives: adding a `DRIFT` member to `Category`, which would put a
+property of the traffic on an axis that classifies properties of a response;
+and exempting `ESCALATE` from the requirement, which would make the most common
+non-`ALLOW` action the only untraceable one.
