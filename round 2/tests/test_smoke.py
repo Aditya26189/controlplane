@@ -249,7 +249,83 @@ def test_canary_is_all_positive_and_clears_its_own_threshold(tmp_path) -> None:
     )
 
 
-def test_notebook_refuses_a_gpu_below_sm_70() -> None:
+def test_results_is_measured_only() -> None:
+    """``results/`` is the deliverable and holds no fixture artifacts.
+
+    Two results directories — one measured, one fixture — is two answers to the
+    same question with nothing declaring which is authoritative. That is the
+    exact failure this product argues against, reproduced in the filesystem.
+
+    The ``data_source`` guard cannot help here: it refuses fixture *numbers* at
+    the field level, and this ambiguity is at the directory level. Fixtures are
+    regenerable from a seeded generator and live under ``results/fixtures/``,
+    where nothing downstream reads them.
+    """
+    root = PROJECT_ROOT / "results"
+    if not root.exists():
+        pytest.skip("no results directory in this checkout")
+    stray = sorted(
+        path.name for path in root.iterdir()
+        if path.is_file() and "fixture" in path.name.lower()
+    )
+    assert not stray, (
+        "fixture artifacts at the top level of results/: %s. They belong in "
+        "results/fixtures/; results/ is the deliverable." % stray
+    )
+    assert not (root / "measured").exists(), (
+        "results/measured/ exists again. There is one results directory and it "
+        "is measured; a second one is a fork with no declared authority."
+    )
+
+
+def test_universal_refusal_is_treated_as_a_pipeline_bug() -> None:
+    """A matrix where nothing is VALID is a bug signature, not a finding.
+
+    Four cells read REFUSED for reasons unrelated to any detector in one
+    session: a stale guard, a naming mismatch rendering REFUSED as UNVALIDATED,
+    transfer warrants never reaching the ledger, and a missing canary refusing
+    everything. All four produce conservative-looking output that reads as the
+    system working, which is why none was noticed by looking at it.
+
+    So: on an envelope where a detector is known-strong, at least one cell must
+    reach VALID. Universal refusal across a populated matrix means the pipeline
+    broke, not that every detector is bad.
+    """
+    matrix_path = PROJECT_ROOT / "results" / "warrant_matrix.json"
+    if not matrix_path.exists():
+        pytest.skip("no warrant matrix in this checkout")
+    payload = json.loads(matrix_path.read_text(encoding="utf-8"))
+    summary = payload["matrix"]["summary"]
+
+    populated = summary.get("VALID", 0) + summary.get("REFUSED", 0)
+    if not populated:
+        pytest.skip("matrix has no populated cells")
+
+    assert summary.get("VALID", 0) > 0, (
+        "every one of the %d populated cells is REFUSED. That is a pipeline-bug "
+        "signature -- an absent canary, a mismatched detector id, or a stale "
+        "guard refuses everything and looks conservative while doing it. It has "
+        "happened twice." % populated
+    )
+
+    # And the measured envelopes specifically, not just the fixture ones: the
+    # naming mismatch left every measured cell reading UNVALIDATED while the
+    # fixture cells stayed VALID, so a matrix-wide check alone would have passed
+    # straight through it.
+    measured_envelopes = {"triviaqa-600"}
+    seen = {
+        status
+        for row in payload["matrix"]["rows"]
+        for envelope, cell in row["cells"].items()
+        if envelope in measured_envelopes
+        for status in [cell["status"]]
+    }
+    if seen <= {"UNVALIDATED"}:
+        raise AssertionError(
+            "no measured envelope has a single populated cell. Either the "
+            "extraction never ran or its warrants are not reaching the matrix; "
+            "both look identical here, which is the point of checking."
+        )
     """The pre-flight names the unsupported card instead of dying in CUDA."""
     notebook = json.loads(
         (PROJECT_ROOT / "notebooks" / "run_on_kaggle.ipynb").read_text(encoding="utf-8")

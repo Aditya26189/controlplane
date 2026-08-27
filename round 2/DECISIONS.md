@@ -821,9 +821,11 @@ On `hinglish-pii-200`: base rate 0.51, measured flag rate 0.62, so the ceiling i
 ---
 
 ## 050 — The failure class: absence reading as presence
-**Status:** accepted · **names the class behind 024, 032, 035, 046 and others**
+**Status:** accepted · **names the class behind 024, 032, 035, 046, 053-057 and others**
 
 **Context:** The same bug has now appeared four times in four costumes, and each time it was caught by a different accident. Naming the instances is not enough, because the fifth occurrence will look like none of them. Naming the *class* is the only thing that generalises.
+
+**The fifth arrived and the prediction held**: it was not in the code at all, but in how a cause was diagnosed. See the row and the rule added below.
 
 **The class:** *a missing value silently rendering as a positive one.* Not a wrong value — a **missing** one, converted into a claim by a default, a fallback, or a collapsed state. It is the exact inverse of what this product sells, which is why it keeps appearing here specifically: every layer of this system exists to distinguish "we measured this" from "we did not", and every layer therefore has a place where that distinction can be quietly lost.
 
@@ -835,14 +837,33 @@ On `hinglish-pii-200`: base rate 0.51, measured flag rate 0.62, so the ceiling i
 | single-class envelopes (032) | no positives, so no recall | a recall number computed from an empty denominator |
 | boundary intervals (035) | zero events observed | `[0.0000, 0.0000]` — perfect certainty |
 | `data_source` (046) | field not declared | `"measured"`, via a `getattr` default |
+| **debugging method** (053, 055, 056, 057) | the alternative causes were never computed | the one candidate that was computed, read as identified |
+
+**The fifth is in the process column, not the code column**, and that is why the
+first three rules did not catch it. Four GPU sessions were lost to the same
+move: compute one candidate quantity, find it the right order of magnitude
+against the observed failure, and stop. The attention term matched a 10.93 GiB
+OOM at 10.97 GiB; the logits at the same length were 12.32 GiB and matched at
+least as well, and were never computed. *Absence of a check on the alternatives
+read as presence of a verdict.*
+
+The rule that generalises it: **a quantity that matches the observation is not
+the cause until the alternatives have been computed too.** And where the code
+path is knowable by execution, execute it — intercepting
+`scaled_dot_product_attention` settled in under a minute a question that two
+weeks of arithmetic had answered wrongly twice (057).
 
 The fourth is the instructive one: **it appeared inside the guard built to prevent the class.** `getattr(envelope, "data_source", "measured")` was written while implementing the refusal, and it made an undeclared envelope print its numbers. It was caught only because the test was written for the legacy-record case rather than the happy path.
 
-**Decision — three rules, applied wherever a value can be missing:**
+**Decision — four rules, applied wherever a value can be missing:**
 
 1. **Default to the refusing value, never the permissive one.** `getattr(x, "field", None) != "measured"` rather than `getattr(x, "field", "measured") != "measured"`. If the answer is unknown, the answer is no.
 2. **Represent absence as absence, not as a record with empty fields.** `UNVALIDATED` is a cell with no warrant, not a warrant with `None` metrics; a single-class envelope has `recall=None`, not `recall=0`. An absence cannot be dereferenced into a number by accident; a zero can.
-3. **Write the test for the absent case first.** The happy path is what gets written by default and the absent path is what gets forgotten, so the test for "what happens when this is missing?" is the one that finds anything.
+3. **Compute the alternatives before naming a cause.** A plausible match is a
+   hypothesis, not a finding, and one computed quantity next to several
+   uncomputed ones is an absence dressed as a verdict. Where the behaviour can
+   be executed rather than reasoned about, execute it.
+4. **Write the test for the absent case first.** The happy path is what gets written by default and the absent path is what gets forgotten, so the test for "what happens when this is missing?" is the one that finds anything.
 
 **A checklist for review**, since this is the shape to look for rather than a specific line:
 
@@ -1239,3 +1260,107 @@ The lift interval straddles 1.0. That criterion caught a detector flagging 54%
 of traffic that is not demonstrably better than random sampling at the same
 budget — which is what it was added for, and it fired on the first real
 measurement rather than on a fixture.
+
+## 062 — Reconciling R=0.08 against Round 1's published 0.1416
+
+Round 2's first measured recall reads 0.0794 [0.050, 0.113] against a Round 1
+handover, in a public repo, claiming 0.1416. Reported alone that is a regression
+notice. Reported with its companions (invariant 5) it is mostly not one.
+
+| | Round 1 (last_token) | Round 2 @ f=0.05 | Round 2 @ Round 1's f |
+|---|---|---|---|
+| measured flag rate | 0.0617 | 0.0400 | 0.0550 |
+| recall | 0.1416 | 0.0794 | 0.1119 |
+| precision | 0.8919 | 0.9167 | 0.9394 |
+| base rate | 0.3883 | 0.4617 | 0.4617 |
+| lift | 2.297 | 1.986 | 2.035 |
+| ceiling `1/base` | 2.575 | 2.166 | 2.166 |
+| % of ceiling | 89.2% | 91.7% | **94.0%** |
+| test AUROC | 0.8551 | 0.7853 | 0.7853 |
+
+Three separable causes, largest first.
+
+**1. The operating point moved.** Round 1's threshold landed at a measured
+f=0.0617 against a 0.05 target; Round 2's lands at 0.0400. Recall scales with
+budget, so most of the apparent drop is a smaller budget. Re-thresholded to
+Round 1's flag rate, Round 2 recalls 0.1119 — about 71% of the distance from
+0.0794 to 0.1416 closes on this alone.
+
+**2. The base rate rose, so the ceiling fell.** `lift = precision / base_rate`,
+so a base rate of 0.4617 against 0.3883 caps lift at 2.166 rather than 2.575.
+Measured against what was attainable, Round 2 reaches **94.0% of its ceiling
+against Round 1's 89.2%** — better, not worse. Raw recall moves with the
+benchmark's difficulty; the fraction of the ceiling does not.
+
+**3. A genuine ranking gap remains: AUROC 0.7853 against 0.8551.** AUROC is
+base-rate independent, so this one is real and neither of the above explains it.
+
+**The most likely cause of (3) is that these are different detectors.** Round 1
+read the **last token of the prompt** — invariant 1, question-time, before any
+generated token. Round 2's `config.yaml` declared only `mean_pool` and
+`max_rolling_means`, both pooled over every position. `last_token` was
+implemented in `aggregation.py` all along, with a comment naming it "the anchor
+the Round 1 number was measured with", and was simply never listed. So Round 2
+has never measured the configuration Round 1 published, and the comparison above
+is between two different features.
+
+`last_token` is now in the aggregation list. It **cannot be recovered from the
+existing cache** — the cache stores pooled features, not per-position hidden
+states — so closing this needs one re-extraction. Until that runs, the AUROC gap
+is attributed but not demonstrated, and no claim should be made that Round 2
+reproduces or fails to reproduce Round 1.
+
+Config hash moves to `b4ca1ec022266551`. Committed artifacts keep the hash they
+were measured under.
+
+**What must travel with R going forward.** Never the recall alone. Flag rate,
+precision, base rate, lift and the ceiling, or the number invites exactly the
+reading this entry exists to correct.
+
+## 063 — results/ is the deliverable and is measured-only
+
+Two results directories — `results/` holding fixture artifacts and
+`results/measured/` holding the real ones — is two answers to the same question
+with nothing declaring which is authoritative. That is the failure this product
+argues against, reproduced in the filesystem.
+
+The `data_source` guard cannot close it. It refuses fixture *numbers* at the
+field level; this ambiguity is at the directory level, one layer above anything
+a field can see.
+
+`results/` is now the deliverable: measured artifacts, one `RESULTS.md`, one
+ledger. Fixture artifacts moved to `results/fixtures/`. They are regenerable
+from a seeded generator and nothing downstream reads them.
+
+`results/` was never purely fixture, which is why "pick one" would not have
+worked: `validation-pii-reference-*` and `evalset_*` are measured, on
+hand-written eval sets, and belonged in the deliverable all along. Only the
+`*-fixture*` artifacts moved.
+
+`test_results_is_measured_only` fails if a fixture artifact appears at the top
+level or if `results/measured/` returns.
+
+## 064 — Universal refusal is a pipeline-bug signature, not a finding
+
+Four cells read REFUSED in one session for reasons unrelated to any detector: a
+stale guard in `02_validate`, a naming mismatch rendering REFUSED as
+UNVALIDATED, transfer warrants never reaching the ledger, and a missing canary
+refusing everything. Every one produced **conservative-looking output that reads
+as the system working**, which is why looking at it found none of them.
+
+Same signature as the `fpr_hard_negatives` recurrence (040): a fix aimed at one
+instance when the cause was shared. The routing positive control was aimed at
+one instance too.
+
+`test_universal_refusal_is_treated_as_a_pipeline_bug` generalises it, in two
+parts:
+
+1. across the whole matrix, at least one populated cell must reach VALID;
+2. **on the measured envelopes specifically**, at least one cell must be
+   populated at all.
+
+The second part is not redundant. Fault-injecting the naming mismatch — every
+measured cell UNVALIDATED, fixture cells untouched — passes part 1 and fails
+part 2, which is exactly how that bug presented. Both parts were confirmed by
+injecting the fault and watching the test fail, because a check that passes
+whatever it is fed proves nothing (the padding control's own argument).
