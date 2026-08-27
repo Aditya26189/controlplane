@@ -60,4 +60,4 @@ kaggle/run_on_kaggle.ipynb
 # staging limit. cache-*.npz is already covered; the padded eval set is not.
 evalsets/triviaqa-longctx-600.json
 results/kaggle/
-results/measured/*.npz
+results/*.npz
