@@ -1,16 +1,24 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-27T10:17:26+00:00",
-    "git_commit": "efa1291e418d33c90a79aa00bf70ab2161209caf",
+    "timestamp_utc": "2026-08-27T12:56:37+00:00",
+    "git_commit": "dd10bf375082fdea65391512bdf3b7c15987708e",
     "git_branch": "main",
     "dirty": true,
     "dirty_paths": [
       "results_bundle (3)",
-      "round 2/evalsets/canary-20-triviaqa.json",
-      "round 2/klog3.txt",
-      "round 2/notebooks/run_on_kaggle.ipynb",
-      "round 2/scripts/05_canary.py",
-      "round 2/scripts/build_notebooks.py"
+      "round 2/CLAUDE.md",
+      "round 2/DECISIONS.md",
+      "round 2/config.yaml",
+      "round 2/scripts/run.sh",
+      "round 2/src/config.py",
+      "round 2/src/matrix/matrix.py",
+      "round 2/src/model/calibration.py",
+      "round 2/src/model/enums.py",
+      "round 2/src/model/warrant.py",
+      "round 2/src/report/results.py",
+      "round 2/src/validation/calibration.py",
+      "round 2/src/validation/issuance.py",
+      "round 2/tests/test_calibration.py"
     ],
     "dirty_excludes": "results",
     "python": "3.12.10",
@@ -31,7 +39,7 @@
       "cuda_available": false,
       "device_name": "cpu"
     },
-    "config_hash": "b4ca1ec022266551",
+    "config_hash": "4eb9f8bd410cb192",
     "seed": 1729,
     "config": {
       "seed": 1729,
@@ -121,7 +129,8 @@
           0.55
         ],
         "null_control_min_repeats": 8,
-        "null_control_max_repeats": 200
+        "null_control_max_repeats": 200,
+        "calibration_tolerance": 0.25
       },
       "drift": {
         "window_size": 200,
@@ -195,15 +204,15 @@
     }
   },
   "source": {
-    "run_id": "run-7d0f0e0321f6",
+    "run_id": "run-1ad0ce3cdc82",
     "detector_id": "probe-qwen2.5-7b-instruct-T1-mean_pool",
     "variant": "T1-mean_pool",
     "eval_set_id": "triviaqa-600",
     "envelope_id": "sha256:e77c64f908491ad1",
     "data_source": "measured",
-    "started_at": "2026-08-27T10:16:58+00:00",
-    "completed_at": "2026-08-27T10:17:16+00:00",
-    "duration_seconds": 17.26069809985347,
+    "started_at": "2026-08-27T12:56:09+00:00",
+    "completed_at": "2026-08-27T12:56:27+00:00",
+    "duration_seconds": 18.234355499967933,
     "splits": {
       "train": 1200,
       "validation": 600,
@@ -354,7 +363,7 @@
       }
     ],
     "warrant": {
-      "warrant_id": "W-592933e876927d02",
+      "warrant_id": "W-856094a9311dc21f",
       "detector_id": "probe-qwen2.5-7b-instruct-T1-mean_pool",
       "detector_version": "0.1.0",
       "operating_point": {
@@ -366,9 +375,9 @@
         "target_flag_rate": 0.05
       },
       "eval_set_id": "triviaqa-600",
-      "validation_run_id": "run-7d0f0e0321f6",
-      "issued_at": "2026-08-27T10:16:58+00:00",
-      "expires_at": "2026-08-28T10:16:58+00:00",
+      "validation_run_id": "run-1ad0ce3cdc82",
+      "issued_at": "2026-08-27T12:56:09+00:00",
+      "expires_at": "2026-08-28T12:56:09+00:00",
       "metrics": {
         "auroc": {
           "name": "auroc",
@@ -528,21 +537,40 @@
       "status": "VALID",
       "kappa": null,
       "status_reason": null,
-      "superseded_by": null
+      "superseded_by": null,
+      "calibration": {
+        "status": "CALIBRATED",
+        "target_flag_rate": 0.05,
+        "realised": {
+          "name": "flag_rate",
+          "value": 0.04,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.025,
+          "ci_high": 0.056666666666666664,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "n_to_detect": 1441,
+        "detail": "target 0.0500 lies inside the realised interval [0.0250, 0.0567] at n=600, so drift is not shown. Point estimate 0.0400 is 0.80x the target. But the interval extends outside the +/-25% band [0.0375, 0.0625], so a deviation worth acting on is NOT ruled out; detecting one needs n>=1441.",
+        "tolerance": 0.25,
+        "underpowered": true
+      }
     },
     "warrant_status": "VALID",
     "status_reason": null
   },
   "target": {
-    "run_id": "run-8464eb4dca03",
+    "run_id": "run-88c32511337c",
     "detector_id": "probe-qwen2.5-7b-instruct-T1-mean_pool",
     "variant": "T1-mean_pool",
     "eval_set_id": "triviaqa-longctx-600",
     "envelope_id": "sha256:c4733cda255e55d9",
     "data_source": "measured",
-    "started_at": "2026-08-27T10:17:16+00:00",
-    "completed_at": "2026-08-27T10:17:25+00:00",
-    "duration_seconds": 8.767633699811995,
+    "started_at": "2026-08-27T12:56:28+00:00",
+    "completed_at": "2026-08-27T12:56:36+00:00",
+    "duration_seconds": 8.43993390002288,
     "splits": {
       "train": 0,
       "validation": 0,
@@ -693,7 +721,7 @@
       }
     ],
     "warrant": {
-      "warrant_id": "W-1dc01a0b8f75a555",
+      "warrant_id": "W-f6b375ddff289339",
       "detector_id": "probe-qwen2.5-7b-instruct-T1-mean_pool",
       "detector_version": "0.1.0",
       "operating_point": {
@@ -705,9 +733,9 @@
         "target_flag_rate": 0.05
       },
       "eval_set_id": "triviaqa-longctx-600",
-      "validation_run_id": "run-8464eb4dca03",
-      "issued_at": "2026-08-27T10:17:16+00:00",
-      "expires_at": "2026-08-28T10:17:16+00:00",
+      "validation_run_id": "run-88c32511337c",
+      "issued_at": "2026-08-27T12:56:28+00:00",
+      "expires_at": "2026-08-28T12:56:28+00:00",
       "metrics": {
         "auroc": {
           "name": "auroc",
@@ -867,7 +895,26 @@
       "status": "REFUSED",
       "kappa": null,
       "status_reason": "auroc_lower_ci: measured 0.4546, required > 0.55",
-      "superseded_by": null
+      "superseded_by": null,
+      "calibration": {
+        "status": "DRIFTED",
+        "target_flag_rate": 0.05,
+        "realised": {
+          "name": "flag_rate",
+          "value": 0.0,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.0,
+          "ci_high": 0.006129271330669258,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "Clopper-Pearson exact (0/600 events); the bootstrap degenerated to a zero-width interval at the boundary"
+        },
+        "n_to_detect": 1441,
+        "detail": "target 0.0500 lies outside the realised interval [0.0000, 0.0061] at n=600: the threshold underspends its budget and the operating point is no longer the operating point.",
+        "tolerance": 0.25,
+        "underpowered": false
+      }
     },
     "warrant_status": "REFUSED",
     "status_reason": "auroc_lower_ci: measured 0.4546, required > 0.55"
