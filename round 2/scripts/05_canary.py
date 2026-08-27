@@ -89,63 +89,109 @@ def main(argv: list[str] | None = None) -> int:
 
     splits = split_by_question(evalset, seed=config.seed)
     train = np.asarray(splits[TRAIN])
-    matrix = cache.matrix(args.variant)
+    validation_idx = np.asarray(splits[VALIDATION])
 
-    # C is selected on validation, exactly as validate() does. Taking
-    # C_grid[0] instead would fit a different probe from the validated one, and
-    # a canary chosen by a probe nobody runs is a tripwire for the wrong thing.
-    validation = np.asarray(splits[VALIDATION])
-    best_c, best_auroc = None, -1.0
-    for candidate in config.probe.C_grid:
-        trial = LinearProbe(
-            candidate,
+    # A canary must be catchable by EVERY variant in the ladder, not just the
+    # declared one. Items chosen by one aggregation's score are not necessarily
+    # in another's top band: a canary built on last_token alone was caught 20/20
+    # by last_token and 15/20 by mean_pool, refusing two of three ladder rungs
+    # for a reason that had nothing to do with their quality. "Unambiguous"
+    # means unambiguous to all of them.
+    scores_by_variant, thresholds, chosen_c, val_auroc = {}, {}, {}, {}
+    for variant in sorted(cache.variants):
+        matrix = cache.matrix(variant)
+        best_c, best_auroc = None, -1.0
+        for candidate in config.probe.C_grid:
+            trial = LinearProbe(
+                candidate,
+                class_weight=config.probe.class_weight,
+                standardize=config.probe.standardize,
+                seed=config.seed,
+            ).fit(matrix, cache.labels, train)
+            value = roc_auc(
+                cache.labels[validation_idx], trial.score(matrix)[validation_idx]
+            )
+            if value > best_auroc:
+                best_c, best_auroc = candidate, value
+        probe = LinearProbe(
+            best_c,
             class_weight=config.probe.class_weight,
             standardize=config.probe.standardize,
             seed=config.seed,
         ).fit(matrix, cache.labels, train)
-        auroc = roc_auc(cache.labels[validation], trial.score(matrix)[validation])
-        if auroc > best_auroc:
-            best_c, best_auroc = candidate, auroc
-    _LOG.info("selected C=%g on validation (AUROC %.4f)", best_c, best_auroc)
+        scores = probe.score(matrix)
+        scores_by_variant[variant] = scores
+        thresholds[variant] = float(
+            np.quantile(scores[validation_idx], 1.0 - args.target_flag_rate)
+        )
+        chosen_c[variant] = best_c
+        val_auroc[variant] = best_auroc
+        _LOG.info(
+            "%s: C=%g on validation (AUROC %.4f), threshold %.4f",
+            variant, best_c, best_auroc, thresholds[variant],
+        )
 
-    probe = LinearProbe(
-        best_c,
-        class_weight=config.probe.class_weight,
-        standardize=config.probe.standardize,
-        seed=config.seed,
-    ).fit(matrix, cache.labels, train)
-    scores = probe.score(matrix)
+    # A variant that cannot clear the AUROC floor is refused on merit whatever
+    # the canary says, so letting it constrain the canary lets a near-chance
+    # detector break the tripwire for the ones that work. Excluded from the
+    # intersection, loudly. This is a stated rule, not a relaxation chosen to
+    # make a case pass: the excluded variant's warrant outcome is unchanged.
+    floor = config.validation.min_auroc_lower_ci
+    binding = [v for v in sorted(cache.variants) if val_auroc[v] > floor]
+    excluded = [v for v in sorted(cache.variants) if v not in binding]
+    for variant in excluded:
+        _LOG.warning(
+            "%s: validation AUROC %.4f does not clear the %.2f floor, so it "
+            "cannot hold a warrant regardless of the canary. Excluded from the "
+            "canary constraint; it would otherwise veto items every working "
+            "variant catches.",
+            variant, val_auroc[variant], floor,
+        )
+    if not binding:
+        raise SystemExit(
+            "no variant clears the %.2f AUROC floor on validation, so no "
+            "canary can be meaningful: every warrant is refused on merit."
+            % floor
+        )
 
-    # The operating point the canary must clear, derived the same way the
-    # validated run derives it: the flag-rate budget applied to validation.
-    threshold = float(
-        np.quantile(scores[validation], 1.0 - args.target_flag_rate)
-    )
-
-    # Incorrect items only, from train only, ranked by the probe's own score.
     incorrect = train[cache.labels[train] == 1]
     if len(incorrect) < args.n_items:
         raise SystemExit(
             f"only {len(incorrect)} incorrect items in train; need {args.n_items}"
         )
-    chosen = incorrect[np.argsort(-scores[incorrect])[: args.n_items]]
-    chosen = np.sort(chosen)
 
-    # Refuse to freeze a tripwire that is already tripped. canary_control
-    # requires recall == 1.0, so an item below the threshold makes the control
-    # fail on every future run for a reason that has nothing to do with the
-    # run -- which is the failure this canary exists to end, reintroduced.
-    below = chosen[scores[chosen] < threshold]
-    if len(below):
+    # Eligible = clears every variant's threshold. Ranked by the WORST margin
+    # across variants, so the ones kept are the ones no variant finds marginal.
+    margins = np.stack([
+        scores_by_variant[v][incorrect] - thresholds[v] for v in binding
+    ])
+    worst = margins.min(axis=0)
+    eligible = incorrect[worst > 0]
+    if len(eligible) < args.n_items:
         raise SystemExit(
-            "%d of %d chosen items score below the operating threshold %.4f "
-            "(lowest %.4f). A canary that cannot pass its own control is worse "
-            "than none: it refuses every warrant and says nothing."
-            % (len(below), len(chosen), threshold, float(scores[chosen].min()))
+            "only %d of %d incorrect train items clear every binding "
+            "variant's threshold (%s); need %d. A canary that one rung of the "
+            "ladder cannot catch refuses that rung on every run for a reason "
+            "unrelated to it."
+            % (len(eligible), len(incorrect), ", ".join(binding), args.n_items)
         )
+    order = np.argsort(-worst[worst > 0])[: args.n_items]
+    chosen = np.sort(eligible[order])
+
+    for variant in binding:
+        caught = int(
+            (scores_by_variant[variant][chosen] >= thresholds[variant]).sum()
+        )
+        if caught != len(chosen):
+            raise SystemExit(
+                "%s catches only %d/%d chosen items. Refusing to freeze a "
+                "tripwire that is already tripped for one rung."
+                % (variant, caught, len(chosen))
+            )
     _LOG.info(
-        "all %d items clear the threshold %.4f (margin %.4f at the closest)",
-        len(chosen), threshold, float(scores[chosen].min() - threshold),
+        "all %d items clear all %d binding variants (%s); worst margin %.4f",
+        len(chosen), len(binding), ", ".join(binding),
+        float(worst[worst > 0][order].min()),
     )
 
     items = tuple(evalset.items[int(i)] for i in chosen)
@@ -157,9 +203,11 @@ def main(argv: list[str] | None = None) -> int:
             "derived_from": evalset.eval_set_id,
             "derived_from_hash": evalset.content_hash,
             "split_used": "train",
-            "selected_by": f"highest probe score on {args.variant}",
-            "C": best_c,
-            "threshold_cleared": threshold,
+            "selected_by": "worst-margin-across-all-variants, all positive",
+            "variants_required_to_catch": binding,
+            "variants_excluded_below_auroc_floor": excluded,
+            "C_per_variant": chosen_c,
+            "thresholds_cleared": thresholds,
             "n_items": int(args.n_items),
             "purpose": (
                 "regression tripwire: recall must be 1.0 at the frozen "

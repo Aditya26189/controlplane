@@ -1,0 +1,239 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-27T10:11:13+00:00",
+    "git_commit": "efa1291e418d33c90a79aa00bf70ab2161209caf",
+    "git_branch": "main",
+    "dirty": true,
+    "dirty_paths": [
+      "results_bundle (3)",
+      "round 2/klog3.txt",
+      "round 2/notebooks/run_on_kaggle.ipynb",
+      "round 2/scripts/build_notebooks.py"
+    ],
+    "dirty_excludes": "results",
+    "python": "3.12.10",
+    "libraries": {
+      "torch": "2.9.1+cpu",
+      "transformers": "5.8.0",
+      "scikit-learn": "1.7.2",
+      "numpy": "2.2.6",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "statsmodels": "0.14.6",
+      "presidio-analyzer": null,
+      "bitsandbytes": "0.49.2"
+    },
+    "device": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
+      "cuda_available": false,
+      "device_name": "cpu"
+    },
+    "config_hash": "b4ca1ec022266551",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "workload": {
+        "name": "enterprise-3pct",
+        "monthly_interactions": 200000,
+        "base_error_rate": 0.03,
+        "review_minutes_per_item": 3.0,
+        "reviewer_monthly_cost_inr": 85000.0,
+        "reviewer_productive_hours": 160.0,
+        "measured_tpr": 0.1416,
+        "measured_fpr": 0.011
+      },
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ],
+        "prefill_chunk_tokens": 2048
+      },
+      "probe": {
+        "aggregations": [
+          "mean_pool",
+          "max_rolling_means",
+          "last_token"
+        ],
+        "rolling_window": 64,
+        "rolling_stride": 32,
+        "standardize": true,
+        "class_weight": "balanced",
+        "C_grid": [
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "evalsets": [
+        {
+          "id": "triviaqa-600",
+          "pad_tokens": null
+        },
+        {
+          "id": "triviaqa-longctx-600",
+          "pad_tokens": [
+            4000,
+            16000
+          ]
+        },
+        {
+          "id": "hinglish-pii-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "hard-negatives-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "canary-20",
+          "pad_tokens": null
+        }
+      ],
+      "validation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_n_test": 200,
+        "min_auroc_lower_ci": 0.55,
+        "warrant_ttl_hours": 24,
+        "controls": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature",
+          "canary",
+          "determinism"
+        ],
+        "null_control_band": [
+          0.45,
+          0.55
+        ],
+        "null_control_min_repeats": 8,
+        "null_control_max_repeats": 200
+      },
+      "drift": {
+        "window_size": 200,
+        "psi_stable": 0.1,
+        "psi_significant": 0.25,
+        "mmd_permutations": 500,
+        "features": [
+          "token_length",
+          "script_mix",
+          "embedding_centroid_distance",
+          "reference_perplexity",
+          "category_mix"
+        ]
+      },
+      "sampling": {
+        "allocation_month_one": "proportional",
+        "allocation_thereafter": "neyman",
+        "expected_design_effect": 0.67,
+        "score_bands": 4,
+        "double_label_fraction": 0.1,
+        "recall_margin_tiers": [
+          0.05,
+          0.02
+        ],
+        "blind_queue": true
+      },
+      "policy": {
+        "engine": "opa",
+        "fail_closed_on_missing_warrant": true,
+        "weighted_error": {
+          "w_fpr_benign": 50.0,
+          "w_fnr": 5.0,
+          "w_fpr_hard_negative": 2.0
+        }
+      },
+      "profiles": {
+        "customer_support": {
+          "inline_budget_ms": 200,
+          "min_recall": 0.1,
+          "max_fpr": 0.02
+        },
+        "internal_knowledge": {
+          "inline_budget_ms": 500,
+          "min_recall": 0.25,
+          "max_fpr": 0.05
+        },
+        "decision_support": {
+          "inline_budget_ms": 2000,
+          "min_recall": 0.5,
+          "max_fpr": 0.1
+        }
+      },
+      "detectors": {
+        "presidio_configs": [
+          "stock",
+          "enabled",
+          "enabled_plus_custom"
+        ],
+        "qwen3guard": "Qwen/Qwen3Guard-Gen-0.6B"
+      },
+      "store": {
+        "path": "results/controlplane.db",
+        "retention_days": 400,
+        "hash_chain": true
+      },
+      "paths": {
+        "results_dir": "results",
+        "evalsets_dir": "evalsets",
+        "policies_dir": "policies"
+      }
+    }
+  },
+  "round1": {
+    "auroc": 0.8551414437908573,
+    "ci": [
+      0.8216804377990431,
+      0.8878182998424411
+    ],
+    "recall": 0.14163090128755365,
+    "flag_rate": 0.06166666666666667,
+    "base_rate": 0.3883333333333333
+  },
+  "round2": {
+    "T1-last_token": {
+      "C": 0.001,
+      "val_auroc": 0.8201303289628641,
+      "test_auroc": 0.8255524136312324,
+      "flag_rate_at_round1_budget": 0.056666666666666664,
+      "recall_at_round1_budget": 0.11191335740072202,
+      "precision_at_round1_budget": 0.9117647058823529,
+      "lift_at_round1_budget": 1.9749416011892122
+    },
+    "T1-max_rolling_means": {
+      "C": 0.001,
+      "val_auroc": 0.7711728485066006,
+      "test_auroc": 0.7853382660303339,
+      "flag_rate_at_round1_budget": 0.055,
+      "recall_at_round1_budget": 0.11191335740072202,
+      "precision_at_round1_budget": 0.9393939393939394,
+      "lift_at_round1_budget": 2.0347883163767637
+    },
+    "T1-mean_pool": {
+      "C": 0.001,
+      "val_auroc": 0.7718121558115277,
+      "test_auroc": 0.7854612108951504,
+      "flag_rate_at_round1_budget": 0.055,
+      "recall_at_round1_budget": 0.11191335740072202,
+      "precision_at_round1_budget": 0.9393939393939394,
+      "lift_at_round1_budget": 2.0347883163767637
+    }
+  },
+  "round2_base_rate": 0.46166666666666667,
+  "declared_variant": "T1-last_token",
+  "branch": "A",
+  "branch_meaning": "inside Round 1's CI [0.8217, 0.8878]: the aggregation attribution in 062 is CONFIRMED, Round 1 reproduces on Round 2's pipeline, and the suspended ceiling framing becomes sayable.",
+  "preregistered_in": "DECISIONS.md 065"
+}

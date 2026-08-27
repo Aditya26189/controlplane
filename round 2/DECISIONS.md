@@ -1333,7 +1333,7 @@ were measured under.
 precision, base rate, lift and the ceiling, or the number invites exactly the
 reading this entry exists to correct.
 
-**SUSPENDED pending 065.** The 94.0%-vs-89.2%-of-ceiling framing above compares
+**RELEASED by 066 (branch A).** Was suspended pending 065: The 94.0%-vs-89.2%-of-ceiling framing above compares
 Round 2's best *pooled* aggregation against Round 1's `last_token`. That is the
 cross-detector comparison this entry itself establishes was never valid, so the
 framing is not usable until `last_token` is measured on Round 2's pipeline. It
@@ -1457,3 +1457,79 @@ That is the whole point of writing this down now.
 The 94.0%-of-ceiling framing in 062 is **suspended**. It currently compares
 Round 2's best pooled aggregation against Round 1's `last_token`, which is the
 comparison this entry exists to establish was never valid.
+
+## 066 — RESULT: branch A. Round 1 reproduces, and last_token survives the shift
+
+The re-extraction pre-registered in 065 ran: 2400 questions plus the 600-item
+long-context envelope, all three aggregations in one session, config
+`b4ca1ec022266551`.
+
+### The branch, decided by the classifier that predates the data
+
+```
+T1-last_token          test AUROC 0.825552
+Round 1 CI             [0.821680, 0.887818]
+margin above floor     +0.003872
+```
+
+**BRANCH A.** The aggregation attribution in 062 is confirmed: Round 2 had been
+measuring pooled features against a last-token result, and every cross-round
+comparison before this was between two different detectors.
+
+**It clears the interval by 0.0039**, and sits 0.0296 below Round 1's point
+estimate of 0.8551. Inside is inside and the rule was fixed in advance, but a
+reviewer will compute that margin and it should not be found rather than
+offered. What the result licenses is "Round 1 reproduces within its published
+interval", not "Round 1 reproduces exactly".
+
+At Round 1's measured flag rate, on Round 2's test split:
+
+| variant | AUROC | f | recall | precision | lift |
+|---|---|---|---|---|---|
+| `last_token` | 0.8256 | 0.0567 | 0.1119 | 0.9118 | 1.975 |
+| `max_rolling_means` | 0.7853 | 0.0550 | 0.1119 | 0.9394 | 2.035 |
+| `mean_pool` | 0.7855 | 0.0550 | 0.1119 | 0.9394 | 2.035 |
+
+**The declared variant does not win on lift.** `last_token` ranks best and lifts
+worst of the three at this operating point — it flagged 34 items against 33 for
+the same 31 true positives. It is still what Beat 4 reports, because that was
+declared in 065 before any of these numbers existed. Identical recall across all
+three is a small-integer collision at n=600, not an error: the AUROCs differ, so
+the scores differ.
+
+The ceiling framing suspended in 062 is **released**: the comparison is now
+like-for-like.
+
+### The transfer result, which changes Beat 4
+
+| variant | source | target | target warrant |
+|---|---|---|---|
+| `last_token` | 0.826 [0.793, 0.857] | **0.813 [0.780, 0.845]** | **VALID** R=0.13 |
+| `max_rolling_means` | 0.785 | 0.555 [0.511, 0.602] | REFUSED |
+| `mean_pool` | 0.785 | 0.502 [0.455, 0.548] | REFUSED |
+
+**The last-token aggregation survives the long-context shift almost intact**,
+and holds a valid warrant on the shifted envelope at a *higher* recall than on
+the source. Both pooled aggregations collapse — including `max_rolling_means`,
+which was built specifically to survive it.
+
+This supersedes the reading in 059 that "both aggregations fail the envelope
+shift". That was true of the two measured then, and the one that does not fail
+was absent from the config at the time — the same omission 062 records. The
+correct statement is: **pooled aggregations collapse under long-context shift;
+the question-time last-token activation does not.**
+
+Beat 4 becomes the routing story with measured numbers rather than a universal
+failure: three detectors, one shift, two refused, one holding, and the matrix
+naming which.
+
+### The canary had to be rebuilt, and the first version was wrong
+
+Built on `last_token` alone, it was caught 20/20 by `last_token` and 15/20 by
+`mean_pool`, refusing two of three ladder rungs on a control unrelated to their
+quality — the ablation made meaningless by its own tripwire.
+
+A canary is a property of the pipeline, not of one aggregation. Items are now
+selected to clear **every** variant's threshold, ranked by the worst margin
+across variants, and 05_canary refuses to freeze one any rung cannot catch.
+Worst margin on the frozen set: 0.0131. All three rungs now issue.

@@ -607,12 +607,26 @@ the envelope shift the drift story rests on.
 import subprocess, sys
 
 STAGES = [
+    # The canary first: canary_control fails CLOSED without one, so every
+    # warrant below would be refused on that control alone.
+    ["scripts/05_canary.py", "--config", "config.yaml",
+     "--cache", "results/cache-triviaqa-600.npz",
+     "--eval-set", "triviaqa-600", "--variant", "T1-last_token"],
+    # Validate ONLY on the envelope that has a train split. 02_validate FITS a
+    # probe; triviaqa-longctx-600 is test-only by design (DECISIONS 051), so
+    # running it there raises "train_index is empty" -- and had it not raised,
+    # it would have refitted on long context and answered the wrong question.
     ["scripts/02_validate.py", "--config", "config.yaml",
      "--cache", "results/cache-triviaqa-600.npz",
      "--eval-set", "triviaqa-600"],
-    ["scripts/02_validate.py", "--config", "config.yaml",
-     "--cache", "results/cache-triviaqa-longctx-600.npz",
-     "--eval-set", "triviaqa-longctx-600"],
+    # The long-context envelope is a TRANSFER: score the already-fitted probe.
+    ["scripts/04_transfer.py", "--config", "config.yaml",
+     "--source-cache", "results/cache-triviaqa-600.npz",
+     "--target-cache", "results/cache-triviaqa-longctx-600.npz"],
+    # The pre-registered branch rule (DECISIONS 065), executed not applied.
+    ["scripts/06_reconcile.py", "--config", "config.yaml",
+     "--cache", "results/cache-triviaqa-600.npz",
+     "--eval-set", "triviaqa-600"],
     ["scripts/03_matrix.py", "--config", "config.yaml"],
 ]
 for stage in STAGES:

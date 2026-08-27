@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-27T10:16:58+00:00",
+    "timestamp_utc": "2026-08-27T10:16:31+00:00",
     "git_commit": "efa1291e418d33c90a79aa00bf70ab2161209caf",
     "git_branch": "main",
     "dirty": true,
@@ -195,15 +195,15 @@
     }
   },
   "source": {
-    "run_id": "run-80e6beb3b8a1",
-    "detector_id": "probe-qwen2.5-7b-instruct-T1-max_rolling_means",
-    "variant": "T1-max_rolling_means",
+    "run_id": "run-adc0cb85509b",
+    "detector_id": "probe-qwen2.5-7b-instruct-T1-last_token",
+    "variant": "T1-last_token",
     "eval_set_id": "triviaqa-600",
     "envelope_id": "sha256:e77c64f908491ad1",
     "data_source": "measured",
-    "started_at": "2026-08-27T10:16:31+00:00",
-    "completed_at": "2026-08-27T10:16:49+00:00",
-    "duration_seconds": 17.53689039987512,
+    "started_at": "2026-08-27T10:16:03+00:00",
+    "completed_at": "2026-08-27T10:16:21+00:00",
+    "duration_seconds": 17.815633799880743,
     "splits": {
       "train": 1200,
       "validation": 600,
@@ -215,11 +215,11 @@
       "C": 0.001,
       "selected_on": "validation",
       "selection_scores": {
-        "0.0001": 0.7557285299296762,
-        "0.001": 0.7711728485066006,
-        "0.01": 0.751062708195471,
-        "0.1": 0.7350800255722922,
-        "1": 0.7293374757455782
+        "0.0001": 0.8146569611592772,
+        "0.001": 0.8201303289628641,
+        "0.01": 0.7971376978207472,
+        "0.1": 0.7797754573290414,
+        "1": 0.7693783016857524
       },
       "n_train": 1200,
       "n_features": 3584,
@@ -228,8 +228,8 @@
     },
     "operating_point": {
       "operating_point_id": "P-conservative",
-      "detector_id": "probe-qwen2.5-7b-instruct-T1-max_rolling_means",
-      "threshold": 0.9023906031996711,
+      "detector_id": "probe-qwen2.5-7b-instruct-T1-last_token",
+      "threshold": 0.9403371394300616,
       "selected_on": "validation",
       "objective": "flag_rate_budget=0.05",
       "target_flag_rate": 0.05
@@ -237,32 +237,32 @@
     "metrics": {
       "auroc": {
         "name": "auroc",
-        "value": 0.7853382660303339,
+        "value": 0.8255524136312324,
         "kind": "ESTIMATED",
         "n": 600,
-        "ci_low": 0.7501286526275482,
-        "ci_high": 0.8207605168283456,
+        "ci_low": 0.793354746771496,
+        "ci_high": 0.8567162724940566,
         "ci_level": 0.95,
         "unit": "ratio",
         "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
       },
       "recall": {
         "name": "recall",
-        "value": 0.08303249097472924,
+        "value": 0.07942238267148015,
         "kind": "ESTIMATED",
         "n": 600,
-        "ci_low": 0.0535666624300966,
-        "ci_high": 0.11744295583001883,
+        "ci_low": 0.04958385655462431,
+        "ci_high": 0.11151877240822096,
         "ci_level": 0.95,
         "unit": "rate",
         "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
       },
       "precision": {
         "name": "precision",
-        "value": 0.92,
+        "value": 0.88,
         "kind": "ESTIMATED",
         "n": 600,
-        "ci_low": 0.7998275862068968,
+        "ci_low": 0.75,
         "ci_high": 1.0,
         "ci_level": 0.95,
         "unit": "rate",
@@ -273,7 +273,7 @@
         "value": 0.041666666666666664,
         "kind": "ESTIMATED",
         "n": 600,
-        "ci_low": 0.028291666666666705,
+        "ci_low": 0.02666666666666667,
         "ci_high": 0.058333333333333334,
         "ci_level": 0.95,
         "unit": "rate",
@@ -281,7 +281,7 @@
       },
       "confirmed_errors": {
         "name": "confirmed_errors",
-        "value": 23.0,
+        "value": 22.0,
         "kind": "EXACT",
         "n": 25,
         "ci_low": null,
@@ -295,11 +295,11 @@
       "extra": [
         {
           "name": "fpr",
-          "value": 0.006191950464396285,
+          "value": 0.009287925696594427,
           "kind": "ESTIMATED",
           "n": 600,
           "ci_low": 0.0,
-          "ci_high": 0.015723270440251572,
+          "ci_high": 0.020663046393134876,
           "ci_level": 0.95,
           "unit": "rate",
           "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
@@ -319,10 +319,10 @@
       {
         "control": "label_shuffle",
         "passed": true,
-        "measured": 0.49993971444273716,
+        "measured": 0.5043840218037439,
         "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
-        "margin": 0.04993971444273715,
-        "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.4999. 8 repeats; null spread sd 0.0189, SE of mean 0.0067; band +/-0.05 is +/-7.49 SE; measured spread is 0.8x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal.",
+        "margin": 0.04561597819625618,
+        "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.5044. 8 repeats; null spread sd 0.0164, SE of mean 0.0058; band +/-0.05 is +/-8.64 SE; measured spread is 0.7x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal.",
         "applicable": true
       },
       {
@@ -340,7 +340,7 @@
         "measured": 1.0,
         "expected": "recall == 1.0",
         "margin": 0.0,
-        "detail": "20/20 canary positives caught at threshold 0.902391",
+        "detail": "20/20 canary positives caught at threshold 0.940337",
         "applicable": true
       },
       {
@@ -354,50 +354,50 @@
       }
     ],
     "warrant": {
-      "warrant_id": "W-d2550a59c6f02ef1",
-      "detector_id": "probe-qwen2.5-7b-instruct-T1-max_rolling_means",
+      "warrant_id": "W-cb425792d0cbcfd0",
+      "detector_id": "probe-qwen2.5-7b-instruct-T1-last_token",
       "detector_version": "0.1.0",
       "operating_point": {
         "operating_point_id": "P-conservative",
-        "detector_id": "probe-qwen2.5-7b-instruct-T1-max_rolling_means",
-        "threshold": 0.9023906031996711,
+        "detector_id": "probe-qwen2.5-7b-instruct-T1-last_token",
+        "threshold": 0.9403371394300616,
         "selected_on": "validation",
         "objective": "flag_rate_budget=0.05",
         "target_flag_rate": 0.05
       },
       "eval_set_id": "triviaqa-600",
-      "validation_run_id": "run-80e6beb3b8a1",
-      "issued_at": "2026-08-27T10:16:31+00:00",
-      "expires_at": "2026-08-28T10:16:31+00:00",
+      "validation_run_id": "run-adc0cb85509b",
+      "issued_at": "2026-08-27T10:16:03+00:00",
+      "expires_at": "2026-08-28T10:16:03+00:00",
       "metrics": {
         "auroc": {
           "name": "auroc",
-          "value": 0.7853382660303339,
+          "value": 0.8255524136312324,
           "kind": "ESTIMATED",
           "n": 600,
-          "ci_low": 0.7501286526275482,
-          "ci_high": 0.8207605168283456,
+          "ci_low": 0.793354746771496,
+          "ci_high": 0.8567162724940566,
           "ci_level": 0.95,
           "unit": "ratio",
           "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
         },
         "recall": {
           "name": "recall",
-          "value": 0.08303249097472924,
+          "value": 0.07942238267148015,
           "kind": "ESTIMATED",
           "n": 600,
-          "ci_low": 0.0535666624300966,
-          "ci_high": 0.11744295583001883,
+          "ci_low": 0.04958385655462431,
+          "ci_high": 0.11151877240822096,
           "ci_level": 0.95,
           "unit": "rate",
           "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
         },
         "precision": {
           "name": "precision",
-          "value": 0.92,
+          "value": 0.88,
           "kind": "ESTIMATED",
           "n": 600,
-          "ci_low": 0.7998275862068968,
+          "ci_low": 0.75,
           "ci_high": 1.0,
           "ci_level": 0.95,
           "unit": "rate",
@@ -408,7 +408,7 @@
           "value": 0.041666666666666664,
           "kind": "ESTIMATED",
           "n": 600,
-          "ci_low": 0.028291666666666705,
+          "ci_low": 0.02666666666666667,
           "ci_high": 0.058333333333333334,
           "ci_level": 0.95,
           "unit": "rate",
@@ -416,7 +416,7 @@
         },
         "confirmed_errors": {
           "name": "confirmed_errors",
-          "value": 23.0,
+          "value": 22.0,
           "kind": "EXACT",
           "n": 25,
           "ci_low": null,
@@ -430,11 +430,11 @@
         "extra": [
           {
             "name": "fpr",
-            "value": 0.006191950464396285,
+            "value": 0.009287925696594427,
             "kind": "ESTIMATED",
             "n": 600,
             "ci_low": 0.0,
-            "ci_high": 0.015723270440251572,
+            "ci_high": 0.020663046393134876,
             "ci_level": 0.95,
             "unit": "rate",
             "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
@@ -490,10 +490,10 @@
         {
           "control": "label_shuffle",
           "passed": true,
-          "measured": 0.49993971444273716,
+          "measured": 0.5043840218037439,
           "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
-          "margin": 0.04993971444273715,
-          "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.4999. 8 repeats; null spread sd 0.0189, SE of mean 0.0067; band +/-0.05 is +/-7.49 SE; measured spread is 0.8x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal.",
+          "margin": 0.04561597819625618,
+          "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.5044. 8 repeats; null spread sd 0.0164, SE of mean 0.0058; band +/-0.05 is +/-8.64 SE; measured spread is 0.7x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal.",
           "applicable": true
         },
         {
@@ -511,7 +511,7 @@
           "measured": 1.0,
           "expected": "recall == 1.0",
           "margin": 0.0,
-          "detail": "20/20 canary positives caught at threshold 0.902391",
+          "detail": "20/20 canary positives caught at threshold 0.940337",
           "applicable": true
         },
         {
@@ -534,15 +534,15 @@
     "status_reason": null
   },
   "target": {
-    "run_id": "run-193444fa7cc5",
-    "detector_id": "probe-qwen2.5-7b-instruct-T1-max_rolling_means",
-    "variant": "T1-max_rolling_means",
+    "run_id": "run-8c8993b9c336",
+    "detector_id": "probe-qwen2.5-7b-instruct-T1-last_token",
+    "variant": "T1-last_token",
     "eval_set_id": "triviaqa-longctx-600",
     "envelope_id": "sha256:c4733cda255e55d9",
     "data_source": "measured",
-    "started_at": "2026-08-27T10:16:49+00:00",
-    "completed_at": "2026-08-27T10:16:58+00:00",
-    "duration_seconds": 8.439495600061491,
+    "started_at": "2026-08-27T10:16:22+00:00",
+    "completed_at": "2026-08-27T10:16:30+00:00",
+    "duration_seconds": 8.494688400067389,
     "splits": {
       "train": 0,
       "validation": 0,
@@ -554,11 +554,11 @@
       "C": 0.001,
       "selected_on": "validation",
       "selection_scores": {
-        "0.0001": 0.7557285299296762,
-        "0.001": 0.7711728485066006,
-        "0.01": 0.751062708195471,
-        "0.1": 0.7350800255722922,
-        "1": 0.7293374757455782
+        "0.0001": 0.8146569611592772,
+        "0.001": 0.8201303289628641,
+        "0.01": 0.7971376978207472,
+        "0.1": 0.7797754573290414,
+        "1": 0.7693783016857524
       },
       "n_train": 1200,
       "n_features": 3584,
@@ -567,8 +567,8 @@
     },
     "operating_point": {
       "operating_point_id": "P-conservative",
-      "detector_id": "probe-qwen2.5-7b-instruct-T1-max_rolling_means",
-      "threshold": 0.9023906031996711,
+      "detector_id": "probe-qwen2.5-7b-instruct-T1-last_token",
+      "threshold": 0.9403371394300616,
       "selected_on": "validation",
       "objective": "flag_rate_budget=0.05",
       "target_flag_rate": 0.05
@@ -576,53 +576,53 @@
     "metrics": {
       "auroc": {
         "name": "auroc",
-        "value": 0.5552972471527087,
+        "value": 0.8134814632674274,
         "kind": "ESTIMATED",
         "n": 600,
-        "ci_low": 0.5105294773988082,
-        "ci_high": 0.6015260731169553,
+        "ci_low": 0.7796776757273162,
+        "ci_high": 0.8446795851411556,
         "ci_level": 0.95,
         "unit": "ratio",
         "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
       },
       "recall": {
         "name": "recall",
-        "value": 0.5848375451263538,
+        "value": 0.1263537906137184,
         "kind": "ESTIMATED",
         "n": 600,
-        "ci_low": 0.5266761167472247,
-        "ci_high": 0.6420793989308714,
+        "ci_low": 0.09025202898944112,
+        "ci_high": 0.16981504959355656,
         "ci_level": 0.95,
         "unit": "rate",
         "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
       },
       "precision": {
         "name": "precision",
-        "value": 0.49693251533742333,
+        "value": 0.8974358974358975,
         "kind": "ESTIMATED",
         "n": 600,
-        "ci_low": 0.44735442329227326,
-        "ci_high": 0.5498685418180427,
+        "ci_low": 0.7941176470588235,
+        "ci_high": 0.9782608695652174,
         "ci_level": 0.95,
         "unit": "rate",
         "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
       },
       "flag_rate": {
         "name": "flag_rate",
-        "value": 0.5433333333333333,
+        "value": 0.065,
         "kind": "ESTIMATED",
         "n": 600,
-        "ci_low": 0.505,
-        "ci_high": 0.5833333333333334,
+        "ci_low": 0.04833333333333333,
+        "ci_high": 0.08504166666666664,
         "ci_level": 0.95,
         "unit": "rate",
         "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
       },
       "confirmed_errors": {
         "name": "confirmed_errors",
-        "value": 162.0,
+        "value": 35.0,
         "kind": "EXACT",
-        "n": 326,
+        "n": 39,
         "ci_low": null,
         "ci_high": null,
         "ci_level": null,
@@ -634,11 +634,11 @@
       "extra": [
         {
           "name": "fpr",
-          "value": 0.5077399380804953,
+          "value": 0.01238390092879257,
           "kind": "ESTIMATED",
           "n": 600,
-          "ci_low": 0.4548052620576945,
-          "ci_high": 0.5596422018348624,
+          "ci_low": 0.0029583616972997506,
+          "ci_high": 0.02500393081761006,
           "ci_level": 0.95,
           "unit": "rate",
           "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
@@ -658,10 +658,10 @@
       {
         "control": "label_shuffle",
         "passed": true,
-        "measured": 0.49993971444273716,
+        "measured": 0.5043840218037439,
         "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
-        "margin": 0.04993971444273715,
-        "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.4999. 8 repeats; null spread sd 0.0189, SE of mean 0.0067; band +/-0.05 is +/-7.49 SE; measured spread is 0.8x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal. [carried from the source validation on triviaqa-600: this control describes the fitted probe, which is unchanged by the transfer]",
+        "margin": 0.04561597819625618,
+        "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.5044. 8 repeats; null spread sd 0.0164, SE of mean 0.0058; band +/-0.05 is +/-8.64 SE; measured spread is 0.7x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal. [carried from the source validation on triviaqa-600: this control describes the fitted probe, which is unchanged by the transfer]",
         "applicable": true
       },
       {
@@ -679,7 +679,7 @@
         "measured": 1.0,
         "expected": "recall == 1.0",
         "margin": 0.0,
-        "detail": "20/20 canary positives caught at threshold 0.902391 [carried from the source validation on triviaqa-600: this control describes the fitted probe, which is unchanged by the transfer]",
+        "detail": "20/20 canary positives caught at threshold 0.940337 [carried from the source validation on triviaqa-600: this control describes the fitted probe, which is unchanged by the transfer]",
         "applicable": true
       },
       {
@@ -693,71 +693,71 @@
       }
     ],
     "warrant": {
-      "warrant_id": "W-e637562da385f133",
-      "detector_id": "probe-qwen2.5-7b-instruct-T1-max_rolling_means",
+      "warrant_id": "W-0da9f5c0e0b27f87",
+      "detector_id": "probe-qwen2.5-7b-instruct-T1-last_token",
       "detector_version": "0.1.0",
       "operating_point": {
         "operating_point_id": "P-conservative",
-        "detector_id": "probe-qwen2.5-7b-instruct-T1-max_rolling_means",
-        "threshold": 0.9023906031996711,
+        "detector_id": "probe-qwen2.5-7b-instruct-T1-last_token",
+        "threshold": 0.9403371394300616,
         "selected_on": "validation",
         "objective": "flag_rate_budget=0.05",
         "target_flag_rate": 0.05
       },
       "eval_set_id": "triviaqa-longctx-600",
-      "validation_run_id": "run-193444fa7cc5",
-      "issued_at": "2026-08-27T10:16:49+00:00",
-      "expires_at": "2026-08-28T10:16:49+00:00",
+      "validation_run_id": "run-8c8993b9c336",
+      "issued_at": "2026-08-27T10:16:22+00:00",
+      "expires_at": "2026-08-28T10:16:22+00:00",
       "metrics": {
         "auroc": {
           "name": "auroc",
-          "value": 0.5552972471527087,
+          "value": 0.8134814632674274,
           "kind": "ESTIMATED",
           "n": 600,
-          "ci_low": 0.5105294773988082,
-          "ci_high": 0.6015260731169553,
+          "ci_low": 0.7796776757273162,
+          "ci_high": 0.8446795851411556,
           "ci_level": 0.95,
           "unit": "ratio",
           "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
         },
         "recall": {
           "name": "recall",
-          "value": 0.5848375451263538,
+          "value": 0.1263537906137184,
           "kind": "ESTIMATED",
           "n": 600,
-          "ci_low": 0.5266761167472247,
-          "ci_high": 0.6420793989308714,
+          "ci_low": 0.09025202898944112,
+          "ci_high": 0.16981504959355656,
           "ci_level": 0.95,
           "unit": "rate",
           "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
         },
         "precision": {
           "name": "precision",
-          "value": 0.49693251533742333,
+          "value": 0.8974358974358975,
           "kind": "ESTIMATED",
           "n": 600,
-          "ci_low": 0.44735442329227326,
-          "ci_high": 0.5498685418180427,
+          "ci_low": 0.7941176470588235,
+          "ci_high": 0.9782608695652174,
           "ci_level": 0.95,
           "unit": "rate",
           "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
         },
         "flag_rate": {
           "name": "flag_rate",
-          "value": 0.5433333333333333,
+          "value": 0.065,
           "kind": "ESTIMATED",
           "n": 600,
-          "ci_low": 0.505,
-          "ci_high": 0.5833333333333334,
+          "ci_low": 0.04833333333333333,
+          "ci_high": 0.08504166666666664,
           "ci_level": 0.95,
           "unit": "rate",
           "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
         },
         "confirmed_errors": {
           "name": "confirmed_errors",
-          "value": 162.0,
+          "value": 35.0,
           "kind": "EXACT",
-          "n": 326,
+          "n": 39,
           "ci_low": null,
           "ci_high": null,
           "ci_level": null,
@@ -769,11 +769,11 @@
         "extra": [
           {
             "name": "fpr",
-            "value": 0.5077399380804953,
+            "value": 0.01238390092879257,
             "kind": "ESTIMATED",
             "n": 600,
-            "ci_low": 0.4548052620576945,
-            "ci_high": 0.5596422018348624,
+            "ci_low": 0.0029583616972997506,
+            "ci_high": 0.02500393081761006,
             "ci_level": 0.95,
             "unit": "rate",
             "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
@@ -829,10 +829,10 @@
         {
           "control": "label_shuffle",
           "passed": true,
-          "measured": 0.49993971444273716,
+          "measured": 0.5043840218037439,
           "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
-          "margin": 0.04993971444273715,
-          "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.4999. 8 repeats; null spread sd 0.0189, SE of mean 0.0067; band +/-0.05 is +/-7.49 SE; measured spread is 0.8x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal. [carried from the source validation on triviaqa-600: this control describes the fitted probe, which is unchanged by the transfer]",
+          "margin": 0.04561597819625618,
+          "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.5044. 8 repeats; null spread sd 0.0164, SE of mean 0.0058; band +/-0.05 is +/-8.64 SE; measured spread is 0.7x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal. [carried from the source validation on triviaqa-600: this control describes the fitted probe, which is unchanged by the transfer]",
           "applicable": true
         },
         {
@@ -850,7 +850,7 @@
           "measured": 1.0,
           "expected": "recall == 1.0",
           "margin": 0.0,
-          "detail": "20/20 canary positives caught at threshold 0.902391 [carried from the source validation on triviaqa-600: this control describes the fitted probe, which is unchanged by the transfer]",
+          "detail": "20/20 canary positives caught at threshold 0.940337 [carried from the source validation on triviaqa-600: this control describes the fitted probe, which is unchanged by the transfer]",
           "applicable": true
         },
         {
@@ -864,12 +864,12 @@
         }
       ],
       "access_tier": 1,
-      "status": "REFUSED",
+      "status": "VALID",
       "kappa": null,
-      "status_reason": "auroc_lower_ci: measured 0.5105, required > 0.55; lift_lower_ci: measured 1.076 [0.969, 1.182] at measured flag rate 0.5433, required > 1.0 \u2014 otherwise not demonstrably better than random sampling at the same budget",
+      "status_reason": null,
       "superseded_by": null
     },
-    "warrant_status": "REFUSED",
-    "status_reason": "auroc_lower_ci: measured 0.5105, required > 0.55; lift_lower_ci: measured 1.076 [0.969, 1.182] at measured flag rate 0.5433, required > 1.0 \u2014 otherwise not demonstrably better than random sampling at the same budget"
+    "warrant_status": "VALID",
+    "status_reason": null
   }
 }
