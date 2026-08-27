@@ -74,6 +74,11 @@ class ValidationRun:
         variant: Which tier variant of it.
         eval_set_id: Which set.
         envelope_id: The set's content hash — the warrant key's third element.
+        model_name: The model the activations were read from. A probe is pinned
+            to it, and a model change invalidates every activation-tier warrant
+            issued against it (``SPEC.md`` §5.4). Recorded on the run rather
+            than derived later, because the pin has to be a fact about what was
+            measured and not a reconstruction from a detector id.
         started_at: When the run began.
         completed_at: When it finished.
         duration_seconds: Wall clock. The gate is "under a minute from cache",
@@ -97,6 +102,7 @@ class ValidationRun:
     variant: str
     eval_set_id: str
     envelope_id: str
+    model_name: str
     started_at: datetime
     completed_at: datetime
     duration_seconds: float
@@ -147,6 +153,7 @@ class ValidationRun:
             "variant": self.variant,
             "eval_set_id": self.eval_set_id,
             "envelope_id": self.envelope_id,
+            "model_name": self.model_name,
             "data_source": self.data_source,
             "started_at": self.started_at.isoformat(),
             "completed_at": self.completed_at.isoformat(),
@@ -406,6 +413,7 @@ def validate(
         variant=variant,
         eval_set_id=evalset.eval_set_id,
         envelope_id=evalset.envelope_id,
+        model_name=cache.model_name,
         started_at=started,
         completed_at=completed,
         duration_seconds=duration,
@@ -568,6 +576,7 @@ def validate_transferred(
         variant=chosen,
         eval_set_id=evalset.eval_set_id,
         envelope_id=evalset.envelope_id,
+        model_name=cache.model_name,
         started_at=started,
         completed_at=completed,
         duration_seconds=duration,

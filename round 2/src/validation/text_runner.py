@@ -239,6 +239,10 @@ def validate_text_detector(
         variant="text",
         eval_set_id=evalset.eval_set_id,
         envelope_id=evalset.envelope_id,
+        # Stateless: reads text, holds no weights tied to a model. Recorded
+        # explicitly so a model change can be seen to have left it alone,
+        # rather than leaving a reader to infer it from a missing field.
+        model_name="none (stateless text detector)",
         started_at=started,
         completed_at=completed,
         duration_seconds=duration,
