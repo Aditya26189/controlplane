@@ -270,9 +270,19 @@ def from_jsonable(cls: type[T], data: Any, path: str = "") -> T:
     )
     if missing:
         raise SerdeError(f"{where}: missing field(s) {missing}")
+    # `init=False` fields are derived in __post_init__ and serialised so a
+    # reader does not have to recompute them, but the constructor will not
+    # accept them back. Passing them raises TypeError on the round trip, which
+    # is how CalibrationClaim.underpowered broke reading the ledger: a value
+    # written for the reader's benefit made the record unreadable.
+    #
+    # Skipping them is right rather than merely convenient -- a derived field
+    # recomputes identically from the fields that ARE passed, so honouring the
+    # stored copy would create a second source of truth that could disagree
+    # with the record it lives in.
     kwargs = {
         name: _decode(data[name], hints[name], f"{where}.{name}")
-        for name in field_map
-        if name in data
+        for name, spec in field_map.items()
+        if name in data and spec.init
     }
     return cls(**kwargs)

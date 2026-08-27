@@ -42,6 +42,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Sequence
 
 from ..config import Config
+from .calibration import assess_calibration
 from ..model import (
     AccessTier,
     ControlResult,
@@ -293,8 +294,21 @@ def issue_or_refuse(
             n_test,
         )
 
+    # Every warrant carries its calibration claim, issued or refused. A warrant
+    # asserts two separable things -- how well the detector ranks, and what its
+    # operating point spends -- and the first measurement to separate them found
+    # a detector whose ranking survived an envelope shift while its threshold
+    # spent 56% more than declared. Computed here so no warrant can exist
+    # without it (DECISIONS 069).
+    calibration = assess_calibration(
+        metrics.flag_rate,
+        operating_point,
+        tolerance=config.validation.calibration_tolerance,
+    )
+
     return Warrant(
         warrant_id=warrant_id,
+        calibration=calibration,
         detector_id=key.detector_id,
         detector_version=detector_version,
         operating_point=operating_point,
