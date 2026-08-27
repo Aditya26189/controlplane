@@ -47,32 +47,78 @@ Showing the best configuration is what makes the beat unattackable. The point su
 
 ---
 
-## Beat 4 — The shift, and provable graceful degradation (90s)
+## Beat 4 — The shift, and what stops being provable (90s)
 
-**The centrepiece. This is not an alarm — it is the matrix doing visible work.**
+**The centrepiece, and it is now measured rather than scripted.**
+
+The scripted version had a revocation: a warrant going stale, an alarm, a
+fallback. What the extraction actually produced is stronger, because no
+revocation is needed to make the point. **The same detector, at the same
+operating point, holds a valid warrant on one envelope and is refused on the
+other.** Two cells in the same row of the matrix, opposite verdicts, both
+measured on the same 3.2-hour run.
 
 Switch the stream to long-context inputs, live.
 
-**Left:** keeps returning confident verdicts. Never stops looking healthy. Let it run long enough that the audience notices nothing is happening.
+**Left:** keeps returning confident verdicts. Never stops looking healthy. Let it
+run long enough that the audience notices nothing is happening.
 
-**Right, in sequence, all automatic:**
+**Right:** the matrix row for `probe-qwen2.5-7b-instruct-T1-mean_pool`:
 
-1. Drift monitor fires — PSI on token length crosses 0.25
-2. `T1 mean-pool` warrant **REVOKED** on this envelope
-3. System consults the **matrix**: which detector holds a valid warrant on `triviaqa-longctx-600`?
-4. Routes to whichever cell is `VALID` — adopts **that warrant's bounds**, wider
-5. `decision_support` profile **suspended** — the new bounds fall below its declared minimum
-6. Certificate written with all of it: revocation reason, new envelope, new warrant, new claimed bounds, policy version
+| envelope | verdict | |
+|---|---|---|
+| `triviaqa-600` | **VALID** | R = 0.08 [0.05, 0.11], AUROC 0.785 [0.750, 0.821] |
+| `triviaqa-longctx-600` | **REFUSED** | `auroc_lower_ci 0.4546, required > 0.55` |
+
+And the row beneath it, for the aggregation built to survive exactly this shift:
+
+| envelope | verdict | |
+|---|---|---|
+| `triviaqa-600` | **VALID** | R = 0.08 [0.05, 0.12] |
+| `triviaqa-longctx-600` | **REFUSED** | `auroc_lower_ci 0.5105` **and** `lift_lower_ci 1.076 [0.969, 1.182]` at flag rate 0.5433 |
 
 Narration, tracking the screen:
 
-> *"T1 just revoked — this input is outside the distribution those numbers came from. The matrix says T3 holds a valid warrant on long-context at lower recall, wider interval. Falling back, claimed bounds updated. Decision-support is suspended, because the number it requires isn't available on this traffic."*
+> *"Same probe. Same threshold. Nothing retrained. On short context it holds a
+> warrant. On long context it is refused — and not because it went quiet. It
+> flags fifty-four per cent of the traffic. Thirteen times the budget. Its lift
+> interval is 1.08, and it crosses 1.0, which means we cannot show it beats
+> picking at random at the same cost."*
 
 Then, pointing left:
 
-> *"Both of these systems just stopped working. Only one of them knows."*
+> *"Both of these systems just stopped working. Only one of them knows — and it
+> knows in the units you buy: how much you would spend, and what you would get
+> for it."*
 
-**Why this beat and not an alarm:** an alarm says something broke. This says *here is what I can still prove, here is what I can no longer prove, and here is what I've stopped claiming as a result.* That is the product.
+**The sentence this beat exists for:**
+
+> **"This detector is sound here, and cannot be shown to beat random sampling
+> there."**
+
+**Why the failures are worth showing separately.** The two aggregations fail in
+opposite directions, and both are invisible without the warrant:
+
+- `mean_pool` **fails silent**: its scores fall below the frozen threshold, it
+  flags nothing, and the dashboard reads as clean traffic.
+- `max_rolling_means` **fails expensive**: its scores inflate, it flags 54.3% at
+  precision 0.497 against a base rate of 0.462 — random sampling wearing a
+  detector's name.
+
+`max_rolling_means` was built specifically to survive long-context shift. It does
+not. Say so on stage: a demo that shows the mitigation working is a demo nobody
+believes, and the honest version is the one where the layer catches the thing its
+own authors built to prevent.
+
+**Why this and not an alarm.** An alarm says something broke. This says *here is
+what I can still prove, here is what I can no longer prove, and here is the cost
+of the difference.* That is the product.
+
+**If the revocation ladder is built by demo day**, it layers on top: PSI on token
+length crosses its threshold, the warrant moves through the four-state ladder,
+routing consults the matrix, and `decision_support` suspends because no warrant
+on this envelope meets its declared minimum. That is a better *mechanism* story.
+It is not a better *evidence* story, and the table above is evidence.
 
 ---
 
