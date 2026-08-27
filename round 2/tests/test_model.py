@@ -393,10 +393,29 @@ def test_certificate_claiming_valid_bounds_must_cite_a_warrant() -> None:
         )
 
 
-def test_certificate_action_must_name_the_finding_that_caused_it() -> None:
-    """An action nobody can trace to a finding is an action nobody can appeal."""
-    with pytest.raises(CertificateError, match="must name the finding"):
+def test_certificate_action_must_name_what_caused_it() -> None:
+    """An action nobody can trace to a trigger is an action nobody can appeal."""
+    with pytest.raises(CertificateError, match="must name what triggered it"):
         Resolution(Action.BLOCK, "3.1", "sha256:p", rationale="because")
+
+
+def test_a_warrant_level_trigger_satisfies_traceability_without_a_finding() -> None:
+    """The second kind of trigger. ``DECISIONS.md`` 073.
+
+    A revoked warrant escalates a request without anything having been found
+    *in* it. Forcing that through ``triggering_finding_ids`` would mean
+    inventing a finding with a content category attached — a fabrication in the
+    one record that exists to prevent them.
+    """
+    resolution = Resolution(
+        Action.ESCALATE,
+        "drift-ladder-1",
+        "sha256:p",
+        rationale="warrant revoked on this envelope",
+        triggered_by="envelope:SIGNIFICANT_SHIFT",
+    )
+    assert resolution.triggering_finding_ids == ()
+    assert resolution.triggered_by == "envelope:SIGNIFICANT_SHIFT"
 
 
 def test_certificate_cannot_cite_a_finding_it_does_not_carry() -> None:

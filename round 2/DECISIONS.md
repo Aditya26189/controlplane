@@ -1759,3 +1759,97 @@ Out-of-range values are clipped into the edge bins rather than dropped.
 Discarding them would compute PSI over the surviving subset and report stability
 for traffic that had left the distribution entirely — which is the failure mode
 this whole module exists to catch.
+
+
+## 072 - MMD is scoped out of Phase 5
+
+`SPEC.md` 5.2 declares two drift checks. Only per-feature PSI is implemented;
+MMD on embeddings is not built and is not planned before submission.
+
+It would not have changed a decision on any envelope measured here. The shift
+that matters -- short-context TriviaQA against its long-context variant -- is a
+univariate token-length move so large that 9 of 10 reference bins are empty
+(entry 071), and PSI revokes on it at every epsilon tried. A multivariate test
+earns its place when the marginals look stable and the joint has moved; nothing
+measured has that shape.
+
+Rejected: a cheap MMD over the same univariate features PSI already uses. That
+is a multivariate test in name only, and reporting it as the SPEC's check would
+overstate coverage.
+
+The gap is disclosed rather than left implicit. `config.drift.mmd_permutations`
+stays declared and unused, so the trace of a specified-then-dropped check
+survives. `EnvelopeMatchResult.mmd_p_value` stays `None` and is never defaulted
+to a passing p-value -- a 1.0 reads as a test that ran and found nothing, which
+is a stronger claim than "no test ran". Every drift certificate names the
+omission in `unchecked`.
+
+## 073 - An action may name a warrant-level trigger, not only a finding
+
+`Resolution` required `triggering_finding_ids` for any non-`ALLOW` action. The
+reasoning -- an untraceable action is an unappealable one -- is right; the
+requirement was too narrow.
+
+When a revoked warrant escalates a request, nothing was found *in* that
+request. Satisfying the old rule meant constructing a `Finding`, which requires
+a `Category` from an enum of PII, HALLUCINATION, INJECTION, UNSAFE, COST and
+BIAS_SIGNAL -- none of which describes a distribution shift. That is a
+fabricated content claim in the record built to prevent them.
+
+So: a non-`ALLOW` action must name *a* trigger, of which there are two kinds --
+content triggers (`triggering_finding_ids`) and warrant-level triggers
+(`triggered_by`, e.g. `"envelope:SIGNIFICANT_SHIFT"`). Traceability is unchanged
+in strength.
+
+Rejected: a `DRIFT` member on `Category`, which would put a property of the
+traffic on an axis classifying properties of a response; and exempting
+`ESCALATE`, which would make the commonest non-`ALLOW` action the only
+untraceable one.
+
+## 074 - "T2 and T3 keep working through a model change" is a claim about detectors, not numbers
+
+`SPEC.md` 5.4's mitigation, stated precisely, is weaker than it sounds.
+
+True: T2 and T3 carry no parameters fitted to a model's residual stream, so
+nothing inside them breaks. A probe's weights do break -- against a different
+model they are an unrelated function, not a degraded one, which is why the
+response is unconditional revocation rather than a widened interval.
+
+Not true and not claimed: that a surviving T2/T3 warrant's *measured bounds*
+still hold. Recall was measured against one model's outputs; a different model
+gets different things wrong. The honest description is "the detector still runs
+and its numbers were never re-measured".
+
+So `invalidate_for_model_change` returns a record for every warrant including
+the untouched ones, carrying that sentence. Returning only the invalidations
+would make survival invisible and so indistinguishable from endorsement.
+
+Same distinction as 029, 031 and 070: a number quoted outside the conditions it
+was measured under is a different number, not a weaker one.
+
+
+## 075 - The demo reports INSUFFICIENT_DATA, and Beat 4 has to be long enough
+
+Wiring the real drift monitor into the demo session replaced a hardcoded
+`INSIDE` / `max_psi=0.0` / `n_window=1` with a scored window, and immediately
+exposed a conflict between two things already decided.
+
+`config.drift.window_size` is 200 (SPEC.md 5.2: do not revoke on noise). Demo
+streams are 2-40 events. So every demo certificate now reports
+`INSUFFICIENT_DATA`.
+
+That is the correct answer, not a degraded one. The stream is drawn from the
+warrant's own test rows, so the traffic genuinely is inside the envelope -- but
+at n=10 the system has no evidence of that, and certifying `INSIDE` would
+assert a stability it never measured. This is the same rule as entry 070's null
+band and the ladder's fourth rung: absence of evidence is not a verdict.
+
+**Consequence for Phase 10:** Beat 4 shows a revocation, so its long-context
+segment must carry at least `window_size` events. A 40-event Beat 4 would show
+`INSUFFICIENT_DATA` for its whole length and prove nothing. The alternative --
+lowering `window_size` for the demo -- was rejected: a threshold tuned to make a
+demo work is the exact failure this project argues against, and the false-alarm
+guard would refuse the configuration anyway.
+
+The right pane says `"10 of 200 requests -- no envelope verdict yet"` rather
+than printing `max PSI 0.000`, which would read as a measured stability.

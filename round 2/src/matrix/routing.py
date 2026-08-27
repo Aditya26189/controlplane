@@ -210,7 +210,9 @@ def route(
         matrix: A :class:`~src.matrix.matrix.WarrantMatrix`.
         envelope_id: The envelope the traffic is actually in — which is *not*
             necessarily the one the detector was measured on, and that gap is
-            the reason this function exists.
+            the reason this function exists. **Keyed by ``eval_set_id``**, the
+            matrix's envelope axis, not by the content hash. Raises rather than
+            reporting an empty result when the key is unknown.
         profile: What the caller requires.
         enqueue: Called with the unvalidated cells on this envelope. Defaults to
             logging them.
@@ -219,6 +221,22 @@ def route(
         A :class:`RoutingDecision`. Always returns one; there is no failure
         mode where a request goes unhandled, only ones where it goes unclaimed.
     """
+    # "This envelope has no valid warrant" and "this envelope is not in the
+    # matrix" are different facts and must not share a message. The matrix's
+    # envelope axis is keyed by eval_set_id; calling this with a content hash --
+    # which the parameter name invited -- returned "no valid warrant on
+    # envelope" for a lookup that simply missed, and that reads as a measured
+    # absence rather than a wrong key (``DECISIONS.md`` 050).
+    known = set(matrix.envelopes)
+    if envelope_id not in known:
+        raise KeyError(
+            "envelope %r is not in the matrix. Known envelopes: %s. The axis is "
+            "keyed by eval_set_id, not by the envelope content hash -- passing "
+            "a hash here silently reads as 'nothing holds a warrant', which is "
+            "a different claim from 'I do not know this envelope'."
+            % (envelope_id, ", ".join(sorted(known)) or "none")
+        )
+
     candidates = matrix.valid_warrants(envelope_id)
     considered: list[tuple[str, str]] = []
 

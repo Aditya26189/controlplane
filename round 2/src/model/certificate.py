@@ -45,9 +45,19 @@ class CertificateError(ValueError):
 class Resolution:
     """What policy decided, under which version, and because of what.
 
-    ``triggering_finding_ids`` is required for any action other than ``ALLOW``.
-    An action nobody can trace to a finding is an action nobody can appeal, and
-    the appeal path is most of what a compliance reader is looking for.
+    Any action other than ``ALLOW`` must name what triggered it. An action
+    nobody can trace to a trigger is an action nobody can appeal, and the appeal
+    path is most of what a compliance reader is looking for.
+
+    **There are two kinds of trigger, not one.** Content triggers are findings,
+    and ``triggering_finding_ids`` carries them. Warrant-level triggers are not:
+    when a revoked warrant escalates a request, nothing was found *in* that
+    request — the system stopped being able to say what its checks were worth.
+    Forcing that through ``triggering_finding_ids`` would mean inventing a
+    finding with a content category attached to it, which is a fabrication in
+    the one record that exists to prevent fabrications. ``triggered_by`` names
+    the non-content trigger instead, e.g. ``"envelope:SIGNIFICANT_SHIFT"``.
+    ``DECISIONS.md`` 073.
 
     Args:
         action: The decision.
@@ -59,6 +69,9 @@ class Resolution:
         triggering_finding_ids: Findings that caused the action.
         rule_id: The specific rule that fired.
         rationale: Human-readable reason, shown to whoever is affected.
+        triggered_by: A non-content trigger, when no finding caused the action.
+            Satisfies the traceability requirement in place of
+            ``triggering_finding_ids``; exactly one of the two is needed.
     """
 
     action: Action
@@ -67,6 +80,7 @@ class Resolution:
     triggering_finding_ids: tuple[str, ...] = ()
     rule_id: Optional[str] = None
     rationale: str = ""
+    triggered_by: Optional[str] = None
 
     def __post_init__(self) -> None:
         if not self.policy_version or not self.policy_hash:
@@ -75,11 +89,16 @@ class Resolution:
                 "that cannot be replayed against the rules that made it is not "
                 "auditable"
             )
-        if self.action is not Action.ALLOW and not self.triggering_finding_ids:
+        if (
+            self.action is not Action.ALLOW
+            and not self.triggering_finding_ids
+            and not self.triggered_by
+        ):
             raise CertificateError(
-                f"action {self.action.value} must name the finding(s) that "
-                "triggered it. An action nobody can trace to a finding is an "
-                "action nobody can appeal."
+                f"action {self.action.value} must name what triggered it — "
+                "finding id(s), or a warrant-level trigger in triggered_by. An "
+                "action nobody can trace to a trigger is an action nobody can "
+                "appeal."
             )
         if self.action is not Action.ALLOW and not self.rationale:
             raise CertificateError(

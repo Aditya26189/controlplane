@@ -28,6 +28,7 @@ from typing import Any, Callable, Optional
 import numpy as np
 
 from ..config import Config
+from ..drift import DriftMonitor
 from ..model import (
     AccessTier,
     Action,
@@ -87,6 +88,27 @@ class RequestOutcome:
     certificate: Optional[Certificate]
 
 
+def _render_envelope(match: EnvelopeMatchResult, config: Config) -> str:
+    """One line for the right pane, saying what is known and what is not.
+
+    Below the window minimum the line says how far it has to go rather than
+    printing ``max PSI 0.000``, which would read as a measured stability. The
+    difference between "no shift" and "no evidence yet" is the whole reason the
+    fourth envelope state exists.
+    """
+    if match.state is EnvelopeState.INSUFFICIENT_DATA:
+        return (
+            f"{match.envelope_id} | {match.state.value} | "
+            f"{match.n_window} of {config.drift.window_size} requests — "
+            "no envelope verdict yet"
+        )
+    return (
+        f"{match.envelope_id} | {match.state.value} | "
+        f"max PSI {match.max_psi:.3f} on {match.driving_feature} "
+        f"(n={match.n_window})"
+    )
+
+
 class DemoSession:
     """Drives a recorded stream through both panes and can re-prove itself.
 
@@ -125,6 +147,9 @@ class DemoSession:
         self._run: Optional[ValidationRun] = None
         self._scores: Optional[np.ndarray] = None
         self._counter = 0
+        #: Scored against the warrant's **stored** envelope, built in
+        #: ``prepare`` once there is a warrant to take one from.
+        self._monitor: Optional[DriftMonitor] = None
 
     # -- setup -------------------------------------------------------------- #
 
@@ -150,6 +175,16 @@ class DemoSession:
         probe_scores = self._score_everything()
         self._scores = probe_scores
         self.ledger.append_warrant(self._run.warrant)
+
+        drift = self.config.drift
+        self._monitor = DriftMonitor(
+            self._run.warrant.envelope,
+            window_size=drift.window_size,
+            psi_stable=drift.psi_stable,
+            psi_significant=drift.psi_significant,
+            features=drift.features,
+            max_false_alarm_rate=drift.max_false_alarm_rate,
+        )
         return self._run
 
     def _score_everything(self) -> np.ndarray:
@@ -232,6 +267,11 @@ class DemoSession:
         """
         now = now or utc_now()
         assert self._scores is not None
+        assert self._monitor is not None, "prepare() must run before the stream"
+        # The window advances on every request, before anything is certified.
+        # Feeding it after certification would let a request be certified
+        # against a verdict that did not include it.
+        self._monitor.observe({"token_length": float(event.token_length)})
         score = float(self._scores[event.row])
         threshold = self.warrant.operating_point.threshold
         flagged = score >= threshold
@@ -256,12 +296,7 @@ class DemoSession:
             score=score,
             flagged=flagged,
             bounds=certificate.claimed_bounds,
-            envelope=(
-                f"{certificate.envelope_match.envelope_id} | "
-                f"{certificate.envelope_match.state.value} | "
-                f"max PSI {certificate.envelope_match.max_psi:.3f} "
-                f"on {certificate.envelope_match.driving_feature}"
-            ),
+            envelope=_render_envelope(certificate.envelope_match, self.config),
             warrant_age=f"{int(warrant.age(now).total_seconds())}s",
             notes=(
                 f"certificate {certificate.certificate_id} "
@@ -296,18 +331,35 @@ class DemoSession:
             confidence_band=band,
         )
 
-        # At this phase every input is drawn from the envelope the warrant was
-        # measured on, so the match is trivially inside. Phase 5 replaces this
-        # with a real PSI computation over a sliding window; the shape of the
-        # record is already correct so nothing downstream changes then.
-        envelope_match = EnvelopeMatchResult(
-            envelope_id=warrant.envelope.envelope_id,
-            state=EnvelopeState.INSIDE,
-            psi_by_feature={"token_length": 0.0},
-            max_psi=0.0,
-            driving_feature="token_length",
-            n_window=1,
-        )
+        # A real PSI over the sliding window, scored against the envelope
+        # stored in the warrant. Below config.drift.window_size this reports
+        # INSUFFICIENT_DATA rather than INSIDE, and that is not a degraded
+        # answer -- the demo stream is drawn from the warrant's own test rows,
+        # so the traffic *is* inside, but at n < 200 the system has no evidence
+        # of it and must not certify a stability it has not measured. A Beat 4
+        # that needs to show a revocation needs a segment at least as long as
+        # the window (DECISIONS.md 075).
+        assert self._monitor is not None
+        verdict = self._monitor.verdict()
+        psi_by_feature = {name: r.psi for name, r in verdict.per_feature.items()}
+        if psi_by_feature and verdict.driver is not None:
+            envelope_match = EnvelopeMatchResult(
+                envelope_id=warrant.envelope.envelope_id,
+                state=verdict.state,
+                psi_by_feature=psi_by_feature,
+                max_psi=max(psi_by_feature.values()),
+                driving_feature=verdict.driver,
+                n_window=verdict.n_observed,
+            )
+        else:
+            envelope_match = EnvelopeMatchResult(
+                envelope_id=warrant.envelope.envelope_id,
+                state=EnvelopeState.INSUFFICIENT_DATA,
+                psi_by_feature={},
+                max_psi=0.0,
+                driving_feature="",
+                n_window=verdict.n_observed,
+            )
 
         action = Action.ESCALATE if flagged else Action.ALLOW
         resolution = Resolution(
