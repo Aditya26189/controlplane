@@ -28,6 +28,7 @@ import math
 from datetime import datetime, timedelta
 from typing import Optional
 
+from .calibration import CalibrationClaim
 from .enums import AccessTier, WarrantStatus
 from .findings import DistributionEnvelope, OperatingPoint
 from .metrics import Metric, WarrantMetrics
@@ -217,6 +218,12 @@ class Warrant:
     kappa: Optional[float] = None
     status_reason: Optional[str] = None
     superseded_by: Optional[str] = None
+    #: Whether the operating point still delivers the budget it declared. A
+    #: warrant makes two claims -- how well the detector ranks, and what it
+    #: spends -- and can hold one while losing the other. Optional so existing
+    #: records load, and absent reads as UNKNOWN rather than as calibrated
+    #: (``DECISIONS.md`` 069).
+    calibration: Optional["CalibrationClaim"] = None
 
     def __post_init__(self) -> None:
         if not self.warrant_id or not self.validation_run_id:
