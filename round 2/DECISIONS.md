@@ -821,7 +821,7 @@ On `hinglish-pii-200`: base rate 0.51, measured flag rate 0.62, so the ceiling i
 ---
 
 ## 050 — The failure class: absence reading as presence
-**Status:** accepted · **names the class behind 024, 032, 035, 046, 053-057 and others**
+**Status:** accepted · **names the class behind 024, 032, 035, 046, 053-057, 062, 064 and others**
 
 **Context:** The same bug has now appeared four times in four costumes, and each time it was caught by a different accident. Naming the instances is not enough, because the fifth occurrence will look like none of them. Naming the *class* is the only thing that generalises.
 
@@ -838,9 +838,25 @@ On `hinglish-pii-200`: base rate 0.51, measured flag rate 0.62, so the ceiling i
 | boundary intervals (035) | zero events observed | `[0.0000, 0.0000]` — perfect certainty |
 | `data_source` (046) | field not declared | `"measured"`, via a `getattr` default |
 | **debugging method** (053, 055, 056, 057) | the alternative causes were never computed | the one candidate that was computed, read as identified |
+| **config enumeration** (062) | `last_token` implemented but not listed in `aggregations` | the two listed options, read as the complete set of options |
+| **shell exit codes** (064) | `pytest ... \| tail` reports *tail's* status | a check that could not fail, read as a check that passed |
 
-**The fifth is in the process column, not the code column**, and that is why the
-first three rules did not catch it. Four GPU sessions were lost to the same
+**Three of these are in the process column, not the code column**, and that is
+why the first three rules did not catch them. Two deserve separate mention.
+
+*Config enumeration* is its own surface. `last_token` existed in
+`aggregation.py`, with a comment naming it as the anchor Round 1 was measured
+on, and was absent from `config.yaml`'s `aggregations`. **An unlisted option is
+not an error** — nothing can raise, because a shorter list is a valid list. So
+every cross-round comparison in this repo ran between two different detectors
+for an entire phase, and the code that would have made it valid was sitting
+there named. The absence of a declaration read as a complete declaration.
+
+*Shell exit codes* is the cheapest instance and the easiest to repeat:
+`python -m pytest ... | tail -6` exits with **tail's** status, not pytest's, so a
+red suite reports success. A gate that cannot fail is not a gate.
+
+On the debugging-method row: Four GPU sessions were lost to the same
 move: compute one candidate quantity, find it the right order of magnitude
 against the observed failure, and stop. The attention term matched a 10.93 GiB
 OOM at 10.97 GiB; the logits at the same length were 12.32 GiB and matched at
@@ -1317,6 +1333,13 @@ were measured under.
 precision, base rate, lift and the ceiling, or the number invites exactly the
 reading this entry exists to correct.
 
+**SUSPENDED pending 065.** The 94.0%-vs-89.2%-of-ceiling framing above compares
+Round 2's best *pooled* aggregation against Round 1's `last_token`. That is the
+cross-detector comparison this entry itself establishes was never valid, so the
+framing is not usable until `last_token` is measured on Round 2's pipeline. It
+is left in place rather than deleted because the arithmetic is correct and only
+the comparison is not.
+
 ## 063 — results/ is the deliverable and is measured-only
 
 Two results directories — `results/` holding fixture artifacts and
@@ -1364,3 +1387,73 @@ measured cell UNVALIDATED, fixture cells untouched — passes part 1 and fails
 part 2, which is exactly how that bug presented. Both parts were confirmed by
 injecting the fault and watching the test fail, because a check that passes
 whatever it is fed proves nothing (the padding control's own argument).
+
+## 065 — PRE-REGISTERED: the last_token re-extraction, and what each outcome means
+
+**Written before the run.** The interpretation is fixed here so it cannot be
+chosen after seeing the number. This is the case that most rewards the habit:
+there is a public handover asserting 0.1416 and a Round 2 measurement reading
+0.0794, and any post-hoc reading of the gap will be the flattering one.
+
+### What runs
+
+One extraction, `n_questions=2400` plus the 600-item long-context envelope, with
+**all three aggregations in the same session**: `mean_pool`,
+`max_rolling_means`, `last_token`. Same cache, same splits, same labels, same
+model, same seed.
+
+Running `last_token` alone in a later session would replace one
+cross-configuration comparison with another — different sample, different
+labels, different split derivation — and prove nothing about the gap. Same
+reasoning that put long context in the same session as short.
+
+Config hash `b4ca1ec022266551`.
+
+### The two outcomes, and what each licenses
+
+**A. `last_token` test AUROC lands near 0.855** (say within the Round 1 bootstrap
+CI, [0.8217, 0.8878]).
+
+The aggregation attribution in 062 is **confirmed**. Round 1 reproduces on Round
+2's pipeline, and the gap between the rounds was that Round 2 had been measuring
+pooled features against a last-token result. The reconciliation table in 062
+becomes a like-for-like comparison and the 94.0%-vs-89.2% framing becomes
+sayable. Nothing further is owed.
+
+**B. `last_token` lands near 0.785**, with the pooled variants.
+
+The aggregation attribution is **refuted**, and the gap is something else. It
+does not get explained away — it becomes the next investigation, ahead of Phase
+5, with these candidates and no others until they are eliminated:
+
+- labelling: 0.4667 lenient base rate here against 0.406 in Round 1, and the
+  alias-matching rules may have moved;
+- split derivation: 1200/600/600 by question here against 1800/600/600;
+- sample: 2400 questions against 3000, drawn by a different seed path;
+- model version or quantisation: the same id can resolve to a different
+  revision, and NF4 compute dtype differs between the rounds' configs.
+
+**C. Anything else** — materially above 0.878 or below 0.75 — is neither branch
+and gets its own entry before anything is claimed.
+
+### What the declared aggregation is, and why it is declared now
+
+The tier ladder reports all three; that is what an ablation is for. But **Beat 4
+and the headline use `last_token`**, declared here, before the numbers exist.
+
+The reason is independent of any score: `last_token` is what this method's own
+invariant describes — *"activations are taken at question-time, last token of
+the prompt, before any generated token exists"*. The pooled variants were added
+later to probe long-context robustness. Choosing the method's stated definition
+is a reason that existed before the run; choosing whichever scores highest
+afterwards is selection on the test set at the level of detector architecture,
+and it would be undetectable in any artifact.
+
+**If `last_token` performs worst of the three, it is still what Beat 4 reports.**
+That is the whole point of writing this down now.
+
+### Held until this lands
+
+The 94.0%-of-ceiling framing in 062 is **suspended**. It currently compares
+Round 2's best pooled aggregation against Round 1's `last_token`, which is the
+comparison this entry exists to establish was never valid.
