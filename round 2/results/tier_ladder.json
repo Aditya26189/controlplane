@@ -1,14 +1,16 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-26T20:23:51+00:00",
-    "git_commit": "29c80a065464b66533888518b016a4d8e43873d2",
+    "timestamp_utc": "2026-08-27T10:15:41+00:00",
+    "git_commit": "efa1291e418d33c90a79aa00bf70ab2161209caf",
     "git_branch": "main",
     "dirty": true,
     "dirty_paths": [
       "results_bundle (3)",
       "round 2/evalsets/canary-20-triviaqa.json",
-      "round 2/scripts/02_validate.py",
-      "round 2/scripts/05_canary.py"
+      "round 2/klog3.txt",
+      "round 2/notebooks/run_on_kaggle.ipynb",
+      "round 2/scripts/05_canary.py",
+      "round 2/scripts/build_notebooks.py"
     ],
     "dirty_excludes": "results",
     "python": "3.12.10",
@@ -29,7 +31,7 @@
       "cuda_available": false,
       "device_name": "cpu"
     },
-    "config_hash": "bfb92a89ceacd678",
+    "config_hash": "b4ca1ec022266551",
     "seed": 1729,
     "config": {
       "seed": 1729,
@@ -60,7 +62,8 @@
       "probe": {
         "aggregations": [
           "mean_pool",
-          "max_rolling_means"
+          "max_rolling_means",
+          "last_token"
         ],
         "rolling_window": 64,
         "rolling_stride": 32,
@@ -196,10 +199,139 @@
   "data_source": "measured",
   "base_rate": 0.46166666666666667,
   "variants": [
+    "T1-last_token",
     "T1-max_rolling_means",
     "T1-mean_pool"
   ],
   "rungs": {
+    "T1-last_token": {
+      "access_tier": "T1_ACTIVATIONS",
+      "warrant_status": "VALID",
+      "status_reason": null,
+      "n_test": 600,
+      "C": 0.001,
+      "threshold": 0.9403371394300616,
+      "metrics": {
+        "auroc": {
+          "name": "auroc",
+          "value": 0.8255524136312324,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.793354746771496,
+          "ci_high": 0.8567162724940566,
+          "ci_level": 0.95,
+          "unit": "ratio",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "recall": {
+          "name": "recall",
+          "value": 0.07942238267148015,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.04958385655462431,
+          "ci_high": 0.11151877240822096,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "precision": {
+          "name": "precision",
+          "value": 0.88,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.75,
+          "ci_high": 1.0,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "flag_rate": {
+          "name": "flag_rate",
+          "value": 0.041666666666666664,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.02666666666666667,
+          "ci_high": 0.058333333333333334,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "confirmed_errors": {
+          "name": "confirmed_errors",
+          "value": 22.0,
+          "kind": "EXACT",
+          "n": 25,
+          "ci_low": null,
+          "ci_high": null,
+          "ci_level": null,
+          "unit": "count",
+          "estimator": null
+        },
+        "fpr_hard_negatives": null,
+        "base_rate": 0.46166666666666667,
+        "extra": [
+          {
+            "name": "fpr",
+            "value": 0.009287925696594427,
+            "kind": "ESTIMATED",
+            "n": 600,
+            "ci_low": 0.0,
+            "ci_high": 0.020663046393134876,
+            "ci_level": 0.95,
+            "unit": "rate",
+            "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+          }
+        ]
+      },
+      "controls": [
+        {
+          "control": "padding_fault",
+          "passed": true,
+          "measured": 0.999888073970217,
+          "expected": "left-padded vs unbatched: rel-L2 <= 0.1, cosine >= 0.999; right-padded must be rejected",
+          "margin": 0.0008880739702169516,
+          "detail": "left-padded: rel-L2 1.49e-02, cosine 0.999888 -> matches unbatched. right-padded (deliberate fault): rel-L2 0.741, cosine 0.5664 -> REJECTED as required. 4 prompts, max 134 pad tokens.",
+          "applicable": true
+        },
+        {
+          "control": "label_shuffle",
+          "passed": true,
+          "measured": 0.5043840218037439,
+          "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
+          "margin": 0.04561597819625618,
+          "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.5044. 8 repeats; null spread sd 0.0164, SE of mean 0.0058; band +/-0.05 is +/-8.64 SE; measured spread is 0.7x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal.",
+          "applicable": true
+        },
+        {
+          "control": "null_feature",
+          "passed": true,
+          "measured": 0.49154039412734557,
+          "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
+          "margin": 0.04154039412734556,
+          "detail": "features replaced by Gaussian noise matched per column in mean and variance; labels intact; mean AUROC 0.4915. 8 repeats; null spread sd 0.0226, SE of mean 0.0080; band +/-0.05 is +/-6.25 SE; measured spread is 1.0x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031).",
+          "applicable": true
+        },
+        {
+          "control": "canary",
+          "passed": true,
+          "measured": 1.0,
+          "expected": "recall == 1.0",
+          "margin": 0.0,
+          "detail": "20/20 canary positives caught at threshold 0.940337",
+          "applicable": true
+        },
+        {
+          "control": "determinism",
+          "passed": true,
+          "measured": 0.0,
+          "expected": "bit-identical scores across two runs at one seed",
+          "margin": 0.0,
+          "detail": "max |difference| = 0.000e+00 over 600 scores; coefficients identical",
+          "applicable": true
+        }
+      ],
+      "duration_seconds": 17.315831299871206
+    },
     "T1-max_rolling_means": {
       "access_tier": "T1_ACTIVATIONS",
       "warrant_status": "VALID",
@@ -326,7 +458,7 @@
           "applicable": true
         }
       ],
-      "duration_seconds": 17.23755169985816
+      "duration_seconds": 17.988537499913946
     },
     "T1-mean_pool": {
       "access_tier": "T1_ACTIVATIONS",
@@ -454,7 +586,7 @@
           "applicable": true
         }
       ],
-      "duration_seconds": 16.61813690001145
+      "duration_seconds": 17.75070450012572
     }
   }
 }

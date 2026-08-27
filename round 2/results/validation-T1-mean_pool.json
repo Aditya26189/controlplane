@@ -1,14 +1,16 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-26T20:23:51+00:00",
-    "git_commit": "29c80a065464b66533888518b016a4d8e43873d2",
+    "timestamp_utc": "2026-08-27T10:15:41+00:00",
+    "git_commit": "efa1291e418d33c90a79aa00bf70ab2161209caf",
     "git_branch": "main",
     "dirty": true,
     "dirty_paths": [
       "results_bundle (3)",
       "round 2/evalsets/canary-20-triviaqa.json",
-      "round 2/scripts/02_validate.py",
-      "round 2/scripts/05_canary.py"
+      "round 2/klog3.txt",
+      "round 2/notebooks/run_on_kaggle.ipynb",
+      "round 2/scripts/05_canary.py",
+      "round 2/scripts/build_notebooks.py"
     ],
     "dirty_excludes": "results",
     "python": "3.12.10",
@@ -29,7 +31,7 @@
       "cuda_available": false,
       "device_name": "cpu"
     },
-    "config_hash": "bfb92a89ceacd678",
+    "config_hash": "b4ca1ec022266551",
     "seed": 1729,
     "config": {
       "seed": 1729,
@@ -60,7 +62,8 @@
       "probe": {
         "aggregations": [
           "mean_pool",
-          "max_rolling_means"
+          "max_rolling_means",
+          "last_token"
         ],
         "rolling_window": 64,
         "rolling_stride": 32,
@@ -191,15 +194,15 @@
       }
     }
   },
-  "run_id": "run-125a6697b40c",
+  "run_id": "run-7d0f0e0321f6",
   "detector_id": "probe-qwen2.5-7b-instruct-T1-mean_pool",
   "variant": "T1-mean_pool",
   "eval_set_id": "triviaqa-600",
   "envelope_id": "sha256:e77c64f908491ad1",
   "data_source": "measured",
-  "started_at": "2026-08-26T20:23:33+00:00",
-  "completed_at": "2026-08-26T20:23:50+00:00",
-  "duration_seconds": 16.61813690001145,
+  "started_at": "2026-08-27T10:15:23+00:00",
+  "completed_at": "2026-08-27T10:15:40+00:00",
+  "duration_seconds": 17.75070450012572,
   "splits": {
     "train": 1200,
     "validation": 600,
@@ -350,7 +353,7 @@
     }
   ],
   "warrant": {
-    "warrant_id": "W-5f742a0b3f5258f2",
+    "warrant_id": "W-592933e876927d02",
     "detector_id": "probe-qwen2.5-7b-instruct-T1-mean_pool",
     "detector_version": "0.1.0",
     "operating_point": {
@@ -362,9 +365,9 @@
       "target_flag_rate": 0.05
     },
     "eval_set_id": "triviaqa-600",
-    "validation_run_id": "run-125a6697b40c",
-    "issued_at": "2026-08-26T20:23:33+00:00",
-    "expires_at": "2026-08-27T20:23:33+00:00",
+    "validation_run_id": "run-7d0f0e0321f6",
+    "issued_at": "2026-08-27T10:15:23+00:00",
+    "expires_at": "2026-08-28T10:15:23+00:00",
     "metrics": {
       "auroc": {
         "name": "auroc",

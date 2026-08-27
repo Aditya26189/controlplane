@@ -1,7 +1,7 @@
 {
   "eval_set_id": "canary-20-triviaqa",
-  "content_hash": "32408aeb2ff3a57e965325b7aea9ad87d34cfe2fc111510b3a2329964001112e",
-  "envelope_id": "sha256:32408aeb2ff3a57e",
+  "content_hash": "82a5a11c2b3a847d06d7236eec3d3b03b7a095f68e16b9079b7a23f2fa780507",
+  "envelope_id": "sha256:82a5a11c2b3a847d",
   "data_source": "measured",
   "n_items": 20,
   "base_rate": 1.0,
@@ -9,110 +9,180 @@
     "derived_from": "triviaqa-600",
     "derived_from_hash": "e77c64f908491ad1751ccbc0a05f85343591cd0f9b876022f1b7342bedde31b0",
     "split_used": "train",
-    "selected_by": "highest probe score on T1-mean_pool",
-    "C": 0.001,
-    "threshold_cleared": 0.9030993378020319,
+    "selected_by": "worst-margin-across-all-variants, all positive",
+    "variants_required_to_catch": [
+      "T1-last_token",
+      "T1-max_rolling_means",
+      "T1-mean_pool"
+    ],
+    "C_per_variant": {
+      "T1-last_token": 0.001,
+      "T1-max_rolling_means": 0.001,
+      "T1-mean_pool": 0.001
+    },
+    "thresholds_cleared": {
+      "T1-last_token": 0.9394656456511405,
+      "T1-max_rolling_means": 0.8992190179192125,
+      "T1-mean_pool": 0.9030993378020319
+    },
     "n_items": 20,
     "purpose": "regression tripwire: recall must be 1.0 at the frozen threshold. Chosen by the probe's own score, so it detects change rather than quality, and is not independent evidence that the probe works."
   },
   "items": [
     {
-      "item_id": "triviaqa-tc_1609",
-      "question_id": "tc_1609",
-      "prompt": "Mickey Braddock in the 50s series Circus Boy found fame with which surname in which pop band?",
-      "response": "Mick Jagger in The Rolling Stones",
+      "item_id": "triviaqa-qz_4127",
+      "question_id": "qz_4127",
+      "prompt": "Name the magician who first introduced us to Basil Brush.",
+      "response": "Stan Laurel",
       "label": 1,
       "split": "train",
       "meta": {
         "aliases": [
-          "Mickey Dolenz (The Monkees)",
-          "mickey dolenz monkees"
+          "David Nixon",
+          "David Nixon (disambiguation)",
+          "Nixon, David",
+          "david nixon",
+          "david nixon disambiguation",
+          "nixon david"
         ]
       }
     },
     {
-      "item_id": "triviaqa-qz_688",
-      "question_id": "qz_688",
-      "prompt": "Which ITV magazine style show ran from 1968 to 1980 and featured presenters including Jenny Hanley, Mick Robertson and Tommy Boyd?",
-      "response": "This Kind of Woman",
+      "item_id": "triviaqa-qz_4435",
+      "question_id": "qz_4435",
+      "prompt": "Which actor plays Cate Blanchett's father in the 2004 film \"The Missing\", a story set in 19th century New Mexico where the father works with estranged daughter Blanchett to get her kidnapped child back?",
+      "response": "Nick Nolte",
       "label": 1,
       "split": "train",
       "meta": {
         "aliases": [
-          "Chatterpie",
-          "Magpie",
-          "Magpies",
-          "chatterpie",
-          "magpie",
-          "magpies"
+          "Jones, Tommy Lee",
+          "List of awards and nominations received by Tommy Lee Jones",
+          "Tommy Lee Jones",
+          "Tommy Lee Jones (actor)",
+          "Tommy Lee Jones filmography",
+          "Tommy Lee jones",
+          "TommyLeeJones",
+          "jones tommy lee",
+          "list of awards and nominations received by tommy lee jones",
+          "tommy lee jones",
+          "tommy lee jones actor",
+          "tommy lee jones filmography",
+          "tommyleejones"
         ]
       }
     },
     {
-      "item_id": "triviaqa-qz_5235",
-      "question_id": "qz_5235",
-      "prompt": "Following that year's April Budget, Alderman Sir Cuthbert Ackroyd, who later became Lord Mayor of London, bought the first what on 1 November 1956?",
-      "response": "parking meter",
+      "item_id": "triviaqa-qz_4923",
+      "question_id": "qz_4923",
+      "prompt": "Which cockney private detective, co-created by Terry Venables, was portrayed on TV by Nicholas Ball?",
+      "response": "Porridge",
       "label": 1,
       "split": "train",
       "meta": {
         "aliases": [
-          "ERNIE",
-          "Electronic Random Number Indicator Equipment",
-          "Premium Bond",
-          "Premium Bonds",
-          "Premium bond",
-          "Premium bonds",
-          "electronic random number indicator equipment",
-          "ernie",
-          "premium bond",
-          "premium bonds"
+          "James Hazell",
+          "james hazell"
         ]
       }
     },
     {
-      "item_id": "triviaqa-qb_5618",
-      "question_id": "qb_5618",
-      "prompt": "In the UK television series ‘Dad’s Army’, what was Lance-Corpopal Jack Jones occupation?",
-      "response": "farmer",
+      "item_id": "triviaqa-qb_3798",
+      "question_id": "qb_3798",
+      "prompt": "Who played factory boss Danny Baldwin in the British television soap ‘Coronation Street’?",
+      "response": "Kevin Brown played factory boss Danny Baldwin in 'Coronation Street'.",
       "label": 1,
       "split": "train",
       "meta": {
         "aliases": [
-          "Boning",
-          "Boucherie",
-          "Butcher",
-          "Butcher shop",
-          "Butcher shops",
-          "Butcher's shop",
-          "Butcher's shops",
-          "Butchered",
-          "Butchering",
-          "Butchers",
-          "Butchers shop",
-          "Butchers shops",
-          "Butchers' shop",
-          "Butchers' shops",
-          "Butchery",
-          "Secondary butchering",
-          "Secondary butchery",
-          "The Butcher",
-          "The butcher",
-          "boning",
-          "boucherie",
-          "butcher",
-          "butcher s shop",
-          "butcher s shops",
-          "butcher shop",
-          "butcher shops",
-          "butchered",
-          "butchering",
-          "butchers",
-          "butchers shop",
-          "butchers shops",
-          "butchery",
-          "secondary butchering",
-          "secondary butchery"
+          "Bradley Walsh",
+          "bradley walsh"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-qb_5590",
+      "question_id": "qb_5590",
+      "prompt": "What is the name of the cockerel in the UK television series ‘The Good Life’?",
+      "response": "Reggie",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Comrade Lenin",
+          "Lenin",
+          "Lenin, V. I.",
+          "Lenin, V.I.",
+          "Lennin",
+          "N. Lenin",
+          "Nicolai Lenin",
+          "Nikolai Lenin",
+          "Nikolay Lenin",
+          "V I Lenin",
+          "V. I. Lenin",
+          "V. I. Ulyanov",
+          "V. Lenin",
+          "V.I. Lenin",
+          "V.I. Ulyanov",
+          "VI Lenin",
+          "Vladimir I. Lenin",
+          "Vladimir Il'ich Lenin",
+          "Vladimir Ilich Lenin",
+          "Vladimir Ilich Ulyanov",
+          "Vladimir Illich Lenin",
+          "Vladimir Ilych Ulyanov",
+          "Vladimir Ilyich",
+          "Vladimir Ilyich Lenin",
+          "Vladimir Ilyich Ulianov",
+          "Vladimir Ilyich Ulyanov",
+          "Vladimir Ilyich Ulyanov Lenin",
+          "Vladimir Lenin",
+          "Vladimir Lennon",
+          "Vladimir Ulyanov",
+          "Vladimir lenin",
+          "Vladimir lennon",
+          "Vladmir Lenin",
+          "comrade lenin",
+          "lenin",
+          "lenin v i",
+          "lennin",
+          "n lenin",
+          "nicolai lenin",
+          "nikolai lenin",
+          "nikolay lenin",
+          "v i lenin",
+          "v i ulyanov",
+          "v lenin",
+          "vi lenin",
+          "vladimir i lenin",
+          "vladimir il ich lenin",
+          "vladimir ilich lenin",
+          "vladimir ilich ulyanov",
+          "vladimir illich lenin",
+          "vladimir ilych ulyanov",
+          "vladimir ilyich",
+          "vladimir ilyich lenin",
+          "vladimir ilyich ulianov",
+          "vladimir ilyich ulyanov",
+          "vladimir ilyich ulyanov lenin",
+          "vladimir lenin",
+          "vladimir lennon",
+          "vladimir ulyanov",
+          "vladmir lenin",
+          "Влади́мир Ильи́ч Ле́нин",
+          "Влади́мир Ильи́ч Улья́нов",
+          "Владимир Ильич Ленин",
+          "Владимир Ленин",
+          "Ле́нин",
+          "Ленин",
+          "Ленина",
+          "влади́мир ильи́ч ле́нин",
+          "влади́мир ильи́ч улья́нов",
+          "владимир ильич ленин",
+          "владимир ленин",
+          "ле́нин",
+          "ленин",
+          "ленина"
         ]
       }
     },
@@ -149,31 +219,37 @@
       }
     },
     {
-      "item_id": "triviaqa-dpql_424",
-      "question_id": "dpql_424",
-      "prompt": "Which Thornbridge beer, gravity 5.9%, is named after an Indian city?",
-      "response": "Thornbridge Jaggery Pale Ale",
+      "item_id": "triviaqa-qb_9858",
+      "question_id": "qb_9858",
+      "prompt": "Which English actor is the oldest man to have trekked to the North Magnetic Pole on foot?",
+      "response": "Sir Ranulph Fiennes",
       "label": 1,
       "split": "train",
       "meta": {
         "aliases": [
-          "Evergreen School (Jaipur, Rajasthan, India)",
-          "Evergreen School , Jaipur",
-          "JAIPUR",
-          "Jaipur",
-          "Jaipur, India",
-          "Jaipur, Rajasthan",
-          "Pink City",
-          "Pink city",
-          "Pinkcity",
-          "evergreen school jaipur",
-          "evergreen school jaipur rajasthan india",
-          "jaipur",
-          "jaipur india",
-          "jaipur rajasthan",
-          "pink city",
-          "pinkcity",
-          "जयपुर"
+          "Brian Blessed",
+          "Brian blessed",
+          "brian blessed"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-dpql_3461",
+      "question_id": "dpql_3461",
+      "prompt": "Which actor, who died in June 2014, provided the voice of Captain Scarlet?",
+      "response": "David Graham Ward",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Frances Matthews",
+          "Francis Mathews",
+          "Francis Matthews",
+          "Francis Matthews (disambiguation)",
+          "frances matthews",
+          "francis mathews",
+          "francis matthews",
+          "francis matthews disambiguation"
         ]
       }
     },
@@ -195,32 +271,41 @@
       }
     },
     {
-      "item_id": "triviaqa-wh_2133",
-      "question_id": "wh_2133",
-      "prompt": "Which T.V. Quiz show host used the catchphrase :- If its' up there, I'll give you the money myself ?",
-      "response": "Ken Dodd",
+      "item_id": "triviaqa-qw_1949",
+      "question_id": "qw_1949",
+      "prompt": "Who is the father of the twin boys born to Brooke Mueller on 14 March 2009?",
+      "response": "Chris Brown",
       "label": 1,
       "split": "train",
       "meta": {
         "aliases": [
-          "LES DENNIS",
-          "Les Dennis",
-          "les dennis"
-        ]
-      }
-    },
-    {
-      "item_id": "triviaqa-wh_2790",
-      "question_id": "wh_2790",
-      "prompt": "Living from 1924 to 2006 what was the name of the Detective Police Superintendant of Scotland Yard who famously tracked down Great Train Robber Ronnie Biggs after he escaped from prison in 1965, although he had to leave without arresting him ?",
-      "response": "Donald Peirson",
-      "label": 1,
-      "split": "train",
-      "meta": {
-        "aliases": [
-          "Jack SLIPPER",
-          "Jack Slipper",
-          "jack slipper"
+          "Bi-winning",
+          "Carlos Estavez",
+          "Carlos Estevez",
+          "Carlos Estévez",
+          "Carlos Irwin Estevez",
+          "Carlos Irwin Estévez",
+          "Carlos estevez",
+          "Carlos irwin estevez",
+          "Charles Irwin Sheen",
+          "Charles sheen",
+          "Charlie Sheen",
+          "Charlie sheen",
+          "Charlysheen",
+          "Duh, winning",
+          "WINNING!",
+          "bi winning",
+          "carlos estavez",
+          "carlos estevez",
+          "carlos estévez",
+          "carlos irwin estevez",
+          "carlos irwin estévez",
+          "charles irwin sheen",
+          "charles sheen",
+          "charlie sheen",
+          "charlysheen",
+          "duh winning",
+          "winning"
         ]
       }
     },
@@ -260,17 +345,64 @@
       }
     },
     {
-      "item_id": "triviaqa-qw_14134",
-      "question_id": "qw_14134",
-      "prompt": "Bob Hoskins, an English actor awarded and acclaimed for roles in TV and film ranging from gangsters to playing opposite a cartoon, died in April 2014 at 71; he also, at the age of over 60, played something very close to a romantic interest in which film?",
-      "response": "Philomena",
+      "item_id": "triviaqa-jp_304",
+      "question_id": "jp_304",
+      "prompt": "Who was a busty model for Playboy and Guess before becoming a famous gold digger?",
+      "response": "Tina Charles",
       "label": 1,
       "split": "train",
       "meta": {
         "aliases": [
-          "Mrs Henderson Presents",
-          "Mrs. Henderson Presents",
-          "mrs henderson presents"
+          "Ana Nicole",
+          "Ana Nicole Smith",
+          "Anna Nichole Smith",
+          "Anna Nicole Smith",
+          "Anna Nicole-Smith",
+          "Anna nichole",
+          "Anna nichole smith",
+          "Anna nicole Smith",
+          "Anna nicole smith",
+          "Anna-Nicole Smith",
+          "Anna-Nicole-Smith",
+          "Anne Nicole Smith",
+          "Death of Anna Nicole Smith",
+          "G. Ben Thompson",
+          "Lynn Marshall",
+          "Vicki Lynn Hogan",
+          "Vickie Hogan",
+          "Vickie Lynn",
+          "Vickie Lynn Hogan",
+          "Vickie Lynn Marshall",
+          "Vickie Marshall",
+          "Vickie Smith",
+          "Vicky Hogan",
+          "Vicky Lynn Hogan",
+          "Vicky Marshall",
+          "Victoria Hogan",
+          "Victoria Marshall",
+          "Virgie Arthur",
+          "ana nicole",
+          "ana nicole smith",
+          "anna nichole",
+          "anna nichole smith",
+          "anna nicole smith",
+          "anne nicole smith",
+          "death of anna nicole smith",
+          "g ben thompson",
+          "lynn marshall",
+          "vicki lynn hogan",
+          "vickie hogan",
+          "vickie lynn",
+          "vickie lynn hogan",
+          "vickie lynn marshall",
+          "vickie marshall",
+          "vickie smith",
+          "vicky hogan",
+          "vicky lynn hogan",
+          "vicky marshall",
+          "victoria hogan",
+          "victoria marshall",
+          "virgie arthur"
         ]
       }
     },
@@ -314,56 +446,6 @@
       }
     },
     {
-      "item_id": "triviaqa-sfq_4818",
-      "question_id": "sfq_4818",
-      "prompt": "Which Booker Prize winning novelist wrote the Advertising slogan 'That will do nicely' for American Express?",
-      "response": "Kazuo Ishiguro",
-      "label": 1,
-      "split": "train",
-      "meta": {
-        "aliases": [
-          "Ahmed Rushdie",
-          "Ahmed Salman Rushdie",
-          "Marriane Wiggins",
-          "RUSHDIE, SALMAN",
-          "Rushdian",
-          "Rushdiean",
-          "SALMAN RUSHDIE",
-          "Salman Rashdi",
-          "Salman Rushdee",
-          "Salman Rushdi",
-          "Salman Rushdie",
-          "Salman Rushdie's",
-          "Salman rushdie",
-          "Salmon Rushdi",
-          "Salmon Rushdie",
-          "Samuel Rushdi",
-          "Samuel Rushdie",
-          "Sir Salman",
-          "Sir Salman Rushdie",
-          "Solomon Rushdie",
-          "ahmed rushdie",
-          "ahmed salman rushdie",
-          "marriane wiggins",
-          "rushdian",
-          "rushdie salman",
-          "rushdiean",
-          "salman rashdi",
-          "salman rushdee",
-          "salman rushdi",
-          "salman rushdie",
-          "salman rushdie s",
-          "salmon rushdi",
-          "salmon rushdie",
-          "samuel rushdi",
-          "samuel rushdie",
-          "sir salman",
-          "sir salman rushdie",
-          "solomon rushdie"
-        ]
-      }
-    },
-    {
       "item_id": "triviaqa-sfq_6944",
       "question_id": "sfq_6944",
       "prompt": "\"Who was appointed Chief Constable of Merseyside in 2004, and left the post in 2009, after being made an \"\"Inspector of Constabulary\"\" by the Queen?\"",
@@ -380,47 +462,6 @@
           "bernard hogan howe",
           "hogan howe",
           "sir bernard hogan howe"
-        ]
-      }
-    },
-    {
-      "item_id": "triviaqa-sfq_6978",
-      "question_id": "sfq_6978",
-      "prompt": "\"In the TV series, \"\"Dad's Army\"\", what was the name of Captain Mainwaring's wife?\"",
-      "response": "Worthington Wilkins' Wife",
-      "label": 1,
-      "split": "train",
-      "meta": {
-        "aliases": [
-          "Babeth",
-          "ELIZABETH",
-          "Elisabeth",
-          "Elisabeth (disambiguation)",
-          "Elishaba",
-          "Elishabha",
-          "Elishava",
-          "Elishebha",
-          "Elizabet",
-          "Elizabeta",
-          "Elizabeta (disambiguation)",
-          "Elizabeth",
-          "Elizabeth (city, United States)",
-          "Elizabeth (disambiguation)",
-          "babeth",
-          "elisabeth",
-          "elisabeth disambiguation",
-          "elishaba",
-          "elishabha",
-          "elishava",
-          "elishebha",
-          "elizabet",
-          "elizabeta",
-          "elizabeta disambiguation",
-          "elizabeth",
-          "elizabeth city united states",
-          "elizabeth disambiguation",
-          "Élisabeth",
-          "élisabeth"
         ]
       }
     },
@@ -480,6 +521,38 @@
       }
     },
     {
+      "item_id": "triviaqa-sfq_17009",
+      "question_id": "sfq_17009",
+      "prompt": "From which song does this lyric come? 'She calls out to the man in the street, sir can you help me'?",
+      "response": "\"Help!\" by The Beatles",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Another Day in Paradise",
+          "Another Day in Paradise (Jam Tronix song)",
+          "Another day in Paradise",
+          "Another day in paradise",
+          "another day in paradise",
+          "another day in paradise jam tronix song"
+        ]
+      }
+    },
+    {
+      "item_id": "triviaqa-sfq_19017",
+      "question_id": "sfq_19017",
+      "prompt": "Which Sheffield United player scored the first ever goal in English Premiership football?",
+      "response": "Chris Sutton",
+      "label": 1,
+      "split": "train",
+      "meta": {
+        "aliases": [
+          "Brian Deane",
+          "brian deane"
+        ]
+      }
+    },
+    {
       "item_id": "triviaqa-sfq_22766",
       "question_id": "sfq_22766",
       "prompt": "What name is shared by a former Manchester City FC manager (1965-1971) and a champion flat jockey who used to ride for the Queen?",
@@ -492,22 +565,6 @@
           "Joseph Mercer",
           "joe mercer",
           "joseph mercer"
-        ]
-      }
-    },
-    {
-      "item_id": "triviaqa-sfq_23110",
-      "question_id": "sfq_23110",
-      "prompt": "Which racehorse, unbeaten in 14 races, won an unprecedented 9 consecutive Group One races including the 2,000 Guineas in 2011 and is the highest ever rated by Timeform?",
-      "response": "Golden Horn",
-      "label": 1,
-      "split": "train",
-      "meta": {
-        "aliases": [
-          "Franckel",
-          "Frankel",
-          "franckel",
-          "frankel"
         ]
       }
     }
