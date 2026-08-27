@@ -298,13 +298,30 @@ if missing:
         "This is not Round 2's config: " + str(missing) + " absent.",
         "Loaded from " + str(Path("config.yaml").resolve()),
         "  hash " + config.config_hash,
-        "Round 1's config hash is c429ce5e92da9a22; Round 2's is bfb92a89ceacd678.",
+        "Round 1's config hash is c429ce5e92da9a22; Round 2's is b4ca1ec022266551.",
         "Go back to the previous cell and point PROJECT at 'round 2/'.",
     ]))
 
 print("config hash:", config.config_hash)
 print("model:", config.model.name, "| quantization:", config.model.quantization)
 print("aggregations:", list(config.probe.aggregations))
+
+# Pre-registered in DECISIONS 065: all three in ONE session. last_token is the
+# Round 1 anchor and cannot be recovered from a cache of pooled features, so a
+# run without it cannot settle the cross-round comparison -- and a later run of
+# last_token alone would compare against a different sample, split and label
+# set, replacing one cross-configuration comparison with another.
+_missing = {"mean_pool", "max_rolling_means", "last_token"} - set(
+    config.probe.aggregations
+)
+if _missing:
+    raise SystemExit(
+        "config declares %s; missing %s. An unlisted aggregation raises "
+        "nothing -- a shorter list is a valid list -- which is how Round 2 "
+        "measured a different detector from Round 1 for an entire phase "
+        "(DECISIONS 050, config enumeration)."
+        % (list(config.probe.aggregations), sorted(_missing))
+    )
 print("rolling window/stride:", config.probe.rolling_window, config.probe.rolling_stride)
 """
         ),
