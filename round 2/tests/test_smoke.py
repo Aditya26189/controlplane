@@ -197,10 +197,8 @@ def test_canary_is_all_positive_and_clears_its_own_threshold(tmp_path) -> None:
     """
     import importlib.util
 
-    import numpy as np
-
     from src.evalsets.registry import load_evalset, save_evalset
-    from src.validation.evalsets import TRAIN, split_by_question
+    from src.validation.evalsets import TRAIN
     from src.validation.synthetic import synthetic_cache, synthetic_evalset
 
     spec = importlib.util.spec_from_file_location(
@@ -219,33 +217,47 @@ def test_canary_is_all_positive_and_clears_its_own_threshold(tmp_path) -> None:
     cache = synthetic_cache(evalset, seed=3, window=8, stride=4)
     cache_path = cache.save(tmp_path / "cache.npz")
 
+    # The fixture's variants are independent noise, so four top-5% bands barely
+    # intersect and no item clears them all. On real activations the variants
+    # are pooled from the SAME hidden states and correlate heavily -- the frozen
+    # canary below clears all three with margin. So the fixture exercises the
+    # refusal, which is correct behaviour: a canary no eligible item can satisfy
+    # must not be silently built at a smaller size or a lower bar.
     original = module.PROJECT_ROOT
     try:
         module.PROJECT_ROOT = tmp_path
-        assert module.main([
-            "--config", str(PROJECT_ROOT / "config.yaml"),
-            "--cache", str(cache_path),
-            "--eval-set", "canary-src",
-            "--variant", sorted(cache.variants)[0],
-            "--n-items", "10",
-            "--canary-id", "canary-under-test",
-            "--evalsets-out", str(registry),
-            "--out", str(tmp_path),
-        ]) == 0
+        with pytest.raises(SystemExit, match="clear every binding"):
+            module.main([
+                "--config", str(PROJECT_ROOT / "config.yaml"),
+                "--cache", str(cache_path),
+                "--eval-set", "canary-src",
+                "--n-items", "10",
+                "--canary-id", "canary-under-test",
+                "--evalsets-out", str(registry),
+                "--out", str(tmp_path),
+            ])
     finally:
         module.PROJECT_ROOT = original
-
-    canary = load_evalset(registry / "canary-under-test.json")
-    assert len(canary) == 10
-    assert all(item.label == 1 for item in canary.items), (
-        "a canary item labelled correct is not a known positive"
+    assert not (registry / "canary-under-test.json").exists(), (
+        "a canary was frozen despite no item clearing every binding variant"
     )
 
-    # Every canary item must come from the source TRAIN split.
-    splits = split_by_question(evalset, seed=1729)
-    train_ids = {evalset.items[int(i)].item_id for i in np.asarray(splits[TRAIN])}
-    assert {item.item_id for item in canary.items} <= train_ids, (
+    # And the frozen canary, which is the one every measured warrant depends on.
+    frozen_path = PROJECT_ROOT / "evalsets" / "canary-20-triviaqa.json"
+    if not frozen_path.exists():
+        pytest.skip("no frozen canary in this checkout")
+    frozen = load_evalset(frozen_path)
+    assert all(item.label == 1 for item in frozen.items), (
+        "a canary item labelled correct is not a known positive"
+    )
+    assert {item.split for item in frozen.items} == {TRAIN}, (
         "canary drew from outside train; that is selection on a protected split"
+    )
+    binding = frozen.construction.get("variants_required_to_catch")
+    assert binding and len(binding) > 1, (
+        "the canary records no binding variants, or binds only one. Built on a "
+        "single aggregation it caught 20/20 there and 15/20 on another, "
+        "refusing two of three ladder rungs on a control unrelated to them."
     )
 
 
