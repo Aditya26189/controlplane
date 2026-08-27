@@ -69,6 +69,31 @@ class MatrixCell:
         return self.key.eval_set_id
 
 
+def _calibration_note(warrant) -> str:
+    """Annotate a cell whose operating point no longer spends what it declared.
+
+    A warrant makes two separable claims -- how well the detector ranks, and
+    what its threshold spends -- and can hold one while losing the other.
+    ``T1-last_token`` transferred to long context with AUROC 0.826 -> 0.813 and
+    a flag rate of 0.042 -> 0.065 against a declared 0.05 target: sound about
+    ranking, questionable about cost.
+
+    Shown only when it is the exception, so the annotation carries information
+    rather than decorating every cell. ``CAL:n/a`` marks the case that would
+    otherwise be read as reassurance: drift not shown, at an ``n`` too small to
+    have shown it.
+    """
+    claim = getattr(warrant, "calibration", None)
+    status = getattr(claim, "status", None)
+    if status is None:
+        return ""
+    if status.value == "DRIFTED":
+        return " · **CAL:DRIFTED**"
+    if getattr(claim, "underpowered", False):
+        return " · CAL:n/a"
+    return ""
+
+
 class WarrantMatrix:
     """Warrants indexed by detector and envelope, with the empty cells visible.
 
@@ -336,7 +361,23 @@ class WarrantMatrix:
                 if cell.status is WarrantStatus.VALID and cell.warrant is not None:
                     recall = cell.warrant.metrics.recall
                     if recall is not None:
-                        label += f" R={recall.value:.2f} [{recall.ci_low:.2f}, {recall.ci_high:.2f}]"
+                        # Recall never travels alone (invariant 5). It moves with
+                        # the budget spent, so "R=0.08 -> R=0.13" across two
+                        # envelopes reads as a detector improving when the flag
+                        # rate went 0.042 -> 0.065 at a frozen threshold and the
+                        # lift is flat. The budget belongs in the cell that shows
+                        # the recall, not in a footnote (DECISIONS 067).
+                        flag = cell.warrant.metrics.flag_rate
+                        label += (
+                            f" R={recall.value:.2f} "
+                            f"[{recall.ci_low:.2f}, {recall.ci_high:.2f}]"
+                            f" @f={flag.value:.3f}"
+                        )
+                        # Calibration shows only when it is the exception. A
+                        # VALID cell whose operating point no longer delivers
+                        # its declared budget is sound about ranking and wrong
+                        # about cost; unannotated it reads as unqualified.
+                        label += _calibration_note(cell.warrant)
                     else:
                         fpr = cell.warrant.metrics.fpr_hard_negatives
                         if fpr is not None:

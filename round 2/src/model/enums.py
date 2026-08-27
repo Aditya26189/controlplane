@@ -109,6 +109,33 @@ class WarrantStatus(Enum):
         return self is not WarrantStatus.UNVALIDATED
 
 
+class CalibrationStatus(Enum):
+    """Whether a warrant's operating point still delivers its declared budget.
+
+    Separate from :class:`WarrantStatus` because a warrant makes two claims and
+    can hold one while losing the other. ``T1-last_token`` transferred to the
+    long-context envelope with its ranking essentially intact (AUROC 0.826 ->
+    0.813) while the frozen threshold went from flagging 4.2% of traffic to
+    6.5%. Collapsing that into one status would have to call it either sound --
+    hiding a budget claim that may no longer hold -- or refused, discarding a
+    ranking that demonstrably survived.
+
+    There is deliberately no state meaning "calibration verified". ``CALIBRATED``
+    means drift was **not shown**, which at a small ``n`` is a much weaker
+    statement, and :class:`CalibrationClaim` carries the ``n`` that would have
+    been needed so the two cannot be confused.
+    """
+
+    #: Target flag rate lies outside the realised interval. The operating point
+    #: is demonstrably not the operating point any more.
+    DRIFTED = "DRIFTED"
+    #: Target lies inside the realised interval, so drift is not shown. Check
+    #: ``CalibrationClaim.underpowered`` before reading this as reassurance.
+    CALIBRATED = "CALIBRATED"
+    #: No target declared, or no interval to test against. Never a pass.
+    UNKNOWN = "UNKNOWN"
+
+
 class MetricKind(Enum):
     """Whether a metric is a count of reviewed items or an estimate over a pool.
 

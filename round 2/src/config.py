@@ -306,6 +306,7 @@ class ValidationConfig:
         "canary",
         "determinism",
     )
+    calibration_tolerance: float = 0.25
 
     def __post_init__(self) -> None:
         if self.bootstrap_samples < 100:
@@ -318,6 +319,12 @@ class ValidationConfig:
         if self.min_n_test < 1:
             raise ConfigError(
                 f"validation.min_n_test must be positive, got {self.min_n_test}"
+            )
+        if not 0.0 < self.calibration_tolerance < 1.0:
+            raise ConfigError(
+                "validation.calibration_tolerance must be in (0, 1) -- it is a "
+                "relative deviation from the flag-rate budget worth acting on. "
+                f"Got {self.calibration_tolerance}"
             )
         if not 0.0 <= self.min_auroc_lower_ci <= 1.0:
             raise ConfigError(

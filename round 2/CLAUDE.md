@@ -120,6 +120,13 @@ Edit the script, regenerate, then execute to populate outputs.
 - Every stage writes to `results/` and reads from disk. Stages independently re-runnable without repeating expensive extraction.
 - Seed everything. Log resolved config, config hash, git commit, library versions, device into every artifact.
 - Assert at every boundary. Crash loudly. A silent wrong answer is far worse than a stack trace.
+- **Never pipe a command whose exit status you need.** `cmd | tail` reports
+  *tail's* status, so a failing test suite reads as green and a killed script
+  reads as finished. Use `sh scripts/run.sh <cmd>`, which writes output to a
+  file, echoes `EXIT=<real status>`, and propagates it. This trap fired twice in
+  one session, the second time two messages after it was documented — reading is
+  not a control, so the correct form has to be the default rather than the
+  remembered one.
 
 ## Version control
 

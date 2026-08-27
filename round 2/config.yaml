@@ -58,6 +58,12 @@ validation:
   ci: 0.95
   min_n_test: 200
   min_auroc_lower_ci: 0.55
+  # Relative deviation from the declared flag-rate budget that is worth acting
+  # on. Power is measured against THIS, not against whatever deviation happened
+  # to be observed: an estimate that lands near the target needs an enormous n
+  # to be distinguished from it, which says nothing about whether the sample
+  # could have caught a deviation that mattered (DECISIONS 069).
+  calibration_tolerance: 0.25
   warrant_ttl_hours: 24
   controls: ["padding_fault", "label_shuffle", "null_feature", "canary", "determinism"]
   null_control_band: [0.45, 0.55]

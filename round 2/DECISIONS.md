@@ -821,7 +821,7 @@ On `hinglish-pii-200`: base rate 0.51, measured flag rate 0.62, so the ceiling i
 ---
 
 ## 050 — The failure class: absence reading as presence
-**Status:** accepted · **names the class behind 024, 032, 035, 046, 053-057, 062, 064 and others**
+**Status:** accepted · **names the class behind 024, 032, 035, 046, 053-057, 062, 064, 066 and others**
 
 **Context:** The same bug has now appeared four times in four costumes, and each time it was caught by a different accident. Naming the instances is not enough, because the fifth occurrence will look like none of them. Naming the *class* is the only thing that generalises.
 
@@ -840,6 +840,28 @@ On `hinglish-pii-200`: base rate 0.51, measured flag rate 0.62, so the ceiling i
 | **debugging method** (053, 055, 056, 057) | the alternative causes were never computed | the one candidate that was computed, read as identified |
 | **config enumeration** (062) | `last_token` implemented but not listed in `aggregations` | the two listed options, read as the complete set of options |
 | **shell exit codes** (064) | `pytest ... \| tail` reports *tail's* status | a check that could not fail, read as a check that passed |
+
+**A sixth surface, and it is the inverse shape — worth separating.** The five
+above are all *absence reading as presence*. This one is a **guard whose scope
+is narrower than the thing it gates**, which fails open on everything outside
+that scope, silently.
+
+The canary (066) was built from one aggregation's scores. It bound
+`last_token` — caught 20/20 — and did not bind `mean_pool`, which caught 15/20
+and was refused on a control that had nothing to do with its quality. The
+control ran, reported a number, and passed or failed; nothing was absent. It was
+simply *measuring a different thing from the one it was gating*.
+
+That is the surface most likely to recur as detectors are added: every new
+detector arrives outside the scope of every control written before it, and a
+control that binds narrowly does not announce what it is not covering. The
+canary now records `variants_required_to_catch` and
+`variants_excluded_below_auroc_floor` in its construction, so its scope is
+readable rather than implied.
+
+The rule: **a guard must declare what it binds, and the declaration must be
+checkable against what it gates.** "It passed" is not information until you know
+what it was looking at.
 
 **Three of these are in the process column, not the code column**, and that is
 why the first three rules did not catch them. Two deserve separate mention.
@@ -1533,3 +1555,136 @@ A canary is a property of the pipeline, not of one aggregation. Items are now
 selected to clear **every** variant's threshold, ranked by the worst margin
 across variants, and 05_canary refuses to freeze one any rung cannot catch.
 Worst margin on the frozen set: 0.0131. All three rungs now issue.
+
+## 067 — Recall never travels without its budget, and last_token did not improve
+
+`last_token`'s row read recall 0.079 -> 0.126 and lift 1.906 -> 1.944 across the
+envelope shift: a detector apparently performing *better* on the harder
+envelope, with nothing in the table explaining why. That reading is wrong, and
+the table was what made it available.
+
+The base rate did **not** move. Both envelopes are the same 600 test questions —
+the long-context set is those questions padded — so labels, positives and the
+ceiling are identical:
+
+| | base | flag | recall | precision | lift | ceiling | % of ceiling |
+|---|---|---|---|---|---|---|---|
+| `triviaqa-600` | 0.4617 | 0.0417 | 0.0794 | 0.880 | 1.906 | 2.166 | 88.0% |
+| `triviaqa-longctx-600` | 0.4617 | **0.0650** | 0.1264 | 0.897 | 1.944 | 2.166 | 89.7% |
+
+277 positives on both. Flagged 25 -> 39; TP 22 -> 35.
+
+**What moved is the flag rate.** The frozen threshold spends 56% more budget on
+the shifted envelope, because the score distribution shifted up. Recall rose in
+proportion. Lift — the budget-normalised quantity, which is what the product
+claims in — is flat.
+
+So the honest statement is not "it improved". It is: **the ranking survived the
+shift and the calibration did not.** The threshold no longer delivers the
+operating point it was chosen for: 4.2% on source, 6.5% on target, against a 5%
+target. A warrant that pins recall at a stated budget is claiming something the
+detector no longer does on this envelope, even though its AUROC held at
+0.826 -> 0.813.
+
+That is a drift signal on the *operating point* rather than the ranking, and it
+is the sharpest input Phase 5 has: the surviving detector still needs
+re-thresholding on the new envelope, and nothing currently detects that.
+
+**The rendering fix.** `flag rate` and `base rate` are now columns in
+`RESULTS.md`, beside recall rather than in the lift footnote, and the matrix
+cell renders `R=0.13 [0.09, 0.17] @f=0.065`. Recall alone is not a claim
+(invariant 5), and the compact matrix cell was the place the omission actively
+misled — the one row a reader stops on.
+
+## 068 — The declaration ordering, as hashes rather than prose
+
+065 is only worth anything if a reader can check it predates the data without
+taking the claim on trust:
+
+| commit | UTC+5:30 | what it fixed |
+|---|---|---|
+| `d99a63a` | 2026-08-27 12:28:22 | DECISIONS 065: three branches, four fallback candidates, `last_token` declared for Beat 4 |
+| `598cf85` | 2026-08-27 12:28:22 | merge of the above to `main` |
+| `efa1291` | 2026-08-27 12:36:03 | the branch rule as code, with Round 1's CI as unreachable module constants |
+| `fb0dd5e` | 2026-08-27 17:39:52 | the result: branch A, `last_token` 0.825552 |
+
+The Kaggle run that produced the data started at **12:52 UTC+5:30** and finished
+at **15:31**, between `efa1291` and `fb0dd5e`. Verify with:
+
+```
+git log --format='%h %ad %s' --date=iso-strict d99a63a..fb0dd5e
+```
+
+The declared aggregation and the acceptance bounds were both committed before
+the extraction started. `test_reconciliation_branches_are_fixed_constants`
+asserts no argparse flag can reach either, so the run could not have widened its
+own acceptance region even in principle.
+
+## 069 — A warrant makes two claims: ranking and calibration, separably
+
+`T1-last_token` transferred to the long-context envelope with AUROC 0.826 →
+0.813 — ranking essentially intact — while the frozen threshold went from
+flagging 4.2% of traffic to 6.5% against a declared 5% target. Those are
+separable properties of a detector and nothing in the system distinguished them.
+
+**The blind spot is shaped like the thesis.** Every warrant measures ranking
+quality (AUROC, and lift derived from a threshold measured *on that envelope*).
+A warrant can therefore be perfectly sound about ranking and still assert a
+recall-at-budget the detector no longer delivers — a warrant making an unbacked
+claim, in the exact sense this product exists to refuse. Collapsing both into one
+status would have to call `last_token` on long context either sound, hiding the
+budget question, or refused, discarding a ranking that demonstrably survived.
+
+So `Warrant.calibration` carries a second claim, and the states are deliberately
+not symmetric with `WarrantStatus`:
+
+- **`DRIFTED`** — the declared target lies outside the realised flag rate's
+  interval. The operating point is demonstrably not the operating point.
+- **`CALIBRATED`** — the target lies inside, so drift is **not shown**. Weaker
+  than "calibration held".
+- **`UNKNOWN`** — no target declared, or no interval. Never a pass.
+
+**There is no state meaning "calibration verified", and the reason is the
+measurement.** At n=600, a realised 6.5% has interval [0.048, 0.085], which
+covers the 5% target. So the honest reading of `last_token` on long context is
+*not* "the calibration drifted" — I said that first and it overstated. It is:
+the point estimate is 1.30× the target and this sample cannot tell us either
+way.
+
+**Power is measured against a deviation worth acting on, never the observed
+one.** My first implementation compared the `n` needed to resolve the *observed*
+gap against the actual `n`. That is backwards, and a test caught it: as an
+estimate approaches its target the gap shrinks and the required `n` diverges, so
+`0.0501` against a `0.0500` target reported needing n=18,282,171 and flagged
+near-perfect agreement as underpowered.
+
+`config.validation.calibration_tolerance` (0.25) declares the deviation worth
+catching. A claim is underpowered when the realised interval extends outside the
+band `target ± tolerance` — the sample cannot rule out a departure large enough
+to act on. Detecting a 25% deviation from a 5% budget needs **n ≥ 1441**; a 10%
+deviation needs 7987.
+
+| | band | realised CI | status | underpowered |
+|---|---|---|---|---|
+| `last_token` @ short | [0.0375, 0.0625] | [0.0267, 0.0583] | CALIBRATED | **yes** |
+| `last_token` @ long | [0.0375, 0.0625] | [0.0483, 0.0850] | CALIBRATED | **yes** |
+| `max_rolling_means` @ long | [0.0375, 0.0625] | [0.5050, 0.5833] | DRIFTED | — |
+| `mean_pool` @ long | [0.0375, 0.0625] | [0.0000, 0.0061] | DRIFTED | — |
+
+**Not one measured warrant is a clean calibration pass.** Every budget claim in
+the repo is either unresolved at n=600 or refuted, including on the source
+envelope. `pii-reference` reads `UNKNOWN`: it declares no flag-rate budget, and
+that is an absence rather than a pass. The ranking claims are supported — AUROC intervals are tight
+enough to separate 0.826 from 0.785 — but the "at flag rate f" half of every
+warrant is weakly evidenced, and now says so rather than being read off a point
+estimate.
+
+The matrix annotates only the exception: `CAL:DRIFTED` where the budget claim is
+refuted, `CAL:n/a` where drift was not shown at an `n` too small to show it. An
+unannotated cell means the claim was testable and passed.
+
+**Consequence for Phase 5, and it is cheap.** Realised-versus-target flag rate is
+a drift signal requiring no embedding computation at all — a counter and a
+target. It catches *that the operating point is no longer the operating point*,
+where PSI on token length catches *why the input distribution moved*. The second
+is the diagnosis; the first is the alarm, and it is one division.

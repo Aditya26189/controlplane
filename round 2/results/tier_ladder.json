@@ -1,16 +1,24 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-27T10:15:41+00:00",
-    "git_commit": "efa1291e418d33c90a79aa00bf70ab2161209caf",
+    "timestamp_utc": "2026-08-27T12:54:58+00:00",
+    "git_commit": "dd10bf375082fdea65391512bdf3b7c15987708e",
     "git_branch": "main",
     "dirty": true,
     "dirty_paths": [
       "results_bundle (3)",
-      "round 2/evalsets/canary-20-triviaqa.json",
-      "round 2/klog3.txt",
-      "round 2/notebooks/run_on_kaggle.ipynb",
-      "round 2/scripts/05_canary.py",
-      "round 2/scripts/build_notebooks.py"
+      "round 2/CLAUDE.md",
+      "round 2/DECISIONS.md",
+      "round 2/config.yaml",
+      "round 2/scripts/run.sh",
+      "round 2/src/config.py",
+      "round 2/src/matrix/matrix.py",
+      "round 2/src/model/calibration.py",
+      "round 2/src/model/enums.py",
+      "round 2/src/model/warrant.py",
+      "round 2/src/report/results.py",
+      "round 2/src/validation/calibration.py",
+      "round 2/src/validation/issuance.py",
+      "round 2/tests/test_calibration.py"
     ],
     "dirty_excludes": "results",
     "python": "3.12.10",
@@ -31,7 +39,7 @@
       "cuda_available": false,
       "device_name": "cpu"
     },
-    "config_hash": "b4ca1ec022266551",
+    "config_hash": "4eb9f8bd410cb192",
     "seed": 1729,
     "config": {
       "seed": 1729,
@@ -121,7 +129,8 @@
           0.55
         ],
         "null_control_min_repeats": 8,
-        "null_control_max_repeats": 200
+        "null_control_max_repeats": 200,
+        "calibration_tolerance": 0.25
       },
       "drift": {
         "window_size": 200,
@@ -330,7 +339,7 @@
           "applicable": true
         }
       ],
-      "duration_seconds": 17.315831299871206
+      "duration_seconds": 20.083963599987328
     },
     "T1-max_rolling_means": {
       "access_tier": "T1_ACTIVATIONS",
@@ -458,7 +467,7 @@
           "applicable": true
         }
       ],
-      "duration_seconds": 17.988537499913946
+      "duration_seconds": 17.592187899863347
     },
     "T1-mean_pool": {
       "access_tier": "T1_ACTIVATIONS",
@@ -586,7 +595,7 @@
           "applicable": true
         }
       ],
-      "duration_seconds": 17.75070450012572
+      "duration_seconds": 17.319921100046486
     }
   }
 }
