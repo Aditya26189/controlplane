@@ -1,25 +1,16 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-27T13:01:41+00:00",
-    "git_commit": "dd10bf375082fdea65391512bdf3b7c15987708e",
+    "timestamp_utc": "2026-08-27T18:25:06+00:00",
+    "git_commit": "91482f2562f8c476652c409520159719237aee74",
     "git_branch": "main",
     "dirty": true,
     "dirty_paths": [
       "results_bundle (3)",
-      "round 2/CLAUDE.md",
-      "round 2/DECISIONS.md",
-      "round 2/config.yaml",
-      "round 2/scripts/run.sh",
-      "round 2/src/config.py",
+      "round 2/src/drift/__init__.py",
+      "round 2/src/drift/ladder.py",
+      "round 2/src/drift/response.py",
       "round 2/src/matrix/matrix.py",
-      "round 2/src/model/calibration.py",
-      "round 2/src/model/enums.py",
-      "round 2/src/model/serde.py",
-      "round 2/src/model/warrant.py",
-      "round 2/src/report/results.py",
-      "round 2/src/validation/calibration.py",
-      "round 2/src/validation/issuance.py",
-      "round 2/tests/test_calibration.py"
+      "round 2/src/report/results.py"
     ],
     "dirty_excludes": "results",
     "python": "3.12.10",
@@ -40,7 +31,7 @@
       "cuda_available": false,
       "device_name": "cpu"
     },
-    "config_hash": "4eb9f8bd410cb192",
+    "config_hash": "9b2eec811f64271e",
     "seed": 1729,
     "config": {
       "seed": 1729,
@@ -144,7 +135,8 @@
           "embedding_centroid_distance",
           "reference_perplexity",
           "category_mix"
-        ]
+        ],
+        "max_false_alarm_rate": 0.05
       },
       "sampling": {
         "allocation_month_one": "proportional",
@@ -243,7 +235,7 @@
           },
           "hinglish-pii-200": {
             "status": "VALID",
-            "warrant_id": "W-e8a056797c420c87",
+            "warrant_id": "W-034bb74ed4d4b60f",
             "n_test": 200,
             "base_rate": 0.51,
             "controls_run": 2,
@@ -294,7 +286,7 @@
           },
           "hinglish-pii-200-longctx": {
             "status": "VALID",
-            "warrant_id": "W-c9c71753d198db69",
+            "warrant_id": "W-0de65ad1d0f35c2f",
             "n_test": 200,
             "base_rate": 0.51,
             "controls_run": 2,
@@ -345,7 +337,7 @@
           },
           "hard-negatives-200": {
             "status": "VALID",
-            "warrant_id": "W-7e5423109385c672",
+            "warrant_id": "W-210de517362ee212",
             "n_test": 200,
             "base_rate": 0.0,
             "controls_run": 2,
@@ -386,7 +378,7 @@
         "cells": {
           "triviaqa-600-synthetic": {
             "status": "VALID",
-            "warrant_id": "W-cc3d53b23bab9775",
+            "warrant_id": "W-4b937b0d4fed31dd",
             "n_test": 600,
             "base_rate": 0.14666666666666667,
             "controls_run": 5,
@@ -437,7 +429,7 @@
           },
           "triviaqa-longctx-600-synthetic": {
             "status": "VALID",
-            "warrant_id": "W-001638bae5815b11",
+            "warrant_id": "W-8f75822d45ac1c91",
             "n_test": 600,
             "base_rate": 0.14666666666666667,
             "controls_run": 5,
@@ -508,7 +500,7 @@
         "cells": {
           "triviaqa-600-synthetic": {
             "status": "VALID",
-            "warrant_id": "W-b2ae6a4acda30492",
+            "warrant_id": "W-f72c9ad6e96fe15e",
             "n_test": 600,
             "base_rate": 0.14666666666666667,
             "controls_run": 5,
@@ -560,7 +552,7 @@
           "triviaqa-longctx-600-synthetic": {
             "status": "REFUSED",
             "reason": "lift_lower_ci: measured 1.364 [0.000, 3.077] at measured flag rate 0.0250, required > 1.0 \u2014 otherwise not demonstrably better than random sampling at the same budget",
-            "warrant_id": "W-5adad35287587637",
+            "warrant_id": "W-43432396a224a689",
             "n_test": 600,
             "base_rate": 0.14666666666666667,
             "controls_run": 5,
@@ -631,7 +623,7 @@
         "cells": {
           "triviaqa-600-synthetic": {
             "status": "VALID",
-            "warrant_id": "W-70e2020534e530d1",
+            "warrant_id": "W-cd9785171a661d66",
             "n_test": 600,
             "base_rate": 0.14666666666666667,
             "controls_run": 5,
@@ -682,7 +674,7 @@
           },
           "triviaqa-longctx-600-synthetic": {
             "status": "VALID",
-            "warrant_id": "W-ee0fb04dc0067106",
+            "warrant_id": "W-8359c7140d362ed8",
             "n_test": 600,
             "base_rate": 0.14666666666666667,
             "controls_run": 5,
@@ -753,7 +745,7 @@
         "cells": {
           "triviaqa-600-synthetic": {
             "status": "VALID",
-            "warrant_id": "W-0e7748b9de5234c0",
+            "warrant_id": "W-e1a168b0eb812e1f",
             "n_test": 600,
             "base_rate": 0.14666666666666667,
             "controls_run": 5,
@@ -805,7 +797,7 @@
           "triviaqa-longctx-600-synthetic": {
             "status": "REFUSED",
             "reason": "auroc_lower_ci: measured 0.5443, required > 0.55; lift_lower_ci: measured 1.180 [0.556, 1.962] at measured flag rate 0.0867, required > 1.0 \u2014 otherwise not demonstrably better than random sampling at the same budget",
-            "warrant_id": "W-d577e0a285e0698d",
+            "warrant_id": "W-6b18cc35b4db8c9b",
             "n_test": 600,
             "base_rate": 0.14666666666666667,
             "controls_run": 5,
@@ -1240,7 +1232,7 @@
         }
       }
     ],
-    "rendered_at": "2026-08-27T13:01:41+00:00"
+    "rendered_at": "2026-08-27T18:25:06+00:00"
   },
   "routing": [
     {
@@ -1275,7 +1267,7 @@
         "probe-qwen2.5-7b-instruct-T1-mean_pool|P-conservative|triviaqa-600-synthetic"
       ],
       "claimed_bounds": {
-        "warrant_id": "W-cc3d53b23bab9775",
+        "warrant_id": "W-4b937b0d4fed31dd",
         "detector_id": "probe-T1-max_rolling_means",
         "detector_version": "0.1.0+fixture",
         "operating_point_id": "P-conservative",
@@ -1284,8 +1276,8 @@
         "status": "VALID",
         "n_test": 600,
         "base_rate": 0.14666666666666667,
-        "issued_at": "2026-08-27T12:57:08+00:00",
-        "expires_at": "2026-08-28T12:57:08+00:00",
+        "issued_at": "2026-08-27T18:23:42+00:00",
+        "expires_at": "2026-08-28T18:23:42+00:00",
         "kappa": null,
         "controls_run": 5,
         "controls_inapplicable": [],
@@ -1403,7 +1395,7 @@
         "probe-qwen2.5-7b-instruct-T1-mean_pool|P-conservative|hinglish-pii-200"
       ],
       "claimed_bounds": {
-        "warrant_id": "W-e8a056797c420c87",
+        "warrant_id": "W-034bb74ed4d4b60f",
         "detector_id": "pii-reference",
         "detector_version": "0.1.0",
         "operating_point_id": "P-declared",
@@ -1412,8 +1404,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-27T12:58:09+00:00",
-        "expires_at": "2026-08-28T12:58:09+00:00",
+        "issued_at": "2026-08-27T18:24:44+00:00",
+        "expires_at": "2026-08-28T18:24:44+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1502,7 +1494,7 @@
         "probe-qwen2.5-7b-instruct-T1-mean_pool|P-conservative|hinglish-pii-200-longctx"
       ],
       "claimed_bounds": {
-        "warrant_id": "W-c9c71753d198db69",
+        "warrant_id": "W-0de65ad1d0f35c2f",
         "detector_id": "pii-reference",
         "detector_version": "0.1.0",
         "operating_point_id": "P-declared",
@@ -1511,8 +1503,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-27T12:58:10+00:00",
-        "expires_at": "2026-08-28T12:58:10+00:00",
+        "issued_at": "2026-08-27T18:24:46+00:00",
+        "expires_at": "2026-08-28T18:24:46+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1751,7 +1743,7 @@
         "probe-qwen2.5-7b-instruct-T1-mean_pool|P-conservative|hinglish-pii-200"
       ],
       "claimed_bounds": {
-        "warrant_id": "W-e8a056797c420c87",
+        "warrant_id": "W-034bb74ed4d4b60f",
         "detector_id": "pii-reference",
         "detector_version": "0.1.0",
         "operating_point_id": "P-declared",
@@ -1760,8 +1752,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-27T12:58:09+00:00",
-        "expires_at": "2026-08-28T12:58:09+00:00",
+        "issued_at": "2026-08-27T18:24:44+00:00",
+        "expires_at": "2026-08-28T18:24:44+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -1850,7 +1842,7 @@
         "probe-qwen2.5-7b-instruct-T1-mean_pool|P-conservative|hinglish-pii-200-longctx"
       ],
       "claimed_bounds": {
-        "warrant_id": "W-c9c71753d198db69",
+        "warrant_id": "W-0de65ad1d0f35c2f",
         "detector_id": "pii-reference",
         "detector_version": "0.1.0",
         "operating_point_id": "P-declared",
@@ -1859,8 +1851,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-27T12:58:10+00:00",
-        "expires_at": "2026-08-28T12:58:10+00:00",
+        "issued_at": "2026-08-27T18:24:46+00:00",
+        "expires_at": "2026-08-28T18:24:46+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -2099,7 +2091,7 @@
         "probe-qwen2.5-7b-instruct-T1-mean_pool|P-conservative|hinglish-pii-200"
       ],
       "claimed_bounds": {
-        "warrant_id": "W-e8a056797c420c87",
+        "warrant_id": "W-034bb74ed4d4b60f",
         "detector_id": "pii-reference",
         "detector_version": "0.1.0",
         "operating_point_id": "P-declared",
@@ -2108,8 +2100,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-27T12:58:09+00:00",
-        "expires_at": "2026-08-28T12:58:09+00:00",
+        "issued_at": "2026-08-27T18:24:44+00:00",
+        "expires_at": "2026-08-28T18:24:44+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [
@@ -2198,7 +2190,7 @@
         "probe-qwen2.5-7b-instruct-T1-mean_pool|P-conservative|hinglish-pii-200-longctx"
       ],
       "claimed_bounds": {
-        "warrant_id": "W-c9c71753d198db69",
+        "warrant_id": "W-0de65ad1d0f35c2f",
         "detector_id": "pii-reference",
         "detector_version": "0.1.0",
         "operating_point_id": "P-declared",
@@ -2207,8 +2199,8 @@
         "status": "VALID",
         "n_test": 200,
         "base_rate": 0.51,
-        "issued_at": "2026-08-27T12:58:10+00:00",
-        "expires_at": "2026-08-28T12:58:10+00:00",
+        "issued_at": "2026-08-27T18:24:46+00:00",
+        "expires_at": "2026-08-28T18:24:46+00:00",
         "kappa": null,
         "controls_run": 2,
         "controls_inapplicable": [

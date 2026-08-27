@@ -87,10 +87,15 @@ def _calibration_note(warrant) -> str:
     status = getattr(claim, "status", None)
     if status is None:
         return ""
+    # The tolerance travels with the verdict, the same way lift travels with
+    # its ceiling. "CAL:n/a" alone is unreadable without going to look up the
+    # band it was judged against; "±25%" makes the claim self-contained.
+    tolerance = getattr(claim, "tolerance", None)
+    band = "" if tolerance is None else "±%.0f%%" % (tolerance * 100)
     if status.value == "DRIFTED":
-        return " · **CAL:DRIFTED**"
+        return " · **CAL:DRIFTED** (%s)" % band if band else " · **CAL:DRIFTED**"
     if getattr(claim, "underpowered", False):
-        return " · CAL:n/a"
+        return " · CAL:unresolved (%s)" % band if band else " · CAL:unresolved"
     return ""
 
 

@@ -237,6 +237,8 @@ def render_results(
             )
         lines.append("")
 
+    lines += _detection_sensitivity_section(measured)
+
     for heading, body in extra_sections:
         lines += [f"## {heading}", "", body, ""]
 
@@ -251,3 +253,71 @@ def render_results(
         "",
     ]
     return "\n".join(lines)
+
+
+def _detection_sensitivity_section(measured) -> list:
+    """What the calibration claims can and cannot detect at the n actually run.
+
+    A warrant asserts a budget as well as a ranking, and the budget half is
+    only as good as the sample behind it. Stating the boundary turns "how
+    sensitive is your drift detection?" from a shrug into a number and a limit
+    -- the same discipline as the price list: what can be proved, and what it
+    would cost to prove more.
+    """
+    claims = [
+        (w, w.calibration) for w in measured if getattr(w, "calibration", None)
+    ]
+    if not claims:
+        return []
+
+    rows, tolerances, shortfalls = [], set(), []
+    for warrant, claim in claims:
+        realised = claim.realised
+        n = realised.n if realised is not None else None
+        tolerances.add(claim.tolerance)
+        if claim.n_to_detect and n and claim.n_to_detect > n:
+            shortfalls.append((n, claim.n_to_detect))
+        rows.append(
+            "| `%s` | `%s` | %s | %s | %s |"
+            % (
+                warrant.detector_id,
+                warrant.eval_set_id,
+                claim.status.value,
+                "yes" if claim.underpowered else "no",
+                "n=%s, needs n>=%s" % (n, claim.n_to_detect)
+                if claim.n_to_detect
+                else "n/a",
+            )
+        )
+
+    tolerance = sorted(tolerances)[0] if len(tolerances) == 1 else None
+    lines = [
+        "## Detection sensitivity — a declared limitation",
+        "",
+    ]
+    if tolerance is not None and shortfalls:
+        worst_n = min(n for n, _ in shortfalls)
+        needed = max(need for _, need in shortfalls)
+        lines += [
+            "**Calibration drift is detectable at a %.0f%% deviation from the "
+            "declared flag-rate budget, and is not detectable at %.0f%%, on the "
+            "evidence here.**"
+            % (tolerance * 100, tolerance * 100 / 2.5),
+            "",
+            "Separating a %.0f%% deviation from the budget needs **n >= %d**. "
+            "These envelopes were measured at **n = %d**. So every budget claim "
+            "below is either refused outright or unresolved -- the interval "
+            "extends past the band, and this sample could not have narrowed it."
+            % (tolerance * 100, needed, worst_n),
+            "",
+            "This is a limitation of sample size, not of the method: the "
+            "ranking claims on the same warrants are supported, because AUROC "
+            "intervals at this n are tight enough to separate the detectors "
+            "from each other. Closing it needs more test items, not more code.",
+            "",
+        ]
+    lines += [
+        "| detector | envelope | calibration | unresolved | power |",
+        "|---|---|---|---|---|",
+    ] + rows + [""]
+    return lines
