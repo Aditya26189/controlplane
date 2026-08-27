@@ -384,6 +384,7 @@ class DriftConfig:
     psi_significant: float
     mmd_permutations: int
     features: tuple[str, ...]
+    max_false_alarm_rate: float = 0.05
 
     def __post_init__(self) -> None:
         if self.window_size < 2:
