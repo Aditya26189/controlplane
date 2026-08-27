@@ -79,6 +79,13 @@ drift:
   psi_stable: 0.10
   psi_significant: 0.25
   mmd_permutations: 500
+  # Largest share of STABLE windows allowed to trip psi_stable. PSI's 0.10/0.25
+  # bands are credit-scoring rules of thumb quoted without their sample size,
+  # and they are not scale-free: the null grows as (k-1)/n, so the same band
+  # means different things at different bin counts and window sizes. The
+  # monitor simulates its own null at construction and refuses a configuration
+  # that would exceed this (DECISIONS 070).
+  max_false_alarm_rate: 0.05
   features: ["token_length", "script_mix", "embedding_centroid_distance",
              "reference_perplexity", "category_mix"]
 
