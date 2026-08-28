@@ -164,21 +164,28 @@ assert total / 2**30 > 14, (
         ),
         markdown(
             """
-## 1 — Get the repository, and prove it is the right half
+## 1 — Get the repository, and prove it is the right project
 
-**This repository contains two projects.** Round 1 sits at the root; Round 2
-sits in `round 2/`. They have separate `controlplane/`, separate `config.yaml`, and
-incompatible schemas — Round 1's `ProbeConfig` has no `aggregations` field, so
-pointing this notebook at the root fails several cells in, after the model has
-loaded.
+**This repository contains two projects.** Round 2 — this one — is at the
+repository root, in the `controlplane/` package. Round 1 is the earlier probe
+experiment and lives under `round1/`, in a package still called `src/`. They
+have separate `config.yaml` files and incompatible schemas: Round 1's
+`ProbeConfig` has no `aggregations` field, so pointing this notebook at Round 1
+fails several cells in, after the model has loaded.
 
-An earlier version of this cell fell back to the root when `round 2/` was
-missing. That is the failure mode this project is about: an absence reading as
-presence (`DECISIONS.md` 050). It now refuses.
+Before 2026-08-29 the layout was inverted — Round 1 at the root, Round 2 under
+`round 2/`. A Kaggle Dataset zipped from that layout will **not** be accepted:
+its package is `src/`, the notebook's cells import `controlplane.*`, and the
+mismatch would surface as a missing attribute an hour into a GPU session.
+Re-zip from the current tree.
 
-The clone below is pre-filled and should need no editing. If it produces no
-`round 2/` directory, the cell says what it searched and how to fix it rather
-than proceeding with the wrong half.
+An earlier version of this cell fell back to whatever it found when the
+expected directory was missing. That is the failure mode this project is
+about: an absence reading as presence (`DECISIONS.md` 050). It refuses.
+
+The clone below is pre-filled and should need no editing. If it does not
+produce a usable project, the cell says what it searched and how to fix it
+rather than proceeding with the wrong one.
 """
         ),
         code(
@@ -186,20 +193,24 @@ than proceeding with the wrong half.
 import os, sys
 from pathlib import Path
 
-# Round 2 lives in "round 2/" on main. Clone it and the rest of the notebook
+# Round 2 is the repository root on main. Clone it and the rest of the notebook
 # finds it. Override only if you are running a fork or a work-in-progress
 # branch; attaching the repo as a Kaggle Dataset also works, and CANDIDATES
 # below searches /kaggle/input for it without any edit here.
 CLONE_URL = "https://github.com/Aditya26189/controlplane.git"
 CLONE_BRANCH = "main"
 
+# The "round 2" entries are the pre-2026-08-29 layout. They are still SEARCHED,
+# so that a stale Kaggle Dataset is named in the failure message below rather
+# than silently missed -- but is_round_two() rejects them, because that layout
+# ships a src/ package and every cell here imports controlplane.*.
 CANDIDATES = [
-    Path("/kaggle/working/controlplane/round 2"),
     Path("/kaggle/working/controlplane"),
-    *sorted(Path("/kaggle/input").glob("*/round 2")),
+    Path("/kaggle/working/controlplane/round 2"),
     *sorted(Path("/kaggle/input").glob("*")),
-    Path.cwd() / "round 2",
+    *sorted(Path("/kaggle/input").glob("*/round 2")),
     Path.cwd(),
+    Path.cwd() / "round 2",
 ]
 
 if CLONE_URL and not Path("/kaggle/working/controlplane").exists():
@@ -220,13 +231,19 @@ if PROJECT is None:
     problem = [
         "Round 2 not found.",
         "",
-        "This repository holds two projects: Round 1 at the root and Round 2 in",
-        "'round 2/'. They have separate controlplane/ and config.yaml, and Round 1's",
-        "ProbeConfig has no 'aggregations' field -- so pointing this notebook at",
-        "the root fails several cells in, after the model has loaded.",
+        "This repository holds two projects: Round 2 at the root, in the",
+        "controlplane/ package, and Round 1 under round1/, in a package still",
+        "called src/. They have separate config.yaml files and Round 1's",
+        "ProbeConfig has no 'aggregations' field -- so pointing this notebook",
+        "at Round 1 fails several cells in, after the model has loaded.",
         "",
-        "Refusing to fall back to the root: a wrong config that loads is worse",
-        "than one that does not (DECISIONS.md 050).",
+        "If you attached a Kaggle Dataset zipped before 2026-08-29, it has the",
+        "old layout (Round 2 under 'round 2/', package named src/) and is",
+        "correctly refused: the cells below import controlplane.*. Re-zip from",
+        "the current tree.",
+        "",
+        "Refusing to fall back to whatever is there: a wrong config that loads",
+        "is worse than one that does not (DECISIONS.md 050).",
         "",
         "Looked in:",
     ]
@@ -237,14 +254,15 @@ if PROJECT is None:
         "  - check CLONE_URL is reachable and CLONE_BRANCH exists. The clone is",
         "    silent on failure in some Kaggle images, so re-run the clone line",
         "    on its own and read what it prints.",
-        "  - or zip 'round 2/', upload it as a Kaggle Dataset, and it is found",
-        "    automatically under /kaggle/input/ with no edit here.",
+        "  - or zip the repository root, upload it as a Kaggle Dataset, and it",
+        "    is found automatically under /kaggle/input/ with no edit here.",
     ]
     raise SystemExit(chr(10).join(problem))
 
-# Drop any half-imported Round 1 modules before adding Round 2 to the path.
-# Python caches by module name, so a stale 'controlplane' would shadow the right one and
-# the failure would look like a missing attribute rather than a wrong import.
+# Drop any half-imported modules before adding the project to the path. Python
+# caches by module name, so a stale 'controlplane' would shadow the right one
+# and the failure would look like a missing attribute rather than a wrong
+# import.
 for name in [n for n in sys.modules if n == "controlplane" or n.startswith("controlplane.")]:
     del sys.modules[name]
 
@@ -299,7 +317,8 @@ if missing:
         "Loaded from " + str(Path("config.yaml").resolve()),
         "  hash " + config.config_hash,
         "Round 1's config hash is c429ce5e92da9a22; Round 2's is b4ca1ec022266551.",
-        "Go back to the previous cell and point PROJECT at 'round 2/'.",
+        "Go back to the previous cell: PROJECT is pointing at round1/, or at a",
+        "Kaggle Dataset zipped from the pre-2026-08-29 layout.",
     ]))
 
 print("config hash:", config.config_hash)
