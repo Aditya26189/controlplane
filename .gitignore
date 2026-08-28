@@ -24,3 +24,15 @@ results/smoke/
 # Caches for models and datasets
 .cache/
 hf_home/
+
+# A Round 1 results bundle downloaded to the repo root. results_bundle,
+# results_bundle (1) and results_bundle (2) are tracked and stay tracked --
+# gitignore does not untrack them. This entry is for the later download only,
+# which is a duplicate of evidence already committed and has no reason to be
+# staged again.
+#
+# It matters beyond tidiness: provenance() flags an artifact dirty from any
+# untracked path, so while this sat here every generated artifact recorded
+# dirty: true. Those flags are accurate but they point at a file unrelated to
+# the work that produced them.
+results_bundle (3)/
