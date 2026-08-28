@@ -2216,6 +2216,40 @@ that can be warranted beats a stronger one that cannot.
 But that is a judgement about the trade, not a reason to have called the cost
 zero.
 
+---
+
+### AMENDMENT to the paragraph above — the trade argument was overclaimed
+
+The sentence *"a detector 0.011 AUROC weaker that can be warranted beats a
+stronger one that cannot"* is wrong, and wrong in the same flattering direction
+as the error this entry was written to correct. Recorded here rather than edited
+out, because catching a flattering number and then defending the decision with a
+flattering framing is the same failure one level up.
+
+**The 1200-trained detector was already warranted.** All three profiles' recall
+lower bounds cleared their floors on the 600-item envelope too -- 0.1255 against
+0.10, 0.2789 against 0.25, 0.6858 against 0.50. Nothing was unwarrantable
+before. What `077` refused was `customer_support`'s **calibration** claim, on
+sample size, and that is a different claim from the ranking one this trade is
+about.
+
+What the re-split actually bought is **interval width on the warranted
+quantities**:
+
+| operating point | 600-envelope width | 960-envelope width | narrower by |
+|---|---|---|---|
+| `P-customer-support` | 0.0873 | 0.0764 | 12.5% |
+| `P-internal-knowledge` | 0.1171 | 0.0891 | 23.9% |
+| `P-decision-support` | 0.1007 | 0.0809 | 19.7% |
+
+So the honest statement is: **0.0110 AUROC was paid for recall intervals 12-24%
+narrower, plus a calibration claim that became supportable at all.** That is a
+good trade and it does not need the stronger claim.
+
+`083` qualifies both columns further: neither carries threshold-selection noise,
+so both are narrower than the truth by roughly 1.4-1.6x. The *comparison*
+between them stands, since the omission applies to both.
+
 
 ## 082 - The thresholds moved, and the recall asymmetry is ROC geometry
 
@@ -2292,3 +2326,86 @@ The claim is about **local sensitivity**, not about which operating point is
 better. Nothing here says the steep point is a worse choice; it says its
 warranted number moves more for a given threshold change, which is a reason to
 warrant it separately rather than a reason to avoid it.
+
+
+## 083 - Every published recall interval was conditional on a threshold set by five items
+
+### The finding
+
+Thresholds are selected on validation to hit a flag-rate budget, then frozen and
+applied to test. The bootstrap that produces the reported recall interval
+resamples **test only**. Selection noise is not in it, so every recall interval
+this repo has published is conditional on the threshold being correct.
+
+`082` is what makes the size of that omission calculable. The threshold's
+position on the ROC's FPR axis is set by the validation negatives above it:
+
+| operating point | budget | val negatives above | slope (082) |
+|---|---|---|---|
+| `P-customer-support` | f=0.10 | **5** of 255 | 6.70 |
+| `P-internal-knowledge` | f=0.20 | 14 of 255 | 5.27 |
+| `P-decision-support` | f=0.50 | 82 of 255 | 0.85 |
+
+Five items place the customer_support point. Resampling validation moves it, and
+the local slope decides what the move costs in recall.
+
+### One correction to how this was put to me
+
+It is **not** a budget violation. The declared budget is a *flag rate*, the
+operating point aims at 0.10, and test realises **0.1062** -- so the certificate
+meets the budget it claims, and the calibration machinery from Phase 4 is
+checking the right quantity. Realised FPR (0.0152 on test against 0.0196 on
+validation) is a derived quantity, not a declared one, and the gap sits inside
+the validation FPR's own SE of 0.0087.
+
+The failure is narrower and still serious: the interval understates uncertainty
+at the point where the product's flagship profile runs. Stating it as a budget
+breach would be the same overclaiming in the opposite direction.
+
+### The nested bootstrap
+
+Resample validation, reselect the threshold on the draw, resample test
+independently, recompute recall. The probe fit is **held fixed** -- what comes
+out is recall uncertainty given this probe including where its threshold lands,
+which is what the warrant needs, since a warrant is issued for a specific fitted
+probe. A fully nested version refitting on resampled training data is a larger
+and much more expensive statement.
+
+Validation and test are resampled independently, because they are disjoint
+samples and coupling the draws would understate the combined variance.
+
+### Result, 2000 draws, on `triviaqa-2400-t960`
+
+| operating point | recall | conditional 95% CI | selection-aware 95% CI | width | widening |
+|---|---|---|---|---|---|
+| `P-customer-support` | 0.2171 | [0.1774, 0.2551] | **[0.1468, 0.2706]** | 0.0777 -> 0.1238 | **1.59x** |
+| `P-internal-knowledge` | 0.3603 | [0.3157, 0.4048] | [0.3009, 0.4269] | 0.0891 -> 0.1261 | 1.42x |
+| `P-decision-support` | 0.7367 | [0.6935, 0.7747] | [0.6734, 0.7840] | 0.0811 -> 0.1106 | 1.36x |
+
+**The widening is monotone in the slope and in the negative count.** Up to 37%
+of the reported precision at customer_support was an artefact of treating a
+selected threshold as a fixed one.
+
+**No load decision changes.** All three selection-aware lower bounds still clear
+their floors -- 0.1468 against 0.10, 0.3009 against 0.25, 0.6734 against 0.50.
+The bounds are wider; the conclusions are the same.
+
+### A better version of the 082 demo beat
+
+`082` argued for warranting operating points individually from a spread in point
+sensitivity. This says the same thing in the units a warrant is written in: the
+profile with the most traffic and the tightest budget has an interval **1.59x**
+wider than reported, against **1.36x** at the escalation-heavy tier. Interval
+width is what a warrant claims, so this is the version that lands.
+
+### Not yet folded into issuance
+
+`validate()` still computes and the certificates still publish the **conditional**
+interval. Switching would move every published recall bound in the repo, which
+wants explicit sanction rather than arriving as a side effect of an analysis.
+Recommended for Phase 6, alongside the envelope/sample separation in the `080`
+amendment -- both change what issuance writes, and doing them in one migration
+means re-scoring once rather than twice.
+
+Until then the honest reading of any published recall interval in this repo is:
+**conditional on the threshold, and roughly 1.4-1.6x too narrow.**
