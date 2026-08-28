@@ -119,7 +119,9 @@ def test_smoke_policy_fixture(tmp_path: Path) -> None:
     with the hash of the rules that decided.
     """
     run_script("07_policy.py", "--fixture", out=tmp_path)
-    payload = json.loads((tmp_path / "policy.json").read_text(encoding="utf-8"))
+    written = sorted(tmp_path.glob("policy-*.json"))
+    assert len(written) == 1, f"expected one policy artifact, got {written}"
+    payload = json.loads(written[0].read_text(encoding="utf-8"))
 
     points = payload["operating_points"]
     assert len(points) == 3, "one point per profile"

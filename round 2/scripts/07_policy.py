@@ -22,6 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
 from src.evalsets.registry import load_evalset
+from src.evalsets.resplit import cache_source_id
 from src.policy.runner import issue_operating_points, run_profile_comparison
 from src.store import Ledger
 from src.validation.evalsets import ExtractionCache
@@ -99,9 +100,23 @@ def main(argv: list[str] | None = None) -> int:
         evalset = load_evalset(
             str(PROJECT_ROOT / config.paths.evalsets_dir / f"{args.eval_set}.json")
         )
-        cache = ExtractionCache.load(
-            caches / f"cache-{args.eval_set}.npz", expected_hash=evalset.content_hash
-        )
+        # A re-split set has no extraction of its own and needs none: its items
+        # are the source's items in the source's order, asserted at
+        # construction. Checked against the items rather than the content hash,
+        # which also covers the name and the declared splits (DECISIONS 079).
+        source_id = cache_source_id(evalset)
+        if source_id == evalset.eval_set_id:
+            cache = ExtractionCache.load(
+                caches / f"cache-{source_id}.npz", expected_hash=evalset.content_hash
+            )
+        else:
+            cache = ExtractionCache.load(
+                caches / f"cache-{source_id}.npz", expected_items=evalset
+            )
+            _LOG.info(
+                "%s reuses the extraction of %s; item identity verified",
+                evalset.eval_set_id, source_id,
+            )
         canary_path = caches / "cache-canary-20-triviaqa.npz"
         canary = ExtractionCache.load(canary_path) if canary_path.is_file() else None
 
@@ -131,15 +146,19 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         ledger.close()
 
+    # Named by envelope, so two measurements of the same distribution can be
+    # published side by side rather than one overwriting the other
+    # (DECISIONS.md 079).
+    artifact = results / f"policy-{evalset.eval_set_id}.json"
     write_json_artifact(
-        results / "policy.json",
+        artifact,
         {
             "provenance": provenance(config),
             "operating_points": [run.to_payload() for run in runs],
             "comparison": comparison.to_payload(),
         },
     )
-    _LOG.info("wrote %s", results / "policy.json")
+    _LOG.info("wrote %s", artifact)
 
     for row in comparison.rows:
         _LOG.info(

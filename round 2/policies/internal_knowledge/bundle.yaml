@@ -9,14 +9,18 @@
 # means, and it is checkable here rather than asserted in a slide.
 
 profile: internal_knowledge
-version: "1.0"
+version: "1.1"
 entrypoint: data.controlplane.decision
 rules: policy.rego
 
 requires_warrant:
   - detector: probe-qwen2.5-7b-instruct-T1-last_token
     operating_point: P-internal-knowledge
-    envelope: triviaqa-600
+    # Re-pointed from triviaqa-600 in v1.1. Same 2400 items and the same
+    # input distribution; the held-out split is 960 instead of 600, so a
+    # 0.10 flag-rate budget can be warranted to +/-25% (DECISIONS.md 079).
+    # The old envelope keeps its warrants and its published numbers.
+    envelope: triviaqa-2400-t960
     min_recall: 0.25
     # Declared null, not omitted. Hard-negative FPR is measured on
     # hard-negatives-200 and this detector holds no warrant there yet
