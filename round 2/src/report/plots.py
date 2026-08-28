@@ -17,15 +17,17 @@ from pathlib import Path
 from typing import Optional
 
 import matplotlib
+import numpy as np
 
 matplotlib.use("Agg")  # no display on a Kaggle worker or in CI
 import matplotlib.pyplot as plt  # noqa: E402
 
 from ..model import MetricKind  # noqa: E402
 from ..validation.ablation import TierLadder  # noqa: E402
+from ..validation.roc import RocCurve  # noqa: E402
 from ..validation.evalsets import SOURCE_SYNTHETIC  # noqa: E402
 
-__all__ = ["plot_tier_ladder"]
+__all__ = ["plot_roc_operating_points", "plot_tier_ladder"]
 
 _LOG = logging.getLogger(__name__)
 
@@ -145,5 +147,87 @@ def plot_tier_ladder(
     fig.tight_layout(rect=(0, 0.05, 1, 0.94))
     fig.savefig(out, dpi=150)
     plt.close(fig)
+    _LOG.info("wrote %s", out)
+    return out
+
+
+def plot_roc_operating_points(
+    curve: RocCurve,
+    path: str | Path,
+    *,
+    title: str,
+    config_hash: Optional[str] = None,
+) -> Path:
+    """Draw the measured ROC with each warranted operating point and its slope.
+
+    The point of the figure is the *unequal steepness*: three profiles sit on
+    one curve, and the local slope at each is what decides how much a threshold
+    move costs or buys. A reader should be able to see, without being told, that
+    the three points are not interchangeable positions on an otherwise uniform
+    trade.
+
+    Args:
+        curve: From :func:`~src.validation.roc.roc_curve`.
+        path: Where to write the PNG.
+        title: Figure title, which must name the envelope and ``n``.
+        config_hash: Stamped on the figure, so a plot lifted into a slide still
+            carries the run that produced it.
+
+    Returns:
+        The path written.
+    """
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    figure, axes = plt.subplots(figsize=(7.2, 6.4))
+    axes.plot(curve.fpr, curve.tpr, color="#25324a", linewidth=1.6, label="measured ROC")
+    axes.plot([0, 1], [0, 1], color="#9aa4b2", linewidth=0.9, linestyle=":", label="chance")
+
+    colours = ["#b3261e", "#b06f00", "#2a7d4f"]
+    for index, point in enumerate(curve.points):
+        colour = colours[index % len(colours)]
+        axes.scatter([point.fpr], [point.tpr], s=64, zorder=5, color=colour,
+                     edgecolor="white", linewidth=1.2)
+        # A short tangent segment, so the slope is shown rather than only
+        # written down. Fixed arc length rather than fixed x-span: at slope 6.7
+        # a 0.09 x-span draws a line 0.6 tall, which reads as a trend line
+        # across the figure instead of as the local gradient it is.
+        arc = 0.16
+        dx = arc / np.hypot(1.0, point.slope)
+        axes.plot(
+            [point.fpr - dx, point.fpr + dx],
+            [point.tpr - dx * point.slope, point.tpr + dx * point.slope],
+            color=colour, linewidth=1.4, linestyle="--", alpha=0.9,
+        )
+        axes.annotate(
+            "\n".join(
+                [
+                    point.operating_point_id,
+                    "slope %.2f  ·  f=%.3f" % (point.slope, point.flag_rate),
+                    "recall %.3f" % point.tpr,
+                ]
+            ),
+            xy=(point.fpr, point.tpr),
+            xytext=(point.fpr + 0.06, point.tpr - 0.14),
+            fontsize=8, color=colour,
+            arrowprops=dict(arrowstyle="-", color=colour, alpha=0.5, linewidth=0.8),
+        )
+
+    axes.set_xlabel("false-positive rate")
+    axes.set_ylabel("recall (true-positive rate)")
+    axes.set_xlim(-0.02, 1.02)
+    axes.set_ylim(-0.02, 1.02)
+    axes.set_title(title, fontsize=10)
+    axes.legend(loc="lower right", fontsize=8, frameon=False)
+    axes.grid(alpha=0.18, linewidth=0.6)
+
+    footer = f"AUROC {curve.auroc:.4f} · n+={curve.n_positive} n-={curve.n_negative}"
+    if config_hash:
+        footer += f" · config {config_hash}"
+    figure.text(0.01, 0.01, footer, fontsize=7, color="#5a6472")
+
+    figure.tight_layout()
+    figure.savefig(out, dpi=160)
+    plt.close(figure)
     _LOG.info("wrote %s", out)
     return out

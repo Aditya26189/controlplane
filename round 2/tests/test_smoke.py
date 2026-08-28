@@ -138,6 +138,50 @@ def test_smoke_policy_fixture(tmp_path: Path) -> None:
         assert row["fired"] == (row["threshold"] <= comparison["request"]["detector"]["score"])
 
 
+def test_smoke_paired_fixture(tmp_path: Path) -> None:
+    """The paired comparison and the ROC geometry wire up end to end.
+
+    On a fixture, so this exercises the path rather than producing a result.
+    What it asserts is the shape ``DECISIONS.md`` 081 and 082 depend on: a
+    verified split relationship, a paired set clean of both training splits, an
+    MDD reported beside every difference, and a steeper local slope at the
+    low-flag-rate operating point than at the high one.
+    """
+    run_script("08_paired.py", "--fixture", "--bootstrap", "200", out=tmp_path)
+    payload = json.loads((tmp_path / "paired_comparison.json").read_text(encoding="utf-8"))
+
+    relationship = payload["split_relationship"]
+    assert relationship["usable"], relationship
+    assert relationship["is_promotion"], (
+        "the fixture must nest, or it exercises the withdrawal path instead of "
+        "the comparison"
+    )
+    assert relationship["leaked_from_old_train"] == []
+    assert relationship["leaked_from_new_train"] == []
+    assert relationship["n_paired"] >= 200
+
+    for regime in ("pinned_to_baseline_threshold", "each_at_its_own_threshold"):
+        rows = payload[regime]
+        assert any(r["quantity"] == "auroc" for r in rows)
+        assert sum(r["quantity"].startswith("recall@") for r in rows) >= 2, (
+            "the warranted quantities are the recalls; reporting only AUROC "
+            "hides an operating point that moved"
+        )
+        for row in rows:
+            # Never a difference without the sample size that could detect one.
+            assert row["minimum_detectable"] > 0
+            assert row["ci_low"] <= row["difference"] <= row["ci_high"]
+
+    points = {p["operating_point_id"]: p for p in payload["roc"]["points"]}
+    low, high = points["P-fixture-low"], points["P-fixture-high"]
+    assert low["flag_rate"] < high["flag_rate"]
+    assert low["slope"] > high["slope"], (
+        "the low-flag-rate point must sit on the steeper segment; if it does "
+        "not, the C.2 argument does not hold even on generated data"
+    )
+    assert (tmp_path / "roc_operating_points.png").exists()
+
+
 def test_kaggle_runner_refuses_before_it_can_spend_quota() -> None:
     """The two guards on the batch runner, exercised rather than assumed.
 
@@ -450,6 +494,8 @@ def test_every_script_has_a_smoke_test() -> None:
         "06_reconcile.py",
         # test_smoke_policy_fixture
         "07_policy.py",
+        # test_smoke_paired_fixture
+        "08_paired.py",
     }
     exempt = {
         # Needs a GPU; its wiring is checked by the notebook's own self-check
