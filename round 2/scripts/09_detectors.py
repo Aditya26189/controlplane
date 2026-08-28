@@ -48,6 +48,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument("--skip-reference", action="store_true")
+    parser.add_argument(
+        "--also-envelope",
+        default=None,
+        help=(
+            "additionally validate the text detectors on this eval set. Used to "
+            "give a PII detector a warrant on the probe's envelope, which is "
+            "what lets two detector categories compose on one input "
+            "(DECISIONS.md 088). TriviaQA carries no PII, so the resulting "
+            "warrant is single-class and claims an FPR only -- which is exactly "
+            "the claim that matters there."
+        ),
+    )
     parser.add_argument("--out", default=None, help="results directory override")
     return parser.parse_args(argv)
 
@@ -74,6 +86,11 @@ def main(argv: list[str] | None = None) -> int:
 
     evalset = load_evalset(str(evalsets_dir / f"{args.eval_set}.json"))
     hard_negatives = load_evalset(str(evalsets_dir / f"{args.hard_negatives}.json"))
+    extra = (
+        load_evalset(str(evalsets_dir / f"{args.also_envelope}.json"))
+        if args.also_envelope
+        else None
+    )
     canary = load_evalset(str(evalsets_dir / "canary-20-pii.json"))
 
     selected = (
@@ -105,7 +122,13 @@ def main(argv: list[str] | None = None) -> int:
     runs = []
     try:
         for detector in detectors:
-            for target, is_hard_negative in ((evalset, False), (hard_negatives, True)):
+            targets = [(evalset, False), (hard_negatives, True)]
+            if extra is not None:
+                # Single-class for PII: no positives, so the warrant claims an
+                # FPR and nothing else. Flagged as such for the same reason the
+                # hard-negative set is.
+                targets.append((extra, True))
+            for target, is_hard_negative in targets:
                 _LOG.info("validating %s on %s", detector.detector_id, target.eval_set_id)
                 run = validate_text_detector(
                     config,

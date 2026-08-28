@@ -2866,3 +2866,80 @@ applies. Two unvalidated detectors do not add up to one validated one.
 - `weakest_warrant_status` across the detectors actually relied upon;
 - `unchecked` naming every detector that did not contribute and why -- refused,
   unvalidated, or not run.
+
+
+## 089 - An envelope is a distribution plus a label definition
+
+Found while building D.2. The composition demo needs two detector categories
+holding valid warrants on **one** envelope, and the matrix has none: the probe is
+warranted only on `triviaqa-2400-t960`, the PII detectors only on the PII sets.
+
+The obvious fix was to warrant `pii-reference` — a text detector, no GPU needed —
+on the probe's envelope. It worked. It produced:
+
+    pii-reference on triviaqa-2400-t960 — recall 0.0063 [0.0018, 0.0111]
+
+**That is not a PII recall.** TriviaQA's positive class means *"the model's
+answer was incorrect"*. What was measured is the fraction of wrong answers that
+happen to contain a personal identifier — a quantity nobody wants, with a
+correct interval, filed under a warrant key that reads as a PII claim.
+
+Nothing errored. Every part was doing its job: the set has labels, the detector
+produces scores, the metrics are arithmetically correct. Only the *meaning* was
+mismatched, and meaning was the one thing not represented anywhere a check could
+reach.
+
+### The rule
+
+**A detector can only be warranted on an eval set whose labels mean what that
+detector detects.** An envelope has been treated throughout this repo as an
+input distribution; it is a distribution *and* a label definition, and the
+second half was implicit until it broke.
+
+`src/evalsets/categories.py` declares the mapping and
+`validate_text_detector` refuses a mismatch before scoring — before, because
+everything after that point is arithmetically correct either way.
+
+**Single-class sets are the exception, and a principled one.**
+`hard-negatives-200` has no positives, so it makes no category claim and any
+detector may be measured there. "How often does this fire on traffic that should
+never be flagged" is worth asking of any detector, whatever it detects.
+
+**An unmapped set is refused, not defaulted.** A set whose label meaning nobody
+has declared is exactly the case that produced the bad warrant.
+
+### Why a registry and not a field on the set
+
+`construction["label_meaning"]` already records it, in prose, and prose cannot be
+checked. A structured field on `EvalSet` is the obvious fix and is unavailable:
+construction notes are inside the content hash, so adding one would change the
+identity of every frozen set and orphan every warrant keyed on it. Third time
+this constraint has bitten — see also `resplit_by_question`'s nesting flag and
+`build_hinglish_pii`'s `extended_forms`. The pattern is now established: facts
+*about* a frozen set that were not known when it was frozen live beside it, not
+inside it.
+
+### What this blocks
+
+**D.2's gate cannot be met with measured warrants.** No eval set carries labels
+for both a hallucination and a PII positive class, and the guard now correctly
+prevents manufacturing one. The composition rules in `088` are implemented and
+exhaustively tested against fixtures; what is missing is a measured pair.
+
+Three ways forward, none of which should be chosen quietly:
+
+1. **A dual-labelled eval set** — items carrying both an "answer incorrect" and
+   a "contains identifier" label. This is the honest fix and it is the only one
+   that makes the brief's actual claim measurable, since the claim is precisely
+   that one item can be both. Needs a GPU pass for the probe side.
+2. **Both detectors on `hard-negatives-200`**, which is single-class and admits
+   any detector. That yields two FPR-only warrants and a real composed decision,
+   but demonstrates composition on an envelope where neither detector can claim
+   recall. Needs a GPU pass for the probe's activations on that set.
+3. **Report the composition mechanism as built and tested, and the measured pair
+   as an open gap.** Costs nothing and claims nothing false.
+
+The finding itself is worth more than the demo it blocked. A system that will
+happily warrant a PII detector against hallucination labels is a system whose
+warrants mean less than they appear to, and nothing else in the build would have
+surfaced it.
