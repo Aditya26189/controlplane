@@ -26,6 +26,7 @@ results/smoke/
 # that built it.
 results/controlplane.db
 results/policy.db
+results/**/detectors.db
 results/detectors.db
 results/*.db-journal
 
