@@ -3138,6 +3138,79 @@ annotation, and the gap goes in the README's open-items list.** No placeholder
 numbers, no fixture result presented as measured, and no softening of the gate
 clause to make it fit.
 
+#### 5. The pilot's saturation criterion, derived rather than described
+
+`3` above said to check whether the probe "collapses" or "ranks weakly but
+monotonically". Those are the right two failures and they are useless as stated:
+a post-hoc reading of a 24-point histogram finds whichever one the reader is
+hoping for. So the criterion is numeric and fixed **now**.
+
+**Measure:** the interquartile range of the probe's scores on the pilot's 24
+hallucination-labelled items, as a fraction of its IQR on `triviaqa-2400-t960`
+test, where the probe demonstrably works.
+
+**Threshold, derived from a null band rather than invented.** Drawing 24 items
+at random from TriviaQA test — data the probe *does* rank — 5000 times:
+
+| percentile of the IQR ratio | value |
+|---|---|
+| p1 | 0.486 |
+| p2.5 | 0.553 |
+| **p5** | **0.605** |
+| p10 | 0.671 |
+| p50 | 0.921 |
+
+Reference IQR is 0.4992 on n=960, range [0.0190, 0.9844].
+
+**A pilot IQR ratio below 0.605 is narrower than sampling noise explains at this
+n, and is declared saturation.** Above it, the spread is consistent with a probe
+that is ranking — weakly or well — and a low AUROC is then a statement about
+discriminative power rather than about activations being off-distribution.
+
+Same construction as `070`'s PSI null band and `029`/`031`'s negative-control
+bands: a threshold quoted without its sample size is a threshold that has not
+been checked.
+
+#### 6. One retry, and the first pilot is reported either way
+
+If the pilot saturates, the scenarios may be re-authored **once**, closer to the
+register the probe was fitted on, and the pilot re-run.
+
+**One retry, not a search.** Two attempts at moving text toward a distribution
+where the probe performs is tuning the eval set to the detector, which is the
+same species of error as tuning Presidio until it passed — and it would be
+harder to see, because nothing about it looks like tuning.
+
+The first pilot's IQR ratio and AUROC are reported whatever the second shows. If
+the second also saturates, the probe is reported as not transferring to this
+envelope, the composed pair stays unmeasured, and `4` above applies.
+
+#### 7. The decision_support interval on this set carries its selection-aware widening
+
+Recorded here rather than in a working note, because it modifies how an interval
+is computed on a set that does not exist yet, and notes like that get
+rediscovered as bugs.
+
+At ~30 hallucination-negatives above the `P-decision-support` threshold, `083`'s
+threshold-selection noise applies to this envelope as it does to every other.
+The widening factor will be smaller than the 1.59x measured at five negatives
+and larger than nothing.
+
+**It goes inside the reported interval, not beside it as a caveat.** A
+conditional interval with a footnote is read as the interval; the whole point of
+`083` is that the conditional number understates by a factor nobody sees.
+
+#### 8. Sequencing: the pilot runs before the proposal work
+
+The pilot gates everything downstream of it — the remaining 48 scenarios cannot
+be authored until it lands, and their content depends on its result. The
+proposal has no such dependency.
+
+So the pilot goes first even though the proposal has the higher marginal return,
+because a late pilot means authoring 48 items under time pressure with the
+fallback in `4` already in force. The fallback exists for that case; the
+ordering exists so it is not needed.
+
 
 ## 091 - What an envelope is, arrived at by three near-misses
 
