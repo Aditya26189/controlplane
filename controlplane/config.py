@@ -1003,11 +1003,18 @@ def setup_logging(level: int = logging.INFO) -> None:
 
 
 def project_root() -> Path:
-    """Return the Round 2 project root — the directory holding ``config.yaml``.
+    """Return the project root — the directory holding ``config.yaml``.
 
-    Distinct from :func:`repo_root`: Round 2 is a subdirectory of a repository
-    whose root belongs to Round 1. Artifact paths resolve against this; git
-    commands run against the repo root.
+    Artifact paths resolve against this; git commands run against
+    :func:`repo_root`.
+
+    The two coincide today. They did not until 2026-08-29, when this project
+    was promoted out of ``round 2/`` (``DECISIONS.md`` 095), and they are kept
+    separate because the reason they can diverge has not gone away: this root
+    is located from the package, that one by walking up to ``.git``. A vendored
+    checkout, a submodule, or a re-nesting separates them again, and code that
+    assumed they were equal would resolve artifacts against the wrong tree
+    while still recording a plausible-looking commit hash.
     """
     return Path(__file__).resolve().parents[1]
 
@@ -1049,9 +1056,10 @@ def working_tree_changes(results_dir: str = "results") -> Optional[list[str]]:
     every later stage records ``dirty: true`` regardless of the code. Excluding
     the results directory restores the flag's meaning.
 
-    Paths are reported relative to the repository root, so a Round 1 file
-    changed while Round 2 runs still shows up. That is intentional: the flag
-    describes the tree the commit hash came from.
+    Paths are reported relative to the repository root, so a file changed
+    anywhere in the repository — including under ``round1/`` — still shows up.
+    That is intentional: the flag describes the tree the commit hash came from,
+    and the commit hash covers the whole repository.
 
     Args:
         results_dir: Directory to exclude, relative to the project root.
