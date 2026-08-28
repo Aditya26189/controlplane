@@ -3054,3 +3054,89 @@ Replacing it, with two checks `085` should have had:
   has none (`cuda_available: false`), so the set and its labels are built and
   frozen on CPU now and the extraction runs on Kaggle. **Nothing is scored until
   it does** — no placeholder numbers, no synthetic stand-in reported as measured.
+
+
+## 091 - What an envelope is, arrived at by three near-misses
+
+Three parts, each discovered separately, each by a number that read wrong rather
+than by a test that failed. Stated together because the pieces only make sense
+as one definition.
+
+**An envelope is a distribution, a label definition, and a sample.**
+
+| part | discovered by | what went wrong |
+|---|---|---|
+| distribution | the design, from the start | — |
+| **sample** | the re-split (`080` amendment) | the same 2400 items re-partitioned read as a *new envelope*, so warrants did not transfer and validation age would reset on every renewal |
+| **label definition** | `pii-reference` on TriviaQA (`089`) | a PII detector was warranted against hallucination labels and produced a correct interval about the wrong question |
+
+Only the first was designed. The other two were each present all along and
+invisible until a specific number looked wrong to a human.
+
+### Why the omissions were invisible
+
+Both near-misses produced output that was **correct in every checkable respect**.
+The re-split's warrants were properly keyed, properly hashed, properly refused
+when they should have been. The PII-on-TriviaQA warrant had a valid Clopper-
+Pearson interval, a passing control suite, and an accurate `n`. Nothing was
+approximated and nothing raised.
+
+What was wrong in both cases was a *meaning* that the system had no
+representation for, and a system cannot check what it cannot represent. That is
+the general lesson and it is worth more than either fix: the failure mode this
+product exists to prevent — a claim that is well-formed, well-measured, and
+about a different question than it appears to be — occurred **twice inside the
+system built to prevent it**, and both times it was caught by a person reading a
+number and finding it implausible, not by a control.
+
+A reviewer is entitled to ask what else is unrepresented. The honest answer is
+that we do not know, and that the three parts above are the ones two months of
+building surfaced.
+
+### The consequence for Phase 6
+
+Renewal is same-distribution, same-labels, **new sample**. The `080` amendment
+records the shape: an envelope identity separate from the eval-set content hash,
+with warrants carrying a sample reference underneath it, so age accrues against
+the envelope rather than resetting. That migration is where all three parts get
+represented properly, and it should be done once.
+
+---
+
+## 092 - Facts about a frozen set that were not known at freeze time live beside it
+
+Three occurrences is a pattern, so it is named once here rather than defended
+three times.
+
+`resplit_by_question`'s nesting relationship, `build_hinglish_pii`'s
+`extended_forms`, and `EVAL_SET_CATEGORY`'s label meaning were each, at first,
+going to be written into an eval set's `construction` notes. Each time the same
+thing stopped it: **construction notes are inside the content hash**, so adding
+a field changes the set's identity and orphans every warrant keyed on it. Each
+time the fix was a declaration living beside the set rather than inside it.
+
+**The principle: the content hash's job is immutability, not completeness.**
+
+A frozen set's hash answers exactly one question — *is this the same data as when
+the warrant was issued?* Facts learned afterwards are not part of that question.
+Writing them in would mean every new insight about a set silently invalidates
+every measurement made on it, which inverts the purpose: the hash exists so
+numbers stay attached to the data they were measured on, and a hash that moves
+whenever anyone learns something is a hash that guarantees nothing.
+
+So:
+
+- **Inside the hash:** the items, their order, their labels, the data source, and
+  the construction parameters known at build time.
+- **Beside the hash:** anything discovered later — how a set relates to another
+  set, what its labels mean, which extension it was built with. Declared in code,
+  versioned with the code, and refusing to default when unmapped.
+
+The test that keeps this honest is the same each time: rebuild the frozen set and
+assert it still hashes to the committed value. `test_the_extended_inventory_does_not_change_the_frozen_set`
+and `test_the_nesting_check_does_not_change_the_frozen_identity` both exist for
+that reason.
+
+The cost is real and worth stating: three side registries are three places a
+reader must look, and none of them is discoverable from the set file itself. A
+`registry` module that gathers them would be an improvement and is not urgent.
