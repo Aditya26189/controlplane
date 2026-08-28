@@ -59,6 +59,7 @@ from .pii_reference import PiiMatch
 
 __all__ = [
     "CONFIGURATIONS",
+    "UnclassifiedEntityError",
     "INDIAN_RECOGNIZERS",
     "PresidioDetector",
     "presidio_available",
@@ -81,10 +82,19 @@ INDIAN_RECOGNIZERS = (
 #: rather than a silently different measurement.
 CONFIGURATIONS = ("stock", "enabled", "enabled_plus_custom")
 
-#: Entities we count as a personal identifier for this eval set. Presidio emits
-#: many more (URL, DATE_TIME); counting those would score a detector as having
-#: found PII when it found a date, and inflate recall against a set whose
-#: positives are identifiers.
+#: Entities that count as a personal identifier, and entities deliberately
+#: ignored. **Every entity a detector can emit must appear in one of the two.**
+#:
+#: The first version of this was an allowlist that silently dropped anything
+#: else, and it dropped ``UPI_VPA`` and ``IN_IFSC`` -- entities only the custom
+#: recognizers emit -- understating that configuration and refusing a warrant it
+#: should have been issued. It understated a third-party tool *downwards*, which
+#: is the direction nobody audits.
+#:
+#: A filter is the wrong shape for this. Any adapter written after this one can
+#: make the same mistake, and D.2 adds another. So an unrecognised entity now
+#: **raises**: the lists have to be extended deliberately, and the silent path
+#: is gone.
 _IDENTIFIER_ENTITIES = frozenset(
     {
         # UPI_VPA and IN_IFSC are emitted only by the custom recognizers -- no
@@ -107,6 +117,57 @@ _IDENTIFIER_ENTITIES = frozenset(
         "US_SSN",
     }
 )
+
+#: Entities Presidio emits that are not personal identifiers for this purpose.
+#: Listed rather than filtered by default, so "we decided this is not PII" and
+#: "we never thought about it" are different states.
+_IGNORED_ENTITIES = frozenset(
+    {
+        # Caught by the hard failure on its first run: Presidio matches a
+        # dot-separated identifier as a MAC address. Not a personal identifier
+        # for this purpose -- it names a device, and here it is a false
+        # positive on a number that happens to look hexadecimal.
+        "MAC_ADDRESS",
+        "DATE_TIME",
+        "URL",
+        "LOCATION",
+        "NRP",
+        "PERSON",
+        "IP_ADDRESS",
+        "MEDICAL_LICENSE",
+        "US_BANK_NUMBER",
+        "US_DRIVER_LICENSE",
+        "US_ITIN",
+        "US_PASSPORT",
+        "UK_NHS",
+        "UK_NINO",
+        "AU_ABN",
+        "AU_ACN",
+        "AU_TFN",
+        "AU_MEDICARE",
+        "SG_NRIC_FIN",
+        "SG_UEN",
+        "ES_NIF",
+        "ES_NIE",
+        "IT_FISCAL_CODE",
+        "IT_DRIVER_LICENSE",
+        "IT_VAT_CODE",
+        "IT_PASSPORT",
+        "IT_IDENTITY_CARD",
+        "PL_PESEL",
+        "FI_PERSONAL_IDENTITY_CODE",
+        "CRYPTO",
+    }
+)
+
+
+class UnclassifiedEntityError(ValueError):
+    """A detector emitted an entity the adapter has no classification for.
+
+    Raised rather than filtered. See :data:`_IDENTIFIER_ENTITIES` for why: a
+    filter lets an adapter understate its detector with nothing in the output to
+    show for it.
+    """
 
 
 def presidio_available() -> bool:
@@ -251,6 +312,23 @@ class PresidioDetector:
         results = self.analyzer.analyze(
             text=text, language=self.language, entities=None
         )
+        unclassified = sorted(
+            {
+                r.entity_type
+                for r in results
+                if r.entity_type not in _IDENTIFIER_ENTITIES
+                and r.entity_type not in _IGNORED_ENTITIES
+            }
+        )
+        if unclassified:
+            raise UnclassifiedEntityError(
+                f"{self.detector_id} emitted {unclassified}, which the adapter "
+                "classifies neither as an identifier nor as ignorable. Add each "
+                "to _IDENTIFIER_ENTITIES or _IGNORED_ENTITIES deliberately. "
+                "Silently dropping it would understate this detector with "
+                "nothing in the output to show for it."
+            )
+
         matches = [
             PiiMatch(
                 kind=result.entity_type,
