@@ -2690,3 +2690,75 @@ carries real information.
 its 0.7941 as a reference point without disclosing that. It is disclosed now,
 and it is why the honest comparison in the demo is stock-versus-enabled, both of
 which are genuinely out-of-sample.
+
+
+## 087 - Decomposing row 3, and correcting a stale table in 084
+
+Three additions to `086`, all of which make `084` more usable rather than more
+caveated.
+
+### 1. 084's per-disclosure-form table was computed before the allowlist fix
+
+`084` reported that **no configuration detects a single obfuscated
+disclosure**. That table was produced with the buggy entity allowlist, which
+dropped `UPI_VPA` and `IN_IFSC`. Corrected, on `hinglish-pii-200`:
+
+| configuration | verbatim | spaced | obfuscated | overall |
+|---|---|---|---|---|
+| `presidio-stock` | 0.1765 | 0.1765 | **0.0000** | 0.1176 |
+| `presidio-enabled` | 0.6471 | 0.2059 | **0.0000** | 0.2843 |
+| `presidio-enabled_plus_custom` | 0.9706 | 0.6471 | 0.2353 | 0.6176 |
+| `pii-reference` | 1.0000 | 0.6765 | 0.7059 | 0.7941 |
+
+The claim survives **exactly where it is clean**: `stock` and `enabled`, the two
+configurations never fitted to this set, score **0.0000** on obfuscated
+disclosures. `enabled_plus_custom` reaches 0.2353, and that row is the fitted
+one. So the corrected statement is narrower and better sourced than the original:
+*off-the-shelf Presidio, in either configuration a team can obtain without
+writing code, detects none of them.*
+
+### 2. Row 3 decomposed into a clean part and a fitted part
+
+`enabled_plus_custom` newly catches **34** positives that `enabled` misses. They
+split by where the recognizer's pattern came from:
+
+| origin of the pattern | gained on `200` | gained on `200b` |
+|---|---|---|
+| **spec-derived** — UPI VPA and IFSC in verbatim form | **11** | **11** |
+| fitted — UPI/IFSC in spaced form | 6 | 6 |
+| fitted — UPI/IFSC in obfuscated form | 8 | 8 |
+| fitted — Aadhaar/PAN separator widening | 9 | 8 |
+| Aadhaar/PAN verbatim and obfuscated | 0 | 0 |
+
+**11 of 34, or 32.4%, is clean.** The UPI VPA pattern
+`[A-Za-z0-9._-]{3,}\s?@\s?[A-Za-z]{2,}` and the IFSC pattern
+`[A-Za-z]{4}0[A-Za-z0-9]{6}` are transcriptions of the published identifier
+formats. Someone who had never seen this eval set would write them the same way,
+because Presidio ships no recognizer for either and there was nothing to fit
+*to* — the gap is categorical, not a formatting gap.
+
+The other 23 are fitted: the `"at the rate"` spelling and every
+separator-tolerant variant were written after reading this set's failures.
+
+In recall terms on `200`, `enabled` 0.2843 -> **0.3922 from spec-derived work
+alone** -> 0.6176 with the fitted work. The middle number is the one that
+carries out of sample, and it is stable at 11 gained on both sets.
+
+An earlier cut of this split by identifier *category* and put 73.5% in the clean
+column. That was wrong: the spaced and obfuscated UPI/IFSC patterns are fitted
+too, and grouping by category hid it. Splitting by pattern origin rather than by
+category is what makes the number honest.
+
+### 3. `200b` is compositionally identical, so the +0.03 is sampling
+
+`086` left the uniform shift unexplained. It is not composition drift:
+
+| | `200` | `200b` |
+|---|---|---|
+| items / positives / prevalence | 200 / 102 / 0.5100 | 200 / 102 / 0.5100 |
+| kinds | 34 / 22 / 20 / 16 / 10 | 34 / 22 / 20 / 16 / 10 |
+| forms | 34 / 34 / 34 | 34 / 34 / 34 |
+
+Identical on every axis the builder controls. The +0.03 is roughly **3 items in
+102** and comes from redrawn identifier values and a different scenario-to-form
+pairing. Mundane, and better stated than left as an unexplained property.
