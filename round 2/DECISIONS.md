@@ -2943,3 +2943,114 @@ The finding itself is worth more than the demo it blocked. A system that will
 happily warrant a PII detector against hallucination labels is a system whose
 warrants mean less than they appear to, and nothing else in the build would have
 surfaced it.
+
+
+## 090 - Pre-registration: the dual-labelled set and the powered holdout
+
+**Written before either set is built and before any number on either exists.**
+One GPU pass covers both; `085` failed by not checking its own power, so both
+have their power stated here and verified after generation but **before**
+scoring.
+
+### Why a dual-labelled set rather than a shared single-class envelope
+
+The brief's overlap bullet says a fabricated detail about a person can
+simultaneously be a hallucination and a privacy concern. **An item carrying both
+labels is that sentence made measurable.** The alternative considered in `089` —
+composing on `hard-negatives-200`, which is single-class and admits any detector
+— demonstrates the mechanism on an envelope where the co-occurrence *cannot
+exist*, and so answers a different question than the one asked.
+
+### The set: `banking-dual-240`
+
+240 hand-written items in a 2x2 over two independent labels:
+
+| cell | hallucination | PII | n |
+|---|---|---|---|
+| both | 1 | 1 | 60 |
+| hallucination only | 1 | 0 | 60 |
+| PII only | 0 | 1 | 60 |
+| neither | 0 | 0 | 60 |
+
+Giving 120 PII positives and 120 hallucination positives — each enough for a
+recall interval comparable to the 102 in `hinglish-pii-200`.
+
+**The set carries two label columns, not one.** `EvalItem.label` cannot express
+this, so the second lives in `meta` and the set is registered in
+`EVAL_SET_CATEGORY` under whichever column a given validation run reads. A run
+declares which label it is measuring against; a run that does not is refused, by
+the same guard `089` added.
+
+### The co-occurrence rate is constructed, and the certificate must say so
+
+Measured on real traffic, wrong answers containing an identifier ran **0.0063**
+on `triviaqa-2400-t960` — about 6 items in 960. At that rate a 240-item set
+would hold **one or two** co-occurring items and the composed VALID/VALID case
+would have nothing to run on.
+
+So co-occurrence is oversampled to **25%**, roughly **40x** its measured rate.
+That is a deliberate construction and it has a consequence: **any composed bound
+measured here describes this constructed distribution and not production
+traffic.** That statement goes in the certificate's `claimed_bounds` as a field,
+not in a footnote — a reader who sees a composed recall must see, in the same
+object, that its envelope was enriched.
+
+Per-detector bounds are unaffected: each detector's recall is measured against
+its own label column, and enrichment changes prevalence rather than recall.
+Precision and any lift figure **are** affected and will not be quoted from this
+set.
+
+### Target counts per composition case, not just overall
+
+`085`'s failure was aggregate power with nothing in the cell that mattered. The
+four cases in `088` split into two kinds:
+
+**Content-dependent** — need items:
+
+| case | condition | target items |
+|---|---|---|
+| 1. both VALID, both flag | probe fires and PII fires | **>= 25** |
+| 2a. disagree | probe fires, PII silent | **>= 25** |
+| 2b. disagree | PII fires, probe silent | **>= 25** |
+| 0. neither fires | — | >= 25 |
+
+**Status-dependent** — need no items, only a detector in that state on this
+envelope: case 3 uses `presidio-stock`, which `084` shows is REFUSED wherever it
+is measured; case 4 uses any detector never validated here.
+
+At the operating points now warranted — probe flag rate ~0.106, `pii-reference`
+recall 0.79 — the 2x2 above should land roughly 25-45 items in each of the four
+content cells. **Verified after generation and before scoring.** If any cell
+falls below 25, the set is rebuilt with adjusted cell sizes and that is recorded;
+it is not scored and reported from a cell of three.
+
+### The powered holdout: `hinglish-pii-300c`
+
+`086` found the holdout could not detect what it was built to detect: the
+extension touched only the `spaced` form, one of five added separators was the
+**empty string** (which renders identifiers canonically and is therefore a
+simplification, not an extension), and only 5 of 102 positives ended up outside
+the fitted class.
+
+Replacing it, with two checks `085` should have had:
+
+1. **The extension applies to all three disclosure forms**, not one.
+2. **Every added separator is mechanically asserted to change the rendered
+   string** — `rendered != canonical` — which would have caught the empty
+   string at build time.
+3. **Target: >= 90 positives carrying formatting outside
+   `presidio_custom._SEPARATOR`.** Counted after generation, before scoring. At
+   90 affected positives, a drop from 0.65 to 0.45 is detectable at 80% power;
+   at 5 it was not.
+
+### Committed before the run
+
+- Report whatever comes out, both sets, including a large drop on the holdout.
+- The custom recognizers stay frozen at `7ae7ac1`.
+- If the dual set's composed VALID/VALID cell is under 25 after generation, say
+  so and rebuild rather than scoring it.
+- The composed certificate states its enriched co-occurrence rate inline.
+- `banking-dual-240` needs a GPU pass for the probe's activations. This machine
+  has none (`cuda_available: false`), so the set and its labels are built and
+  frozen on CPU now and the extraction runs on Kaggle. **Nothing is scored until
+  it does** — no placeholder numbers, no synthetic stand-in reported as measured.
