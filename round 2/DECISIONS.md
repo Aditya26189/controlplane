@@ -2028,3 +2028,61 @@ The re-split succeeds if **all** of these hold on the new envelope:
 - The refusal is already shipped and tagged (`phase-7`). Whatever happens here,
   the history retains the run where the governance layer refused the flagship
   profile.
+
+
+## 080 - Outcome of the pre-registered re-split: all four criteria met
+
+Reporting against `079`, which was written before the re-split ran.
+
+### The four declared criteria
+
+1. **All three operating points issue `VALID` with all five controls passing.**
+   Met. 5/5 on each.
+2. **Each profile's recall lower bound clears its `min_recall`.** Met.
+3. **`customer_support` loads.** Met: n_test 960 against the 673 a 0.10 budget
+   needs at 25% sensitivity.
+4. **Three distinct actions on one input.** Met: ALLOW / REDACT / ESCALATE.
+
+### The numbers, both sets side by side
+
+| operating point | triviaqa-600, n=600 | triviaqa-2400-t960, n=960 | floor |
+|---|---|---|---|
+| `P-customer-support` | 0.1661 [0.1255, 0.2128] | 0.2171 [0.1800, 0.2564] | 0.10 |
+| `P-internal-knowledge` | 0.3321 [0.2789, 0.3960] | 0.3603 [0.3173, 0.4063] | 0.25 |
+| `P-decision-support` | 0.7329 [0.6858, 0.7865] | 0.7367 [0.6974, 0.7783] | 0.50 |
+
+AUROC 0.8256 [0.7934, 0.8567] -> 0.8232 [0.7985, 0.8507].
+
+**Training on 960 instead of 1200 cost nothing measurable.** The AUROC point
+estimate moved -0.0024, far inside either interval, and the interval itself
+*narrowed* from 0.0633 wide to 0.0522 because n went 600 -> 960. That was not
+guaranteed and 079 committed to reporting it either way; it is worth stating
+plainly that the trade was close to free rather than implying it was expected.
+
+The recall figures are not directly comparable between columns and should not be
+read as improvement. Each threshold is re-selected on a different validation
+split, so the operating points are near neighbours rather than the same point
+measured twice -- `P-customer-support` moved 0.9045 -> 0.8909 and its measured
+flag rate 0.0850 -> 0.1062, closer to the 0.10 it was aiming at.
+
+### One thing worth naming
+
+`triviaqa-600` and `triviaqa-2400-t960` are the same 2400 items and therefore
+the same input distribution. They are two measurement partitions of one traffic
+distribution, not two traffics. The matrix nonetheless treats them as separate
+envelopes and the old warrants did not transfer -- the bundles went
+`UNVALIDATED` on the new envelope until they were re-pointed at it, which is
+invariant 1 doing exactly what it should even in the case where a human can see
+the distributions are identical.
+
+That is the right default. But it means "envelope" is currently carrying two
+distinct ideas: *what distribution was this measured on* and *which partition of
+it produced the number*. They coincide everywhere else in this repo. Recorded
+here rather than resolved, because resolving it would change the warrant key.
+
+### What this does not change
+
+Entry 077 stands. The refusal happened, is tagged at `phase-7`, and
+`results/policy-triviaqa-600.json` keeps its numbers. The fix was more evidence,
+not a weaker claim -- `calibration.sensitivity` is still 0.25 in all three
+bundles and was never touched.
