@@ -114,7 +114,7 @@ pointed at.
 | `scripts/` `demo/` `notebooks/` | thin CLI wrappers, the two-pane demo runner, the Kaggle GPU notebook |
 | `tests/` | 505 tests, including the ones that enforce this README |
 | `docs/` | spec, methods, limitations, the case matrix, and the move mapping |
-| `DECISIONS.md` `round1/` | 96 append-only decision entries; the Round 1 submission, moved whole |
+| `DECISIONS.md` `round1/` | 97 append-only decision entries; the Round 1 submission, moved whole |
 
 ---
 
@@ -207,7 +207,7 @@ The ones that would change how you read the table:
 | [docs/METHODS.md](docs/METHODS.md) | estimators, bootstraps, null bands and their derivations |
 | [docs/CASES.md](docs/CASES.md) | every case, the test covering it, the artifact demonstrating it |
 | [docs/LIMITATIONS.md](docs/LIMITATIONS.md) | scope, declared gaps, open items |
-| [DECISIONS.md](DECISIONS.md) | 96 append-only entries — "why did you do it that way?" |
+| [DECISIONS.md](DECISIONS.md) | 97 append-only entries — "why did you do it that way?" |
 | [docs/PATHS.md](docs/PATHS.md) | what moved on 2026-08-29 and where it went |
 | [docs/SPEC.md](docs/SPEC.md) | the technical specification |
 | [docs/PROPOSAL.md](docs/PROPOSAL.md) | the business proposal |

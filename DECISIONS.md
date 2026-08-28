@@ -3655,3 +3655,82 @@ exist is exactly the failure this project is about — an artifact pointing at
 nothing. That is the right objection, it is why this entry exists, and the gap
 was found by the repository's own audit discipline rather than by a reader.
 
+
+---
+
+## 097 - The layout is frozen. Additive changes only from here.
+
+Block E, E.9. Declared now, before the demo harness begins, because the demo
+will hardcode paths and a move afterwards breaks it in ways that surface during
+rehearsal or during the presentation.
+
+**Frozen as of this entry and the `repo-v1` tag.** No moves, no renames. New
+files, new documents and new tests are fine and expected; relocating an
+existing one is not, whatever it would tidy.
+
+### What the freeze covers
+
+Directory names — `controlplane/`, `results/`, `evalsets/`, `policies/`,
+`scripts/`, `tests/`, `demo/`, `docs/`, `notebooks/`, `round1/`. Eval-set ids,
+detector ids, operating-point ids, decision numbers, test names, tag names.
+Everything an artifact, a commit message or the notes ref might refer to.
+
+The relocation that preceded it is `095`, and its mapping is `docs/PATHS.md`.
+That work is the reason the freeze can be declared with confidence: the audit
+that came first established that no artifact references an eval set by path, so
+there is nothing left to move that would be worth the risk.
+
+### What Block E found that nothing else would have
+
+Worth recording, because the argument for doing an audit before a
+reorganisation is usually made in the abstract and it paid twice here in
+concrete terms.
+
+1. **`controlplane/economics/sizing.py` does not exist**, and five contract
+   documents cite it as load-bearing. Found by the E.1 path audit, which was
+   looking for something else entirely. Logged as `096`; a judge grepping
+   `SPEC.md` would have found it in seconds.
+
+2. **The synthetic generator literals are inside a content hash.** Renaming
+   `src.validation.synthetic.synthetic_evalset` to `controlplane....` would
+   have re-issued every synthetic fixture under a new envelope id and orphaned
+   the warrants in `results/fixtures/` — silently, since nothing errors when a
+   hash changes, the numbers simply stop belonging to anything. Caught by
+   checking rather than by assuming: the same construction dict hashes to
+   `6b7654bb…` with `src.` and `a682d25f…` without.
+
+Two more surfaced while building the enforcement rather than the code:
+
+3. **Five of the test names in the first draft of `docs/CASES.md` were wrong** —
+   four renamed at some point, one never written. `test_every_case_names_a_real_test`
+   caught all five on its first run. A case matrix citing a test that does not
+   exist is worse than no matrix, because it reads as coverage.
+
+4. **`test_the_readme_test_count_is_the_real_one` failed on itself.** Adding it
+   moved the count from 500 to 501 and it refused to pass until the README said
+   so. That is the intended behaviour of a check that has no exceptions.
+
+### The enforcement that replaces discipline
+
+Three things that used to be somebody's job to remember are now build failures:
+
+- **A hand-edited README number.** `make verify` parses the claim table,
+  resolves each field in its artifact and compares at the quoted precision. The
+  negative tests feed it an edited value, an edited interval, a missing artifact
+  and a dead field, and assert each is caught; an empty table is an error rather
+  than a vacuous pass.
+- **A case matrix drifting from the suite.** Every test it names must exist.
+- **A dependency claim expiring.** The Presidio refusal now reads
+  `[presidio-stock==2.2.364] …`, and a test fails if the installed version
+  leaves the pin. The claim is about a release, which stays true, rather than
+  about a library, which does not.
+
+### A reviewer could fairly object
+
+That freezing the layout days before submission optimises for the demo rather
+than for the repository, and that `docs/` still holds build contracts a
+finished project would not ship. Both fair. The answer to the first is that
+this is exactly when a freeze is worth most; to the second, that `SPEC.md` and
+`TASKS.md` are the record of what was planned against what was built, and
+`096` is only legible because both are still there.
+
