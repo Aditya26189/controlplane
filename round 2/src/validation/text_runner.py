@@ -148,6 +148,14 @@ def validate_text_detector(
         if progress is not None:
             progress(message)
 
+    # An envelope is a distribution PLUS a label definition, and a detector can
+    # only be warranted on a set whose labels mean what it detects. Checked
+    # before scoring, because everything after this point is arithmetically
+    # correct whether or not the meanings match (``DECISIONS.md`` 089).
+    from ..evalsets.categories import require_compatible
+
+    require_compatible(getattr(detector, "category", None), evalset.eval_set_id)
+
     say(f"scoring {len(evalset)} items with {detector.detector_id}")
     texts = [item.prompt for item in evalset.items]
     scores = detector.score(texts)

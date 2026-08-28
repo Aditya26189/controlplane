@@ -2409,3 +2409,854 @@ means re-scoring once rather than twice.
 
 Until then the honest reading of any published recall interval in this repo is:
 **conditional on the threshold, and roughly 1.4-1.6x too narrow.**
+
+
+## 084 - Stock Presidio is refused a warrant on Hinglish PII
+
+Phase 8, D.1. Presidio was wrapped and measured, not tuned. The refusal is the
+deliverable.
+
+### What "stock" means, verified rather than assumed
+
+Presidio 2.2.364 ships six Indian recognizers -- `InPanRecognizer`,
+`InAadhaarRecognizer`, `InGstinRecognizer`, `InVehicleRegistrationRecognizer`,
+`InVoterRecognizer`, `InPassportRecognizer` -- and **registers none of them by
+default**. A default `AnalyzerEngine()` loads 17 recognizers, zero of them
+Indian.
+
+So "stock Presidio misses Indian identifiers" is not a performance claim to
+argue about. The recognizers are not loaded. A team that pip-installs Presidio
+and points it at Indian traffic gets nothing for Aadhaar, PAN, UPI or IFSC until
+somebody knows to go looking.
+
+**Presidio ships no recognizer for UPI VPA or IFSC at all**, in any
+configuration. Those are the two identifiers most specific to Indian retail
+banking, and they are the gap that no amount of enabling closes.
+
+### What `InAadhaarRecognizer` actually validates
+
+Read from source, as `TASKS.md` Phase 8 requires. It is **not** a naive regex:
+
+- two patterns, `[0-9]{12}` and `[0-9]{4}[- :][0-9]{4}[- :][0-9]{4}`,
+  both scored **0.01** and labelled "Very Weak";
+- `validate_result` sanitises by removing `-`, space and `:` **only**, then
+  requires twelve digits, numeric, **first digit >= 2**, a valid **Verhoeff**
+  check digit, and not a palindrome.
+
+Two consequences. The Verhoeff check is the real UIDAI algorithm, so this is a
+genuinely strong validator and a correct rejection of a made-up number is not a
+miss. And the sanitiser does not strip `.`, so `99.99.48.54.32.83` -- one of the
+three disclosure forms in `hinglish-pii-200` -- matches neither pattern and is
+never offered to the validator. **The miss is at the pattern stage, not the
+validation stage.**
+
+That distinction decided the custom recognizers: they widen the separator set
+and inherit `validate_result` unchanged, so nothing accepts an identifier the
+built-in would have rejected on its checksum.
+
+### The fixture is not the confound
+
+`hinglish-pii-200` draws Aadhaar values from the UIDAI 9999 test range and
+records `checksum_valid` per item. That flag agrees with Verhoeff on **34 of 34**
+Aadhaar items, so a low recall here is not made-up numbers correctly failing a
+checksum. Checked before measuring, because it would have produced a completely
+wrong conclusion about Presidio.
+
+### Measured, `hinglish-pii-200`, n=200, base rate 0.51
+
+| detector | recall | status | canary |
+|---|---|---|---|
+| `presidio-stock` | 0.1176 [0.0500, 0.2000] | **REFUSED** | 4/20 |
+| `presidio-enabled` | 0.2843 [0.2075, 0.3810] | **REFUSED** | 12/20 |
+| `presidio-enabled_plus_custom` | 0.6176 [0.5185, 0.7128] | VALID | 20/20 |
+| `pii-reference` | 0.7941 [0.6981, 0.8846] | VALID | 20/20 |
+
+Refusal reasons carry the numbers: stock fails the canary at 0.2000 against a
+required 1.0, and its AUROC lower bound is 0.4456 against a required 0.55.
+Enabled fails the canary at 0.6000 and misses the AUROC bar at 0.5409 -- by
+0.009.
+
+By disclosure form, recall on the positives:
+
+| configuration | verbatim | spaced | obfuscated |
+|---|---|---|---|
+| `stock` | 0.1765 | 0.1765 | **0.0000** |
+| `enabled` | 0.6471 | 0.2059 | **0.0000** |
+| `enabled_plus_custom` | 0.6471 | 0.4706 | **0.0000** |
+
+**No configuration detects a single obfuscated disclosure.** Those are forms a
+real customer uses -- Devanagari framing, a number split across a sentence
+("999936 ka 090910"), a masked phone ("XXXXXXXXX4685"), "at the rate" for `@`.
+
+### The canary is the sharpest number here
+
+`canary-20-pii` is twenty **verbatim, checksum-valid identifiers in plain
+English frames**, built to be trivially easy on the principle that a canary a
+detector can plausibly miss is a tripwire that fires on noise. Stock Presidio
+catches **4 of 20**. Fully enabled it catches 12, missing every UPI VPA and
+every IFSC.
+
+### The machinery needed no changes
+
+`TASKS.md` asks that a change to the certificate schema, the validation harness
+or the drift monitor be logged as a finding before it is made. **None was
+needed.** `validate_text_detector` took the adapter unmodified, the same
+`PiiMatch` type the reference detector emits carried through, and the warrants
+were issued and refused by the existing `issue_or_refuse`.
+
+### One bug, in our adapter, not in Presidio
+
+The adapter filters Presidio's output to an allowlist of identifier entities so
+a `DATE_TIME` hit does not count as PII. `UPI_VPA` and `IN_IFSC` were missing
+from that allowlist -- entities only the custom recognizers emit -- so
+`enabled_plus_custom` was measured at 0.3725 and refused, when it actually
+scores 0.6176 and is valid. Found by asking why the custom UPI recognizer had
+not moved the canary. An allowlist that silently drops a detector's output is
+the adapter misrepresenting the tool, and it happened to misrepresent it
+*downwards*, which is the direction least likely to be questioned.
+
+
+## 085 - Pre-registration: an out-of-sample set for the fitted recognizers
+
+**Written before `hinglish-pii-200b` is built and before any number on it
+exists.** Corrects a contamination in `084`.
+
+### What is wrong with 084
+
+Two of its four rows are in-sample and were not labelled as such.
+
+`presidio-enabled_plus_custom` at recall **0.6176**: the custom recognizers in
+`src/detectors/presidio_custom.py` were written by reading this set's failures.
+The sequence was measure stock -> diagnose the miss at the pattern stage ->
+widen the separator set -> re-measure. That is a detector fitted to the
+evaluation data by a human rather than by gradient descent, and the number is
+in-sample.
+
+`pii-reference` at recall **0.7941**: `git log --diff-filter=A` shows
+`src/detectors/pii_reference.py` and `evalsets/hinglish-pii-200.json` were added
+in the **same commit**, `e271be2`. The detector is ours and was co-developed
+with the set it is measured on. Same problem, and it was never disclosed.
+
+The canary is worse than either. `enabled_plus_custom` scores 20/20 on a 20-item
+gate whose pass condition is recall exactly 1.0 -- and the recognizers were
+extended until it passed. A gate that could not have failed is not evidence.
+
+`presidio-stock` (0.1176) and `presidio-enabled` (0.2843) are clean. Neither was
+ever adapted to this set, so the refusals the demo rests on are honest.
+
+### Why a fresh seed alone would not fix it
+
+`_apply_form` in `src/evalsets/identifiers.py` renders the `spaced` form by
+drawing `separator` from a **declared inventory of six** -- `" "`, `"-"`,
+`" - "`, `"."`, `" . "`, `"  "` -- and `chunk` from `{2, 3, 4}`. The custom
+recognizers use `_SEPARATOR = r"[\s.\-:]"` with a `{0,3}` repeat and a
+digit-pairs alternative, which covers **that entire inventory**.
+
+So the recognizers were fitted to the generator's declared space, readable from
+source, not to observed instances. Redrawing at a new seed produces different
+instances of forms already covered and tests nothing. This has to be said
+plainly because a new-seed holdout would have looked rigorous and measured
+nothing.
+
+### What is being built
+
+`hinglish-pii-200b`: the same 51 scenario templates and 26 near-miss templates,
+fresh identifier values at seed **20260828**, and an **extended form inventory**
+the recognizers were not written against:
+
+- separators added: `"/"`, `"_"`, `"|"`, `","`, and `""` (no separator);
+- chunk sizes added: 5 and 6.
+
+None of `/`, `_`, `|`, `,` is in `_SEPARATOR`. Items drawn from the extension
+should therefore fail, and how many do is the measurement.
+
+### What this holds out, and what it does not
+
+**Held out:** identifier values, the separator/chunk combinations outside the
+original inventory, and the pairing of scenario to form.
+
+**Not held out:** the 51 scenario templates and the three form *families*.
+Those are the population definition rather than a tuning artifact -- the
+recognizers were fitted to separators, not to scenario text. Reusing them keeps
+`200b` a sample from the same population plus a declared extension, rather than
+a different population.
+
+This is therefore **not a clean holdout**, and it is not claimed as one. It is a
+partial one that isolates the axis the fitting actually happened on. A clean
+holdout needs scenarios written by someone who has not read the recognizers.
+
+### Declared before measuring
+
+- **Report whatever comes out**, including a large drop.
+- The recognizers are **frozen** at commit `7ae7ac1` and are not touched
+  again in response to what `200b` shows. If they are ever extended to cover
+  `/` or `_`, that is a new detector version measured on a further set.
+- **The comparison that matters** is `enabled_plus_custom` on `200` versus on
+  `200b`. The gap is the fitting.
+- `stock` and `enabled` are measured on `200b` too. They were never fitted, so
+  their numbers should move only by sampling; a large move would mean `200b` is
+  a harder set rather than a fair one, and would be reported as such.
+- If `enabled_plus_custom` falls below the issuance bar on `200b`, its warrant
+  is **refused there**, and `084`'s VALID row stands only for `200` with the
+  contamination stated.
+
+
+## 086 - The holdout was built, and it is underpowered. Reporting it anyway.
+
+Executes the pre-registration in `085`. Two of its findings are useful and the
+third is a failure of my own design, reported because `085` committed to
+reporting whatever came out.
+
+### Result on `hinglish-pii-200b`
+
+| detector | `200` (in-sample for rows 3-4) | `200b` | change |
+|---|---|---|---|
+| `presidio-stock` | 0.1176 [0.0500, 0.2000] | 0.1471 [0.0714, 0.2341] | +0.0295 |
+| `presidio-enabled` | 0.2843 [0.2075, 0.3810] | 0.3137 [0.2340, 0.3977] | +0.0294 |
+| `presidio-enabled_plus_custom` | 0.6176 [0.5185, 0.7128] | 0.6471 [0.5667, 0.7359] | +0.0295 |
+| `pii-reference` | 0.7941 [0.6981, 0.8846] | 0.8333 [0.7592, 0.9035] | +0.0392 |
+
+**Nothing dropped.** The fitted detectors did not fall on the holdout.
+
+### Why that is not the vindication it looks like
+
+All four moved up by almost exactly the same amount, including the two that were
+never fitted to anything. A uniform shift across fitted and unfitted detectors
+alike is a property of the *set*, not of the detectors: `200b` is marginally
+easier. It says nothing about whether the fitting inflated row 3.
+
+The reason is a defect in how I built the extension, and it is the `MDD` lesson
+from `081` in a different costume: **I did not check whether the holdout had the
+power to detect the thing it was built to detect.**
+
+- The extended inventory applies only to the `spaced` disclosure form, which is
+  **34 of 102** positives. The other two thirds were never affected.
+- Of the five separators added, one was the **empty string** — which renders an
+  identifier contiguously, i.e. in its *canonical* form. That is the easiest
+  case, not a novel one. I added it as an extension and it works as a
+  simplification.
+- Measured directly: only **5 of 102** positives in `200b` carry a separator
+  outside `presidio_custom._SEPARATOR`. At n=5 nothing is measurable.
+
+So `085`'s central comparison — `enabled_plus_custom` on `200` versus `200b` —
+**was not actually testable by the set I built to test it.** The number is
+reported and the claim it was meant to support is not made.
+
+### What is now established, and what is not
+
+**Established:** row 3's recall does not collapse out of sample, on a set whose
+identifier values, form pairings and a small fraction of formats it had not
+seen. That is weak positive evidence.
+
+**Not established:** that the custom recognizers generalise to formatting they
+were not written against. The holdout contains almost none of it.
+
+`084`'s row 3 and row 4 therefore remain **in-sample numbers**, now with an
+out-of-sample companion that does not contradict them and does not confirm the
+thing at issue.
+
+### What a real test needs
+
+A set where the `spaced` and `obfuscated` forms are generated from an inventory
+disjoint from the fitted one, across all three forms rather than one, sized so
+that a drop of the size worth caring about would be visible. Roughly: if row 3's
+true out-of-sample recall were 0.45 rather than 0.65, detecting that at 80% power
+needs on the order of 90-100 affected positives, not 5.
+
+The recognizers stay frozen at `7ae7ac1` regardless. They are not being adjusted
+in response to any of this.
+
+### Two corrections to 084 that are established
+
+**The AUROC criterion is not the recall criterion restated.** It was put to me
+that with FPR = 0 the two are algebraically linked, `AUROC = 0.5 + 0.5 x recall`.
+The premise does not hold, and the fault is in how `084` reported it: the
+FPR = 0.0000 quoted there is on **`hard-negatives-200`**, a different set. On
+`hinglish-pii-200`'s own 98 negatives, stock's FPR is **0.1020**. The identity
+for a binary detector is `0.5 + 0.5 x (recall - FPR)` = 0.5078, which matches the
+measured AUROC of 0.5079.
+
+They remain highly correlated for a near-binary detector, so they are not two
+independent hurdles and `084` should not be read as though four separate
+criteria were cleared. But they are not the same number: AUROC nets off the
+false positives on the set's own negatives, and for `pii-reference` — twelve
+distinct score levels and FPR 0.4388 on this set — the binary identity gives
+0.6777 against a measured 0.7734, because the ranking above the threshold
+carries real information.
+
+**`pii-reference` is ours and was co-developed with the set.**
+`git log --diff-filter=A` puts `src/detectors/pii_reference.py` and
+`evalsets/hinglish-pii-200.json` in the same commit, `e271be2`. `084` presented
+its 0.7941 as a reference point without disclosing that. It is disclosed now,
+and it is why the honest comparison in the demo is stock-versus-enabled, both of
+which are genuinely out-of-sample.
+
+
+## 087 - Decomposing row 3, and correcting a stale table in 084
+
+Three additions to `086`, all of which make `084` more usable rather than more
+caveated.
+
+### 1. 084's per-disclosure-form table was computed before the allowlist fix
+
+`084` reported that **no configuration detects a single obfuscated
+disclosure**. That table was produced with the buggy entity allowlist, which
+dropped `UPI_VPA` and `IN_IFSC`. Corrected, on `hinglish-pii-200`:
+
+| configuration | verbatim | spaced | obfuscated | overall |
+|---|---|---|---|---|
+| `presidio-stock` | 0.1765 | 0.1765 | **0.0000** | 0.1176 |
+| `presidio-enabled` | 0.6471 | 0.2059 | **0.0000** | 0.2843 |
+| `presidio-enabled_plus_custom` | 0.9706 | 0.6471 | 0.2353 | 0.6176 |
+| `pii-reference` | 1.0000 | 0.6765 | 0.7059 | 0.7941 |
+
+The claim survives **exactly where it is clean**: `stock` and `enabled`, the two
+configurations never fitted to this set, score **0.0000** on obfuscated
+disclosures. `enabled_plus_custom` reaches 0.2353, and that row is the fitted
+one. So the corrected statement is narrower and better sourced than the original:
+*off-the-shelf Presidio, in either configuration a team can obtain without
+writing code, detects none of them.*
+
+### 2. Row 3 decomposed into a clean part and a fitted part
+
+`enabled_plus_custom` newly catches **34** positives that `enabled` misses. They
+split by where the recognizer's pattern came from:
+
+| origin of the pattern | gained on `200` | gained on `200b` |
+|---|---|---|
+| **spec-derived** — UPI VPA and IFSC in verbatim form | **11** | **11** |
+| fitted — UPI/IFSC in spaced form | 6 | 6 |
+| fitted — UPI/IFSC in obfuscated form | 8 | 8 |
+| fitted — Aadhaar/PAN separator widening | 9 | 8 |
+| Aadhaar/PAN verbatim and obfuscated | 0 | 0 |
+
+**11 of 34, or 32.4%, is clean.** The UPI VPA pattern
+`[A-Za-z0-9._-]{3,}\s?@\s?[A-Za-z]{2,}` and the IFSC pattern
+`[A-Za-z]{4}0[A-Za-z0-9]{6}` are transcriptions of the published identifier
+formats. Someone who had never seen this eval set would write them the same way,
+because Presidio ships no recognizer for either and there was nothing to fit
+*to* — the gap is categorical, not a formatting gap.
+
+The other 23 are fitted: the `"at the rate"` spelling and every
+separator-tolerant variant were written after reading this set's failures.
+
+In recall terms on `200`, `enabled` 0.2843 -> **0.3922 from spec-derived work
+alone** -> 0.6176 with the fitted work. The middle number is the one that
+carries out of sample, and it is stable at 11 gained on both sets.
+
+An earlier cut of this split by identifier *category* and put 73.5% in the clean
+column. That was wrong: the spaced and obfuscated UPI/IFSC patterns are fitted
+too, and grouping by category hid it. Splitting by pattern origin rather than by
+category is what makes the number honest.
+
+### 3. `200b` is compositionally identical, so the +0.03 is sampling
+
+`086` left the uniform shift unexplained. It is not composition drift:
+
+| | `200` | `200b` |
+|---|---|---|
+| items / positives / prevalence | 200 / 102 / 0.5100 | 200 / 102 / 0.5100 |
+| kinds | 34 / 22 / 20 / 16 / 10 | 34 / 22 / 20 / 16 / 10 |
+| forms | 34 / 34 / 34 | 34 / 34 / 34 |
+
+Identical on every axis the builder controls. The +0.03 is roughly **3 items in
+102** and comes from redrawn identifier values and a different scenario-to-form
+pairing. Mundane, and better stated than left as an unexplained property.
+
+
+## 088 - Composition rules for two warranted detectors, written before the code
+
+Phase 8, D.2. The rules below are the design; `src/policy/compose.py` implements
+them. Written first because a composition rule inferred from an implementation
+is a rule nobody chose.
+
+### The claim this answers
+
+The brief observes that a fabricated detail about a person is simultaneously a
+hallucination and a privacy concern, which makes clean categorisation hard.
+
+**Our answer is that no categorisation is required.** A warrant certifies a
+detector's operating point, not a taxonomy bucket. Two detectors score the same
+input, each carries its own warrant with its own measured bounds on its own
+envelope, and the policy layer composes the two decisions. Nothing has to decide
+which category the input "really" is.
+
+**We are deliberately not building a taxonomy classifier** that assigns an input
+to both categories. That would concede the point while appearing to answer it:
+it reintroduces exactly the categorisation step the argument says is
+unnecessary, and it would need its own warrant on its own eval set, which
+nobody has measured.
+
+### What composes, and what does not
+
+**Actions compose. Bounds do not.**
+
+An action is a decision about one request, and the composed action is a function
+of the two detectors' actions. A bound is a measured claim about a detector on
+an envelope, and there is no arithmetic that turns two detectors' bounds into a
+joint bound without a measurement of the pair. Their errors are not independent
+-- both read the same text -- and assuming independence to multiply them would
+manufacture a number nobody measured.
+
+So a composed certificate carries **both bounds, side by side, each labelled
+with its detector and envelope**, and claims no joint recall. A reader can see
+what each detector was worth; nobody can read off what the pair was worth,
+because that was never measured.
+
+### The four cases
+
+**1. Both VALID, both flag.** Action: the **more restrictive** of the two, by the
+ladder `ALLOW < REDACT < CONFIRM < ESCALATE < BLOCK`. Bounds: both cited.
+
+The reason for most-restrictive rather than a vote: the two detectors are
+looking for different things, so agreement that *something* is wrong is not two
+opinions on one question. A PII finding and a hallucination finding on one
+response are two separate true statements, and the response has to satisfy both.
+
+**2. Both VALID, they disagree** — one flags, one does not. Action: the
+**flagging detector's action**. Bounds: both cited, and the certificate records
+that the other detector did not fire.
+
+Explicitly **not** a vote, and not the conservative default either. A
+disagreement between detectors looking for different things is not evidence of
+uncertainty -- the PII detector not firing on a hallucination is the PII
+detector working correctly. Treating it as a dissenting vote would let a
+correct silence cancel a correct finding.
+
+**3. One VALID, one REFUSED.** Action: the valid detector's action, taken alone.
+Bounds: the valid detector's only. The refusal is recorded in `unchecked`.
+
+The composed decision **does not** inherit the refusal. A refused detector is
+out of service on that envelope; it contributes no finding and no bound, and
+treating its absence as a veto would take a working detector out of service
+because an unrelated one failed its controls. But the certificate must say what
+was not checked, because "we checked for PII" and "our PII detector is out of
+service" produce identical-looking `ALLOW`s otherwise.
+
+Nor does it degrade the tier. Tier is a property of the access a detector has,
+not of how many detectors ran.
+
+**4. One VALID, one UNVALIDATED.** Action: the valid detector's action,
+**unless** the unvalidated detector fires, in which case the profile's
+conservative default applies. Bounds: the valid detector's only. The unvalidated
+detector's finding is recorded with `warrant_id: null`.
+
+This is the case that must stay distinct from 3, and the distinction is
+`CLAUDE.md` invariant 2. `REFUSED` means *measured here and failed*: its output
+is known to be unreliable on this envelope and is ignored. `UNVALIDATED` means
+*never measured here*: its output is information of unknown quality, which is
+not the same as no information and not the same as bad information.
+
+So an unvalidated detector's finding cannot be quoted with a bound -- there is
+no bound -- but it can trigger the conservative default, which is what a
+profile's `conservative_default` is for. Enqueuing the cell for validation is
+how the matrix fills itself in.
+
+### The rule that overrides all four
+
+If **no** detector holds a valid warrant on this envelope, the composed
+certificate claims no bounds at all and the profile's conservative default
+applies. Two unvalidated detectors do not add up to one validated one.
+
+### What a composed certificate must carry
+
+- every finding, including those from detectors with no warrant;
+- `warrants_relied_upon` naming only the detectors whose bounds are quoted;
+- `claimed_bounds` keyed **by detector**, never merged;
+- `weakest_warrant_status` across the detectors actually relied upon;
+- `unchecked` naming every detector that did not contribute and why -- refused,
+  unvalidated, or not run.
+
+
+## 089 - An envelope is a distribution plus a label definition
+
+Found while building D.2. The composition demo needs two detector categories
+holding valid warrants on **one** envelope, and the matrix has none: the probe is
+warranted only on `triviaqa-2400-t960`, the PII detectors only on the PII sets.
+
+The obvious fix was to warrant `pii-reference` — a text detector, no GPU needed —
+on the probe's envelope. It worked. It produced:
+
+    pii-reference on triviaqa-2400-t960 — recall 0.0063 [0.0018, 0.0111]
+
+**That is not a PII recall.** TriviaQA's positive class means *"the model's
+answer was incorrect"*. What was measured is the fraction of wrong answers that
+happen to contain a personal identifier — a quantity nobody wants, with a
+correct interval, filed under a warrant key that reads as a PII claim.
+
+Nothing errored. Every part was doing its job: the set has labels, the detector
+produces scores, the metrics are arithmetically correct. Only the *meaning* was
+mismatched, and meaning was the one thing not represented anywhere a check could
+reach.
+
+### The rule
+
+**A detector can only be warranted on an eval set whose labels mean what that
+detector detects.** An envelope has been treated throughout this repo as an
+input distribution; it is a distribution *and* a label definition, and the
+second half was implicit until it broke.
+
+`src/evalsets/categories.py` declares the mapping and
+`validate_text_detector` refuses a mismatch before scoring — before, because
+everything after that point is arithmetically correct either way.
+
+**Single-class sets are the exception, and a principled one.**
+`hard-negatives-200` has no positives, so it makes no category claim and any
+detector may be measured there. "How often does this fire on traffic that should
+never be flagged" is worth asking of any detector, whatever it detects.
+
+**An unmapped set is refused, not defaulted.** A set whose label meaning nobody
+has declared is exactly the case that produced the bad warrant.
+
+### Why a registry and not a field on the set
+
+`construction["label_meaning"]` already records it, in prose, and prose cannot be
+checked. A structured field on `EvalSet` is the obvious fix and is unavailable:
+construction notes are inside the content hash, so adding one would change the
+identity of every frozen set and orphan every warrant keyed on it. Third time
+this constraint has bitten — see also `resplit_by_question`'s nesting flag and
+`build_hinglish_pii`'s `extended_forms`. The pattern is now established: facts
+*about* a frozen set that were not known when it was frozen live beside it, not
+inside it.
+
+### What this blocks
+
+**D.2's gate cannot be met with measured warrants.** No eval set carries labels
+for both a hallucination and a PII positive class, and the guard now correctly
+prevents manufacturing one. The composition rules in `088` are implemented and
+exhaustively tested against fixtures; what is missing is a measured pair.
+
+Three ways forward, none of which should be chosen quietly:
+
+1. **A dual-labelled eval set** — items carrying both an "answer incorrect" and
+   a "contains identifier" label. This is the honest fix and it is the only one
+   that makes the brief's actual claim measurable, since the claim is precisely
+   that one item can be both. Needs a GPU pass for the probe side.
+2. **Both detectors on `hard-negatives-200`**, which is single-class and admits
+   any detector. That yields two FPR-only warrants and a real composed decision,
+   but demonstrates composition on an envelope where neither detector can claim
+   recall. Needs a GPU pass for the probe's activations on that set.
+3. **Report the composition mechanism as built and tested, and the measured pair
+   as an open gap.** Costs nothing and claims nothing false.
+
+The finding itself is worth more than the demo it blocked. A system that will
+happily warrant a PII detector against hallucination labels is a system whose
+warrants mean less than they appear to, and nothing else in the build would have
+surfaced it.
+
+
+## 090 - Pre-registration: the dual-labelled set and the powered holdout
+
+**Written before either set is built and before any number on either exists.**
+One GPU pass covers both; `085` failed by not checking its own power, so both
+have their power stated here and verified after generation but **before**
+scoring.
+
+### Why a dual-labelled set rather than a shared single-class envelope
+
+The brief's overlap bullet says a fabricated detail about a person can
+simultaneously be a hallucination and a privacy concern. **An item carrying both
+labels is that sentence made measurable.** The alternative considered in `089` —
+composing on `hard-negatives-200`, which is single-class and admits any detector
+— demonstrates the mechanism on an envelope where the co-occurrence *cannot
+exist*, and so answers a different question than the one asked.
+
+### The set: `banking-dual-240`
+
+240 hand-written items in a 2x2 over two independent labels:
+
+| cell | hallucination | PII | n |
+|---|---|---|---|
+| both | 1 | 1 | 60 |
+| hallucination only | 1 | 0 | 60 |
+| PII only | 0 | 1 | 60 |
+| neither | 0 | 0 | 60 |
+
+Giving 120 PII positives and 120 hallucination positives — each enough for a
+recall interval comparable to the 102 in `hinglish-pii-200`.
+
+**The set carries two label columns, not one.** `EvalItem.label` cannot express
+this, so the second lives in `meta` and the set is registered in
+`EVAL_SET_CATEGORY` under whichever column a given validation run reads. A run
+declares which label it is measuring against; a run that does not is refused, by
+the same guard `089` added.
+
+### The co-occurrence rate is constructed, and the certificate must say so
+
+Measured on real traffic, wrong answers containing an identifier ran **0.0063**
+on `triviaqa-2400-t960` — about 6 items in 960. At that rate a 240-item set
+would hold **one or two** co-occurring items and the composed VALID/VALID case
+would have nothing to run on.
+
+So co-occurrence is oversampled to **25%**, roughly **40x** its measured rate.
+That is a deliberate construction and it has a consequence: **any composed bound
+measured here describes this constructed distribution and not production
+traffic.** That statement goes in the certificate's `claimed_bounds` as a field,
+not in a footnote — a reader who sees a composed recall must see, in the same
+object, that its envelope was enriched.
+
+Per-detector bounds are unaffected: each detector's recall is measured against
+its own label column, and enrichment changes prevalence rather than recall.
+Precision and any lift figure **are** affected and will not be quoted from this
+set.
+
+### Target counts per composition case, not just overall
+
+`085`'s failure was aggregate power with nothing in the cell that mattered. The
+four cases in `088` split into two kinds:
+
+**Content-dependent** — need items:
+
+| case | condition | target items |
+|---|---|---|
+| 1. both VALID, both flag | probe fires and PII fires | **>= 25** |
+| 2a. disagree | probe fires, PII silent | **>= 25** |
+| 2b. disagree | PII fires, probe silent | **>= 25** |
+| 0. neither fires | — | >= 25 |
+
+**Status-dependent** — need no items, only a detector in that state on this
+envelope: case 3 uses `presidio-stock`, which `084` shows is REFUSED wherever it
+is measured; case 4 uses any detector never validated here.
+
+At the operating points now warranted — probe flag rate ~0.106, `pii-reference`
+recall 0.79 — the 2x2 above should land roughly 25-45 items in each of the four
+content cells. **Verified after generation and before scoring.** If any cell
+falls below 25, the set is rebuilt with adjusted cell sizes and that is recorded;
+it is not scored and reported from a cell of three.
+
+### The powered holdout: `hinglish-pii-300c`
+
+`086` found the holdout could not detect what it was built to detect: the
+extension touched only the `spaced` form, one of five added separators was the
+**empty string** (which renders identifiers canonically and is therefore a
+simplification, not an extension), and only 5 of 102 positives ended up outside
+the fitted class.
+
+Replacing it, with two checks `085` should have had:
+
+1. **The extension applies to all three disclosure forms**, not one.
+2. **Every added separator is mechanically asserted to change the rendered
+   string** — `rendered != canonical` — which would have caught the empty
+   string at build time.
+3. **Target: >= 90 positives carrying formatting outside
+   `presidio_custom._SEPARATOR`.** Counted after generation, before scoring. At
+   90 affected positives, a drop from 0.65 to 0.45 is detectable at 80% power;
+   at 5 it was not.
+
+### Committed before the run
+
+- Report whatever comes out, both sets, including a large drop on the holdout.
+- The custom recognizers stay frozen at `7ae7ac1`.
+- If the dual set's composed VALID/VALID cell is under 25 after generation, say
+  so and rebuild rather than scoring it.
+- The composed certificate states its enriched co-occurrence rate inline.
+- `banking-dual-240` needs a GPU pass for the probe's activations. This machine
+  has none (`cuda_available: false`), so the set and its labels are built and
+  frozen on CPU now and the extraction runs on Kaggle. **Nothing is scored until
+  it does** — no placeholder numbers, no synthetic stand-in reported as measured.
+
+
+## 091 - What an envelope is, arrived at by three near-misses
+
+Three parts, each discovered separately, each by a number that read wrong rather
+than by a test that failed. Stated together because the pieces only make sense
+as one definition.
+
+**An envelope is a distribution, a label definition, and a sample.**
+
+| part | discovered by | what went wrong |
+|---|---|---|
+| distribution | the design, from the start | — |
+| **sample** | the re-split (`080` amendment) | the same 2400 items re-partitioned read as a *new envelope*, so warrants did not transfer and validation age would reset on every renewal |
+| **label definition** | `pii-reference` on TriviaQA (`089`) | a PII detector was warranted against hallucination labels and produced a correct interval about the wrong question |
+
+Only the first was designed. The other two were each present all along and
+invisible until a specific number looked wrong to a human.
+
+### Why the omissions were invisible
+
+Both near-misses produced output that was **correct in every checkable respect**.
+The re-split's warrants were properly keyed, properly hashed, properly refused
+when they should have been. The PII-on-TriviaQA warrant had a valid Clopper-
+Pearson interval, a passing control suite, and an accurate `n`. Nothing was
+approximated and nothing raised.
+
+What was wrong in both cases was a *meaning* that the system had no
+representation for, and a system cannot check what it cannot represent. That is
+the general lesson and it is worth more than either fix: the failure mode this
+product exists to prevent — a claim that is well-formed, well-measured, and
+about a different question than it appears to be — occurred **twice inside the
+system built to prevent it**, and both times it was caught by a person reading a
+number and finding it implausible, not by a control.
+
+A reviewer is entitled to ask what else is unrepresented. The honest answer is
+that we do not know, and that the three parts above are the ones two months of
+building surfaced.
+
+### The consequence for Phase 6
+
+Renewal is same-distribution, same-labels, **new sample**. The `080` amendment
+records the shape: an envelope identity separate from the eval-set content hash,
+with warrants carrying a sample reference underneath it, so age accrues against
+the envelope rather than resetting. That migration is where all three parts get
+represented properly, and it should be done once.
+
+---
+
+## 092 - Facts about a frozen set that were not known at freeze time live beside it
+
+Three occurrences is a pattern, so it is named once here rather than defended
+three times.
+
+`resplit_by_question`'s nesting relationship, `build_hinglish_pii`'s
+`extended_forms`, and `EVAL_SET_CATEGORY`'s label meaning were each, at first,
+going to be written into an eval set's `construction` notes. Each time the same
+thing stopped it: **construction notes are inside the content hash**, so adding
+a field changes the set's identity and orphans every warrant keyed on it. Each
+time the fix was a declaration living beside the set rather than inside it.
+
+**The principle: the content hash's job is immutability, not completeness.**
+
+A frozen set's hash answers exactly one question — *is this the same data as when
+the warrant was issued?* Facts learned afterwards are not part of that question.
+Writing them in would mean every new insight about a set silently invalidates
+every measurement made on it, which inverts the purpose: the hash exists so
+numbers stay attached to the data they were measured on, and a hash that moves
+whenever anyone learns something is a hash that guarantees nothing.
+
+So:
+
+- **Inside the hash:** the items, their order, their labels, the data source, and
+  the construction parameters known at build time.
+- **Beside the hash:** anything discovered later — how a set relates to another
+  set, what its labels mean, which extension it was built with. Declared in code,
+  versioned with the code, and refusing to default when unmapped.
+
+The test that keeps this honest is the same each time: rebuild the frozen set and
+assert it still hashes to the committed value. `test_the_extended_inventory_does_not_change_the_frozen_set`
+and `test_the_nesting_check_does_not_change_the_frozen_identity` both exist for
+that reason.
+
+The cost is real and worth stating: three side registries are three places a
+reader must look, and none of them is discoverable from the set file itself. A
+`registry` module that gathers them would be an improvement and is not urgent.
+
+
+## 093 - Override records carry their stratum and draw probability, or they are refused
+
+Phase 8, D.3. The minimum viable feedback loop: capture what a reviewer decided
+about an escalated item, store it against the certificate that escalated it,
+expose count and direction. **Not retraining** — it is the label-capture path
+Phase 6's estimator needs anyway, shaped so Phase 6 consumes it without a
+migration.
+
+### The bias this schema exists to prevent
+
+Overrides exist **only on escalated items**, so the label pool is conditioned on
+the detector having scored above threshold. Fed to a stratified estimator
+unweighted, that biases recall **upward** — the flagged stratum is enriched for
+true positives, so recall measured on reviewed items is recall among the items
+the detector already liked.
+
+It would arrive as a number that looks better than the truth, with nothing in
+the record to show why. Each record therefore carries the stratum it was drawn
+from and the probability it was drawn with, and the estimator weights by
+`1/selection_probability`.
+
+### Why stored and not derived, which is the whole design decision
+
+The obvious alternative is to reconstruct the stratum at read time from the
+score and the threshold. It fails, and it fails silently.
+
+An item's stratum depends on **the threshold and envelope in force when it was
+captured**, and both move. `082` measured all three thresholds moving between
+two runs of the same detector; an envelope is re-drawn on every renewal. A
+record read six months later would be reconstructed against a threshold that did
+not exist when it was written — silently reassigning items between strata and
+reweighting the whole estimate.
+
+There is no error path. The reconstruction always succeeds and always yields a
+plausible stratum. So the fields are captured at write time and a record without
+them **cannot be constructed**, which means it cannot reach the ledger: there is
+no route from a malformed record to a stored one, because `OverrideRecord`
+validates in `__post_init__` and `append_override` only accepts records.
+
+A hard failure rather than a warning, because records written without these are
+not repairable later. A warning would produce exactly the artifact the schema is
+meant to prevent, and would produce it in bulk before anyone read the log.
+
+### Two error kinds, never one counter
+
+`ESCALATE_TO_ALLOW` is a false positive and costs one wasted review.
+`ALLOW_TO_ESCALATE` is a false negative and costs a customer acting on a wrong
+answer. `human_decision` and `direction` are cross-checked against each other,
+because letting them drift apart makes the false-negative count unreadable.
+
+### Weighted counts travel beside raw ones
+
+`override_summary` reports both. A raw count of false negatives from a reviewed
+sample is not an estimate of anything, and quoting it as a rate is the
+upward-biased number above. One unflagged item drawn at 1-in-200 and found to be
+a miss stands for 200; the summary says so.
+
+### What is deliberately not stored
+
+Message content. The store is queried by session under DPDP Rule 6 and is not a
+place to accumulate text; records carry an opaque `item_ref`. Reviewer identity
+likewise — `reviewer_ref` is opaque, and exists for inter-rater agreement rather
+than for attribution.
+
+
+## 094 - The LiteLLM adapter, and the line that keeps it an adapter
+
+Phase 8, D.4. `CLAUDE.md` rules a gateway out of scope, and the distinction is
+easy to lose by accretion: a gateway owns the request path, terminates
+connections, holds credentials and routes — it becomes something an enterprise
+has to operate and trust. This sits behind LiteLLM, which already does that job,
+and adds one thing: the certificate.
+
+The upstream call is **injected**, not imported, so the adapter never holds a
+key. `test_the_adapter_owns_no_credentials_and_no_routing` greps its own source
+for `api_key`, `base_url`, `requests.`, `httpx.` and `retry`, so the boundary is
+enforced rather than remembered.
+
+### How a certificate reaches an unmodified client
+
+The gate is *no application code change*, which rules out a second endpoint or a
+wrapper the caller has to invoke. Two places remain:
+
+- **inline**, on an additive namespaced key `response["control_plane"]`. An
+  OpenAI-format client ignores keys it does not know, so the certificate reaches
+  a caller who wants it and is invisible to one who does not;
+- **out of band**, in the ledger, addressable by the request id the caller
+  already has.
+
+Both, because a field in a response the caller may discard is not an audit
+trail, and a ledger the caller cannot see does not make the demo work.
+
+### The inline path claims less than the async path, and says so
+
+They are not the same check at different speeds. An inline certificate claims
+what the fast tier supports and lists the deep checks in `unchecked`, with
+`deep_checks_pending` on the object. Presenting an inline result as though the
+deep checks had passed would be the unbacked claim this project refuses: a
+caller would read an `ALLOW` meaning *nothing fast found anything* as *nothing
+found anything*.
+
+### A budget overrun is recorded, not enforced
+
+The tempting behaviour is to drop the certificate when the checks exceed the
+profile's inline budget, so the latency promise holds. That is wrong in the
+direction that matters: the response goes out uncertified and **looks identical
+to one that passed**. A slow check is a fact about the deployment; it belongs on
+the certificate where somebody can see it, not disappeared to protect a number.
+
+So the certificate is always issued and the overrun goes in `unchecked` with
+both figures.
+
+### A malformed upstream response still gets a certificate
+
+Tolerant of `message.content` and the older `text`, and returns empty rather
+than raising when neither is present. A broken upstream is not a reason to fail
+the certificate — it is a reason for the certificate to say nothing was checked,
+which is a statement. A missing certificate is an absence nobody notices.

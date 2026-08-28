@@ -42,6 +42,12 @@ from .findings import (
     OperatingPoint,
     Span,
 )
+from .override import (
+    HumanDecision,
+    OverrideDirection,
+    OverrideError,
+    OverrideRecord,
+)
 from .metrics import Metric, MetricError, WarrantMetrics
 from .serde import (
     SerdeError,
@@ -56,6 +62,10 @@ from .serde import (
 from .warrant import ControlResult, Warrant, WarrantError, WarrantKey
 
 __all__ = [
+    "HumanDecision",
+    "OverrideDirection",
+    "OverrideError",
+    "OverrideRecord",
     "UNSEALED",
     "AccessTier",
     "Action",

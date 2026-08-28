@@ -182,6 +182,34 @@ def test_smoke_paired_fixture(tmp_path: Path) -> None:
     assert (tmp_path / "roc_operating_points.png").exists()
 
 
+@pytest.mark.skipif(
+    not __import__("src.detectors.presidio_adapter", fromlist=["x"]).presidio_available(),
+    reason="presidio-analyzer not installed",
+)
+def test_smoke_detectors(tmp_path: Path) -> None:
+    """The Presidio adapter runs through the unmodified warrant machinery.
+
+    Stock only, to keep the smoke run short; the reported result measures all
+    three (DECISIONS 008). What this asserts is the Phase 8 D.1 gate: stock
+    Presidio is REFUSED on hinglish-pii-200 and the measured recall is in the
+    refusal reason, not merely in the metrics block a reader has to go find.
+    """
+    run_script("09_detectors.py", "--configs", "stock", "--skip-reference", out=tmp_path)
+    payload = json.loads((tmp_path / "detectors.json").read_text(encoding="utf-8"))
+
+    runs = {
+        (r["detector_id"], r["eval_set_id"]): r for r in payload["runs"]
+    }
+    hinglish = runs[("presidio-stock", "hinglish-pii-200")]
+    assert hinglish["warrant_status"] == "REFUSED"
+    reason = hinglish["status_reason"] or ""
+    assert "canary" in reason, reason
+    assert hinglish["metrics"]["recall"]["value"] < 0.5, (
+        "stock Presidio scoring above 0.5 on Hinglish PII would be a finding, "
+        "not a passing test -- check the adapter before believing it"
+    )
+
+
 def test_kaggle_runner_refuses_before_it_can_spend_quota() -> None:
     """The two guards on the batch runner, exercised rather than assumed.
 
@@ -496,6 +524,8 @@ def test_every_script_has_a_smoke_test() -> None:
         "07_policy.py",
         # test_smoke_paired_fixture
         "08_paired.py",
+        # test_smoke_detectors
+        "09_detectors.py",
     }
     exempt = {
         # Needs a GPU; its wiring is checked by the notebook's own self-check
