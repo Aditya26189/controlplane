@@ -288,11 +288,24 @@ def validate(
             progress(message)
 
     if cache.eval_set_hash != evalset.content_hash:
-        raise ValueError(
-            f"cache for {cache.eval_set_id} was extracted from contents hashing "
-            f"{cache.eval_set_hash[:16]}, but {evalset.eval_set_id} now hashes to "
-            f"{evalset.content_hash[:16]}. Re-extract; validating against a stale "
-            "cache files numbers under an envelope that no longer describes the data."
+        # A set derived by re-splitting has a different content hash by
+        # construction -- ``split`` is inside it -- while holding the same items
+        # in the same order, so the cached activations are still exactly its
+        # activations. That case is allowed, but only after the items are
+        # compared elementwise; the hash mismatch alone proves nothing either
+        # way (``DECISIONS.md`` 079).
+        derived_from = evalset.construction.get("derived_from")
+        if derived_from != cache.eval_set_id:
+            raise ValueError(
+                f"cache for {cache.eval_set_id} was extracted from contents hashing "
+                f"{cache.eval_set_hash[:16]}, but {evalset.eval_set_id} now hashes to "
+                f"{evalset.content_hash[:16]}. Re-extract; validating against a stale "
+                "cache files numbers under an envelope that no longer describes the data."
+            )
+        cache._require_same_items(evalset, f"cache for {cache.eval_set_id}")
+        say(
+            f"{evalset.eval_set_id} is a re-split of {derived_from}; reusing its "
+            "extraction after verifying every item matches"
         )
 
     say(f"splitting {evalset.eval_set_id} by question ({len(evalset)} items)")
