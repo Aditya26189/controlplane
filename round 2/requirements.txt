@@ -15,6 +15,10 @@ statsmodels>=0.14.0          # stratified estimation, kappa
 presidio-analyzer>=2.2.0     # MIT
 presidio-anonymizer>=2.2.0
 spacy>=3.7.0
+# Presidio needs a spaCy model at runtime and pip does not pull one:
+#   python -m spacy download en_core_web_lg
+# Without it AnalyzerEngine() fails at construction, not at import, so the
+# absence surfaces as a stage error rather than a missing dependency.
 
 regopy>=0.4.0                # MIT -- Rego via rego-cpp. Not OPA; DECISIONS 076.
 
