@@ -526,6 +526,10 @@ def test_every_script_has_a_smoke_test() -> None:
         "08_paired.py",
         # test_smoke_detectors
         "09_detectors.py",
+        # test_smoke_the_smoke_check_itself
+        "smoke.py",
+        # test_smoke_verify_claims_only, test_verify_exits_non_zero_on_drift
+        "verify.py",
     }
     exempt = {
         # Needs a GPU; its wiring is checked by the notebook's own self-check
@@ -695,3 +699,61 @@ def test_extraction_script_imports_cleanly() -> None:
         f"scripts/00_extract.py does not import cleanly:\n{result.stderr[-2000:]}"
     )
     assert "True" in result.stdout
+
+
+# --------------------------------------------------------------------------- #
+# The reproduction tiers themselves. Block E, E.4.
+# --------------------------------------------------------------------------- #
+# These are the commands a judge runs. A broken `make verify` is worse than a
+# missing one -- it reads as verification and is not -- so the entry points are
+# executed here the way a person executes them, not imported.
+
+
+def _run_bare(name: str, *args: str, expect: int = 0) -> subprocess.CompletedProcess:
+    """Run a script that takes no --config/--out, and assert its exit status."""
+    result = subprocess.run(
+        [sys.executable, str(PROJECT_ROOT / "scripts" / name), *args],
+        capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=900,
+        env={**__import__("os").environ, "PYTHONIOENCODING": "utf-8"},
+    )
+    assert result.returncode == expect, (
+        f"scripts/{name} exited {result.returncode}, expected {expect}\n"
+        f"--- stdout ---\n{result.stdout[-3000:]}\n"
+        f"--- stderr ---\n{result.stderr[-3000:]}"
+    )
+    return result
+
+
+def test_smoke_the_smoke_check_itself() -> None:
+    """`make smoke` -- the first thing anyone runs, and the first thing to break."""
+    result = _run_bare("smoke.py")
+    assert "SMOKE OK" in result.stdout
+    for expected in ("package imports", "config loads", "claim table parses"):
+        assert expected in result.stdout, f"smoke.py stopped checking {expected!r}"
+
+
+def test_smoke_verify_claims_only() -> None:
+    """`make verify-claims` -- the fast half, which needs no cached activations."""
+    result = _run_bare("verify.py", "--claims-only")
+    assert "claims reproduce" in result.stdout
+    assert "VERIFIED" in result.stdout
+    assert "DRIFT" not in result.stdout
+
+
+def test_verify_exits_non_zero_on_drift(tmp_path: Path) -> None:
+    """The half that matters: verification must be able to fail.
+
+    A checker that cannot fail is decoration. This feeds it a README with one
+    number altered and asserts a non-zero exit -- the thing `make verify` relies
+    on to stop a release.
+    """
+    readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "| 0.8256 | [0.7934, 0.8567]" in readme
+    tampered = tmp_path / "README.md"
+    tampered.write_text(
+        readme.replace("| 0.8256 | [0.7934, 0.8567]", "| 0.9999 | [0.7934, 0.8567]", 1),
+        encoding="utf-8",
+    )
+    result = _run_bare("verify.py", "--claims-only", "--readme", str(tampered), expect=1)
+    assert "DRIFT" in result.stdout
+    assert "0.9999" in result.stdout or "0.9999" in result.stderr
