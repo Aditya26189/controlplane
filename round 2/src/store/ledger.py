@@ -40,7 +40,10 @@ import logging
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterator, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from ..model.override import OverrideRecord
 
 from ..model import (
     Certificate,
@@ -89,8 +92,9 @@ class RecordKind:
     WARRANT = "warrant"
     VALIDATION_RUN = "validation_run"
     RETENTION_EVENT = "retention_event"
+    OVERRIDE = "override"
 
-    ALL = (CERTIFICATE, WARRANT, VALIDATION_RUN, RETENTION_EVENT)
+    ALL = (CERTIFICATE, WARRANT, VALIDATION_RUN, RETENTION_EVENT, OVERRIDE)
 
 
 class LedgerError(RuntimeError):
@@ -547,6 +551,71 @@ class Ledger:
                 "eval_set_id": warrant.eval_set_id,
             },
         )
+
+    def append_override(self, record: "OverrideRecord") -> LedgerRecord:
+        """Seal one human override into the chain.
+
+        Indexed by the certificate it judges, so the label and the decision that
+        produced it can never be separated. ``SPEC.md`` §6.5.
+
+        The record validates itself on construction — a record without a stratum
+        or a selection probability cannot be built, so one cannot reach the
+        ledger. That is deliberate: those two fields are unreconstructable after
+        the fact (``src/model/override.py``), so the check has to be at the point
+        of writing rather than at the point of reading.
+
+        Args:
+            record: The override.
+
+        Returns:
+            The sealed :class:`LedgerRecord`.
+        """
+        return self._append(
+            RecordKind.OVERRIDE,
+            record.override_id,
+            record.to_payload(),
+            columns={
+                "certificate_id": record.certificate_id,
+                "detector_id": record.detector_id,
+            },
+        )
+
+    def overrides_for_certificate(self, certificate_id: str) -> tuple[dict, ...]:
+        """Every override filed against one certificate."""
+        return tuple(
+            r.body
+            for r in self.query(kind=RecordKind.OVERRIDE)
+            if r.body.get("certificate_id") == certificate_id
+        )
+
+    def override_summary(self) -> dict:
+        """Count and direction, which is what D.3 asks be exposed.
+
+        Weighted counts travel beside raw ones. A raw count of false negatives
+        from a reviewed sample is not an estimate of anything — the sample is
+        conditioned on the detector having fired — and quoting it as one is the
+        upward-biased number this schema exists to prevent.
+        """
+        records = [r.body for r in self.query(kind=RecordKind.OVERRIDE)]
+        summary = {
+            "n": len(records),
+            "upheld": 0,
+            "overridden": 0,
+            "escalate_to_allow": 0,
+            "allow_to_escalate": 0,
+            "weighted_escalate_to_allow": 0.0,
+            "weighted_allow_to_escalate": 0.0,
+            "by_stratum": {},
+        }
+        for body in records:
+            summary[body["human_decision"]] += 1
+            direction = body["direction"]
+            if direction != "none":
+                summary[direction] += 1
+                summary["weighted_" + direction] += 1.0 / body["selection_probability"]
+            stratum = body["stratum"]
+            summary["by_stratum"][stratum] = summary["by_stratum"].get(stratum, 0) + 1
+        return summary
 
     def append_validation_run(
         self, run_id: str, body: dict[str, Any], eval_set_id: str, detector_id: str

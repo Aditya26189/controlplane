@@ -3140,3 +3140,68 @@ that reason.
 The cost is real and worth stating: three side registries are three places a
 reader must look, and none of them is discoverable from the set file itself. A
 `registry` module that gathers them would be an improvement and is not urgent.
+
+
+## 093 - Override records carry their stratum and draw probability, or they are refused
+
+Phase 8, D.3. The minimum viable feedback loop: capture what a reviewer decided
+about an escalated item, store it against the certificate that escalated it,
+expose count and direction. **Not retraining** — it is the label-capture path
+Phase 6's estimator needs anyway, shaped so Phase 6 consumes it without a
+migration.
+
+### The bias this schema exists to prevent
+
+Overrides exist **only on escalated items**, so the label pool is conditioned on
+the detector having scored above threshold. Fed to a stratified estimator
+unweighted, that biases recall **upward** — the flagged stratum is enriched for
+true positives, so recall measured on reviewed items is recall among the items
+the detector already liked.
+
+It would arrive as a number that looks better than the truth, with nothing in
+the record to show why. Each record therefore carries the stratum it was drawn
+from and the probability it was drawn with, and the estimator weights by
+`1/selection_probability`.
+
+### Why stored and not derived, which is the whole design decision
+
+The obvious alternative is to reconstruct the stratum at read time from the
+score and the threshold. It fails, and it fails silently.
+
+An item's stratum depends on **the threshold and envelope in force when it was
+captured**, and both move. `082` measured all three thresholds moving between
+two runs of the same detector; an envelope is re-drawn on every renewal. A
+record read six months later would be reconstructed against a threshold that did
+not exist when it was written — silently reassigning items between strata and
+reweighting the whole estimate.
+
+There is no error path. The reconstruction always succeeds and always yields a
+plausible stratum. So the fields are captured at write time and a record without
+them **cannot be constructed**, which means it cannot reach the ledger: there is
+no route from a malformed record to a stored one, because `OverrideRecord`
+validates in `__post_init__` and `append_override` only accepts records.
+
+A hard failure rather than a warning, because records written without these are
+not repairable later. A warning would produce exactly the artifact the schema is
+meant to prevent, and would produce it in bulk before anyone read the log.
+
+### Two error kinds, never one counter
+
+`ESCALATE_TO_ALLOW` is a false positive and costs one wasted review.
+`ALLOW_TO_ESCALATE` is a false negative and costs a customer acting on a wrong
+answer. `human_decision` and `direction` are cross-checked against each other,
+because letting them drift apart makes the false-negative count unreadable.
+
+### Weighted counts travel beside raw ones
+
+`override_summary` reports both. A raw count of false negatives from a reviewed
+sample is not an estimate of anything, and quoting it as a rate is the
+upward-biased number above. One unflagged item drawn at 1-in-200 and found to be
+a miss stands for 200; the summary says so.
+
+### What is deliberately not stored
+
+Message content. The store is queried by session under DPDP Rule 6 and is not a
+place to accumulate text; records carry an opaque `item_ref`. Reviewer identity
+likewise — `reviewer_ref` is opaque, and exists for inter-rater agreement rather
+than for attribution.
