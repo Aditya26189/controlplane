@@ -77,13 +77,23 @@ These produce plausible output with nothing raised. They are why the control sui
 ## Layout
 
 ```
+README.md          the deliverable — claim table, quickstart, scope
 CLAUDE.md          this file
-SPEC.md            technical specification — read before implementing
-TASKS.md           phased build order with gates
-CONTRIBUTING.md    git workflow and documentation rules — binding
-DECISIONS.md       append-only rationale log
-DEMO.md            the demo this must produce
+DECISIONS.md       append-only rationale log — stays at the root, heavily cited
+Makefile           the four reproduction tiers
 config.yaml        all knobs, including the single declared workload
+docs/
+  SPEC.md          technical specification — read before implementing
+  TASKS.md         phased build order with gates
+  CONTRIBUTING.md  git workflow and documentation rules — binding
+  DEMO.md          the demo this must produce
+  KICKOFF.md       the original brief
+  ARCHITECTURE.md  what the system is and how the pieces fit
+  METHODS.md       estimators, bootstraps, bands and their derivations
+  LIMITATIONS.md   scope, declared gaps, open items
+  CASES.md         the case matrix — every case, its test, its artifact
+  PATHS.md         the 2026-08-29 move mapping, old path to new
+  PROPOSAL.md      the business proposal
 controlplane/
   model/           Finding, OperatingPoint, Warrant, Certificate, enums
   store/           SQLite, hash chain, retention, queries
@@ -92,12 +102,13 @@ controlplane/
   validation/      control suite, /validate, warrant issuance and refusal
   matrix/          the (detector × envelope) warrant matrix and routing
   drift/           envelope computation, PSI, MMD, revocation ladder
-  sampling/        stratified estimator, allocation, label queue, kappa
-  economics/       sizing.py — the price list, computed
+  sampling/        NOT BUILT — Phase 6; DECISIONS 096
+  economics/       NOT BUILT — Phase 6; DECISIONS 096. Five contracts cite it
   policy/          bundle loading, load-time warrant resolution
-  detectors/       adapters: probe, presidio, qwen3guard, lettucedetect, judge
-  gate/            reversibility registry, session Rule-of-Two, action gate
+  detectors/       adapters: probe, presidio (qwen3guard/judge not built)
+  gate/            NOT BUILT — Phase 9
   report/          renders results/ into markdown and plots
+  gateway/         LiteLLM adapter — certificates on an OpenAI-format response
 scripts/           thin CLI wrappers — no logic
 tests/
 evalsets/          frozen, content-hashed
@@ -105,6 +116,7 @@ policies/          versioned Rego/Cedar bundles
 demo/              two-pane runner, stream player
 notebooks/         run_on_kaggle.ipynb -- generated, never hand-edited
 results/           all outputs
+round1/            the Round 1 submission, moved whole and unmodified
 ```
 
 Notebook JSON is not reviewable in a diff, so `notebooks/run_on_kaggle.ipynb` is
