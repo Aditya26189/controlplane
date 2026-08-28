@@ -3055,6 +3055,89 @@ Replacing it, with two checks `085` should have had:
   frozen on CPU now and the extraction runs on Kaggle. **Nothing is scored until
   it does** — no placeholder numbers, no synthetic stand-in reported as measured.
 
+---
+
+### AMENDMENT, before authoring and before the run
+
+Four things settled after the arithmetic was run rather than assumed. The
+original text above stands; this is added, not edited.
+
+#### 1. Factorial construction, and the clustering it forces
+
+The 240 items are **60 base scenarios crossed with (correct / incorrect) x
+(identifier / no identifier)**, holding the surrounding text fixed across the
+four cells.
+
+The reason is not economy of effort. Authoring 240 items freely would let
+writing style correlate with the labels - wrong answers reading differently from
+right ones in ways a probe can pick up - and the measurement would be of
+authorship rather than of incorrectness. Fixing the frame makes the two axes
+orthogonal by construction, so no stylistic confound can attach to either label.
+
+**Consequence: items within a scenario are not independent, so every interval on
+this set must be a cluster bootstrap resampling scenarios, not items.**
+Item-level resampling would understate every interval by roughly the cluster
+factor and produce correct-looking numbers that are wrong. Pre-registered here
+because it is exactly the class of error `081` was written about, and because a
+bootstrap that resamples the wrong unit does not announce itself.
+
+#### 2. The set supports one profile, not three. Declared now.
+
+The probe's TriviaQA warrants do not transfer to this envelope - invariant 1,
+which already fired on the re-split when identical items under a different
+partition went `UNVALIDATED`. So the probe must be **validated** on
+`banking-dual-240`, and at 240 items with 120 hallucination-negatives:
+
+| operating point | measured FPR | negatives above threshold at N=120 | N_neg for >= 20 | implied set size |
+|---|---|---|---|---|
+| `P-customer-support` | 0.0152 | **1.8** | 1318 | ~2635 |
+| `P-internal-knowledge` | 0.0436 | 5.2 | 458 | ~917 |
+| `P-decision-support` | 0.2467 | 29.6 | 81 | ~162 |
+
+A threshold positioned by 1.8 negative items is not a threshold, and `083`
+showed the selection-aware interval widens worst exactly where fewest negatives
+position it - 1.59x at five. At 1.8 it would be unusable.
+
+**So `banking-dual-240` warrants the probe at `P-decision-support` only, and the
+composed demo runs there.** Declared before authoring rather than discovered
+after. Sizing up to reach `internal_knowledge` would need ~917 hand-written
+items and is not proposed.
+
+This costs nothing elsewhere: the three-profiles-on-one-curve result lives on
+`triviaqa-2400-t960` and is unaffected. And decision_support - low volume, high
+consequence, escalation-heavy - is the right register for a fabricated detail
+about a person in a banking context anyway.
+
+#### 3. The probe may simply not work on this envelope, and that is a result
+
+The probe was fitted on TriviaQA activations: English trivia questions. This set
+is Hinglish banking-support text. Nothing guarantees the signal transfers, and
+if AUROC's lower bound misses the 0.55 issuance bar the probe is **REFUSED**
+here.
+
+That would give a `VALID / REFUSED` composition - case 3 of `088`, demonstrated
+on measured warrants - which is a legitimate and interesting beat, but it is
+**not the overlap demonstration** and must not be presented as one. Committed in
+advance: if the probe is refused on this envelope, we report the refusal, the
+composed pair stays unmeasured, and `phase-8`'s gate stays open.
+
+**Cheap de-risking, before authoring all 60:** author a **12-scenario pilot**
+(48 items), tokenise on CPU - no GPU needed - and compute the token-length and
+script-mix envelope distance against the `triviaqa-2400-t960` reference. That
+does not predict whether the probe's *signal* transfers, but a very large input
+distance is an early warning worth having for the price of a pilot.
+
+#### 4. What happens if the run does not land
+
+A declared rule rather than a deadline, decided now so it is policy rather than
+a concession made under pressure:
+
+**If the Kaggle extraction has not landed by the time the submission is
+assembled, `phase-8` is tagged with the composed-pair gap named in the tag
+annotation, and the gap goes in the README's open-items list.** No placeholder
+numbers, no fixture result presented as measured, and no softening of the gate
+clause to make it fit.
+
 
 ## 091 - What an envelope is, arrived at by three near-misses
 
@@ -3092,6 +3175,19 @@ number and finding it implausible, not by a control.
 A reviewer is entitled to ask what else is unrepresented. The honest answer is
 that we do not know, and that the three parts above are the ones two months of
 building surfaced.
+
+**But "a human noticed" is not the same as "we got lucky", and the difference is
+the argument for the whole design.** A PII detector reporting recall 0.0063 is
+absurd on its face - and it is only absurd on its face because the warrant
+surfaces the operating point, the sample size, the interval and the envelope
+together, in a form a person can read and find implausible. The same detector
+behind a green dashboard reports that it ran. There is nothing there to
+disbelieve.
+
+So the answer to "what else is unrepresented" is not a promise that nothing is.
+It is that the system reports in a shape where a person can notice, which is
+what made both catches possible. That is the case for the warrant, made against
+our own worst outcome rather than a hypothetical one.
 
 ### The consequence for Phase 6
 
