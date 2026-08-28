@@ -1,0 +1,20 @@
+CORRECTION (DECISIONS 081, tagged phase-7.2).
+
+This commit message states: 'training on 960 instead of 1200 cost nothing
+measurable: AUROC 0.8256 [0.7934, 0.8567] -> 0.8232 [0.7985, 0.8507], point
+estimate down 0.0024 and the interval NARROWER'.
+
+That comparison is confounded. Training size and evaluation sample both changed
+between those two numbers -- 0.8256 is measured on a 600-item test set and
+0.8232 on a 960-item one -- so the 0.0024 gap cannot be attributed to the
+training reduction, and the interval narrowing is a test-n effect that says
+nothing about training size.
+
+The paired comparison on the 600 items both models held out finds the opposite:
+the training reduction cost 0.0110 AUROC [0.0026, 0.0200], an interval that
+excludes zero.
+
+The three warranted recalls were underpowered at that n (MDD 0.034-0.043) and
+are reported as underpowered rather than as no difference.
+
+See DECISIONS.md 081, and results/paired_comparison.json.
