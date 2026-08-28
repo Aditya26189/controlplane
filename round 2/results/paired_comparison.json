@@ -1,8 +1,8 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-28T11:05:10+00:00",
-    "git_commit": "a35b7f768d9ff2b5769445f44e18183bba5b084b",
-    "git_branch": "phase/7.2-paired-comparison",
+    "timestamp_utc": "2026-08-28T11:43:04+00:00",
+    "git_commit": "9fca6b94b36da86f51892d16539ff1c1e64089f7",
+    "git_branch": "phase/7.3-selection-uncertainty",
     "dirty": false,
     "dirty_paths": [],
     "dirty_excludes": "results",
@@ -382,5 +382,88 @@
         "recall_per_flag_rate_point": 0.009117498760108707
       }
     ]
-  }
+  },
+  "selection_aware_bounds": [
+    {
+      "operating_point_id": "P-customer-support",
+      "target_flag_rate": 0.1,
+      "threshold": 0.890948132788953,
+      "recall": 0.21709006928406466,
+      "conditional_ci": [
+        0.1773808203991131,
+        0.2551264629644176
+      ],
+      "selection_aware_ci": [
+        0.1467805932861672,
+        0.27056475634457283
+      ],
+      "conditional_width": 0.0777456425653045,
+      "selection_aware_width": 0.12378416305840564,
+      "widening": 1.5921684994040646,
+      "threshold_ci": [
+        0.8654701556310445,
+        0.9126345392125885
+      ],
+      "realised_flag_rate": 0.10625,
+      "realised_fpr": 0.015180265654648957,
+      "n_negatives_above_validation": 5,
+      "n_validation": 480,
+      "n_test": 960,
+      "n_bootstrap": 2000
+    },
+    {
+      "operating_point_id": "P-internal-knowledge",
+      "target_flag_rate": 0.2,
+      "threshold": 0.7982811060763613,
+      "recall": 0.36027713625866054,
+      "conditional_ci": [
+        0.31566380989481885,
+        0.40476320725226633
+      ],
+      "selection_aware_ci": [
+        0.30085131112108,
+        0.426941280591042
+      ],
+      "conditional_width": 0.08909939735744749,
+      "selection_aware_width": 0.12608996946996204,
+      "widening": 1.4151607441755907,
+      "threshold_ci": [
+        0.7584612903761049,
+        0.8350016833544364
+      ],
+      "realised_flag_rate": 0.18645833333333334,
+      "realised_fpr": 0.04364326375711575,
+      "n_negatives_above_validation": 14,
+      "n_validation": 480,
+      "n_test": 960,
+      "n_bootstrap": 2000
+    },
+    {
+      "operating_point_id": "P-decision-support",
+      "target_flag_rate": 0.5,
+      "threshold": 0.46556394163042264,
+      "recall": 0.7367205542725174,
+      "conditional_ci": [
+        0.6935483870967742,
+        0.774659680571467
+      ],
+      "selection_aware_ci": [
+        0.6733769574944071,
+        0.7839805825242718
+      ],
+      "conditional_width": 0.0811112934746927,
+      "selection_aware_width": 0.11060362502986476,
+      "widening": 1.3636032701706806,
+      "threshold_ci": [
+        0.42971025929269013,
+        0.5017315273847691
+      ],
+      "realised_flag_rate": 0.46770833333333334,
+      "realised_fpr": 0.24667931688804554,
+      "n_negatives_above_validation": 82,
+      "n_validation": 480,
+      "n_test": 960,
+      "n_bootstrap": 2000
+    }
+  ]
 }
