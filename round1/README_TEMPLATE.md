@@ -1,5 +1,13 @@
 # README_TEMPLATE.md
 
+> **This is the Round 1 submission.** It was measured, published and tagged
+> (`stage-7`), and it is superseded rather than abandoned: Round 2 — the
+> control plane at the repository root — carries this run's operating point
+> forward as a declared input, and this `results/` directory is the trace for
+> it. Nothing here has been modified. The whole project moved down one level
+> on 2026-08-29 so the repository root could be the Round 2 deliverable; see
+> [`docs/PATHS.md`](../docs/PATHS.md) and `DECISIONS.md` 095 at the root.
+
 Fill this in at Stage 7 and save as `README.md`. Every `{{placeholder}}` is replaced by a value read from `results/`. **If a number cannot be traced to a file in `results/`, it does not go in.** Delete this header line and the note below before publishing.
 
 > Note to the agent: keep the writing plain. No marketing language, no adjectives that aren't doing work. A reviewer should be able to check every claim against an artifact in this repo within two minutes.

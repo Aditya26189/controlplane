@@ -1,5 +1,13 @@
 # ControlPlane — cascade economics
 
+> **This is the Round 1 submission.** It was measured, published and tagged
+> (`stage-7`), and it is superseded rather than abandoned: Round 2 — the
+> control plane at the repository root — carries this run's operating point
+> forward as a declared input, and this `results/` directory is the trace for
+> it. Nothing here has been modified. The whole project moved down one level
+> on 2026-08-29 so the repository root could be the Round 2 deliverable; see
+> [`docs/PATHS.md`](../docs/PATHS.md) and `DECISIONS.md` 095 at the root.
+
 Can you tell, before a language model writes a single token, whether the answer it is about to give will be wrong?
 
 If you can, monitoring gets much cheaper. Serious checkers — LLM-as-judge, semantic entropy, claim attribution — cost 200 to 1000 milliseconds per call, so nobody runs them on all their traffic. They sample a few percent and the rest ships unchecked. This repo measures whether a linear probe on the model's internal state can pick which few percent are worth checking.
