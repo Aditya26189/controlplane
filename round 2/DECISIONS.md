@@ -2409,3 +2409,108 @@ means re-scoring once rather than twice.
 
 Until then the honest reading of any published recall interval in this repo is:
 **conditional on the threshold, and roughly 1.4-1.6x too narrow.**
+
+
+## 084 - Stock Presidio is refused a warrant on Hinglish PII
+
+Phase 8, D.1. Presidio was wrapped and measured, not tuned. The refusal is the
+deliverable.
+
+### What "stock" means, verified rather than assumed
+
+Presidio 2.2.364 ships six Indian recognizers -- `InPanRecognizer`,
+`InAadhaarRecognizer`, `InGstinRecognizer`, `InVehicleRegistrationRecognizer`,
+`InVoterRecognizer`, `InPassportRecognizer` -- and **registers none of them by
+default**. A default `AnalyzerEngine()` loads 17 recognizers, zero of them
+Indian.
+
+So "stock Presidio misses Indian identifiers" is not a performance claim to
+argue about. The recognizers are not loaded. A team that pip-installs Presidio
+and points it at Indian traffic gets nothing for Aadhaar, PAN, UPI or IFSC until
+somebody knows to go looking.
+
+**Presidio ships no recognizer for UPI VPA or IFSC at all**, in any
+configuration. Those are the two identifiers most specific to Indian retail
+banking, and they are the gap that no amount of enabling closes.
+
+### What `InAadhaarRecognizer` actually validates
+
+Read from source, as `TASKS.md` Phase 8 requires. It is **not** a naive regex:
+
+- two patterns, `[0-9]{12}` and `[0-9]{4}[- :][0-9]{4}[- :][0-9]{4}`,
+  both scored **0.01** and labelled "Very Weak";
+- `validate_result` sanitises by removing `-`, space and `:` **only**, then
+  requires twelve digits, numeric, **first digit >= 2**, a valid **Verhoeff**
+  check digit, and not a palindrome.
+
+Two consequences. The Verhoeff check is the real UIDAI algorithm, so this is a
+genuinely strong validator and a correct rejection of a made-up number is not a
+miss. And the sanitiser does not strip `.`, so `99.99.48.54.32.83` -- one of the
+three disclosure forms in `hinglish-pii-200` -- matches neither pattern and is
+never offered to the validator. **The miss is at the pattern stage, not the
+validation stage.**
+
+That distinction decided the custom recognizers: they widen the separator set
+and inherit `validate_result` unchanged, so nothing accepts an identifier the
+built-in would have rejected on its checksum.
+
+### The fixture is not the confound
+
+`hinglish-pii-200` draws Aadhaar values from the UIDAI 9999 test range and
+records `checksum_valid` per item. That flag agrees with Verhoeff on **34 of 34**
+Aadhaar items, so a low recall here is not made-up numbers correctly failing a
+checksum. Checked before measuring, because it would have produced a completely
+wrong conclusion about Presidio.
+
+### Measured, `hinglish-pii-200`, n=200, base rate 0.51
+
+| detector | recall | status | canary |
+|---|---|---|---|
+| `presidio-stock` | 0.1176 [0.0500, 0.2000] | **REFUSED** | 4/20 |
+| `presidio-enabled` | 0.2843 [0.2075, 0.3810] | **REFUSED** | 12/20 |
+| `presidio-enabled_plus_custom` | 0.6176 [0.5185, 0.7128] | VALID | 20/20 |
+| `pii-reference` | 0.7941 [0.6981, 0.8846] | VALID | 20/20 |
+
+Refusal reasons carry the numbers: stock fails the canary at 0.2000 against a
+required 1.0, and its AUROC lower bound is 0.4456 against a required 0.55.
+Enabled fails the canary at 0.6000 and misses the AUROC bar at 0.5409 -- by
+0.009.
+
+By disclosure form, recall on the positives:
+
+| configuration | verbatim | spaced | obfuscated |
+|---|---|---|---|
+| `stock` | 0.1765 | 0.1765 | **0.0000** |
+| `enabled` | 0.6471 | 0.2059 | **0.0000** |
+| `enabled_plus_custom` | 0.6471 | 0.4706 | **0.0000** |
+
+**No configuration detects a single obfuscated disclosure.** Those are forms a
+real customer uses -- Devanagari framing, a number split across a sentence
+("999936 ka 090910"), a masked phone ("XXXXXXXXX4685"), "at the rate" for `@`.
+
+### The canary is the sharpest number here
+
+`canary-20-pii` is twenty **verbatim, checksum-valid identifiers in plain
+English frames**, built to be trivially easy on the principle that a canary a
+detector can plausibly miss is a tripwire that fires on noise. Stock Presidio
+catches **4 of 20**. Fully enabled it catches 12, missing every UPI VPA and
+every IFSC.
+
+### The machinery needed no changes
+
+`TASKS.md` asks that a change to the certificate schema, the validation harness
+or the drift monitor be logged as a finding before it is made. **None was
+needed.** `validate_text_detector` took the adapter unmodified, the same
+`PiiMatch` type the reference detector emits carried through, and the warrants
+were issued and refused by the existing `issue_or_refuse`.
+
+### One bug, in our adapter, not in Presidio
+
+The adapter filters Presidio's output to an allowlist of identifier entities so
+a `DATE_TIME` hit does not count as PII. `UPI_VPA` and `IN_IFSC` were missing
+from that allowlist -- entities only the custom recognizers emit -- so
+`enabled_plus_custom` was measured at 0.3725 and refused, when it actually
+scores 0.6176 and is valid. Found by asking why the custom UPI recognizer had
+not moved the canary. An allowlist that silently drops a detector's output is
+the adapter misrepresenting the tool, and it happened to misrepresent it
+*downwards*, which is the direction least likely to be questioned.
