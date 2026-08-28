@@ -536,6 +536,13 @@ def test_every_script_has_a_smoke_test() -> None:
         # and by tests/test_extraction.py for everything that runs on CPU.
         "00_extract.py",
         "build_notebooks.py",
+        # RECURSION. The clean-clone gate clones the repository and runs this
+        # suite inside the clone. A smoke test that invoked it would clone,
+        # run the suite, reach this test, clone again, and not stop. Its pure
+        # parts are unit-tested in tests/test_clean_clone.py instead, and the
+        # gate itself is run by hand before submission -- which is what it is
+        # for. See DECISIONS.md 097.
+        "clean_clone_gate.py",
     }
     uncovered = scripts - covered - exempt
     assert not uncovered, (
