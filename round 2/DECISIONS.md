@@ -1853,3 +1853,95 @@ guard would refuse the configuration anyway.
 
 The right pane says `"10 of 200 requests -- no envelope verdict yet"` rather
 than printing `max PSI 0.000`, which would read as a measured stability.
+
+
+## 076 - Rego via rego-cpp, not OPA, and what that costs
+
+`SPEC.md` 7.1 says OPA/Rego or Cedar, and `config.policy.engine` is `opa`. OPA
+ships as a ~50 MB Go binary. `CLAUDE.md` makes free-tier compute a hard
+constraint, `results/` has a 10 MB staging limit, and the demo machine cannot be
+assumed to have network at run time -- so an engine that arrives as a binary
+download is an engine the demo does not reliably have.
+
+We evaluate Rego through `regopy` (MIT, Python bindings to Microsoft's
+`rego-cpp`): a pip-installable wheel, no Go toolchain, no separate process.
+
+**What this does not buy:** `rego-cpp` is an independent implementation, not
+OPA. Its coverage of the language is close but not identical, and a policy that
+evaluates one way here is not thereby proven to evaluate the same way under
+OPA. The mitigation is that the shipped bundles use a deliberately small subset
+-- `default`, `contains ... if`, comparison, one comprehension, `max`, `count`,
+`sprintf` -- and that the engine validates its own output rather than trusting
+it: an entrypoint that does not resolve, a decision missing `rule_id`, or an
+action outside the enum all fail at construction.
+
+Rejected: shelling out to `opa eval` when the binary happens to be present and
+falling back otherwise. Two evaluators with subtly different semantics, chosen
+by what is installed, is worse than either one alone.
+
+Rejected: parsing the `when`/`then` pairs out of the YAML ourselves. That is the
+DSL 7.1 forbids, and it does not announce itself -- it arrives as "just enough
+matching to avoid the dependency".
+
+**Two silent traps found in the binding, both pinned by tests.** `set_input`
+accepts a JSON *string* without complaint, sets the input document to that
+string, and then every `input.foo` reference fails to resolve and every rule
+falls through to its default -- a permissive decision with nothing in the output
+to show for it. And querying an undefined entrypoint raises a native access
+violation through the FFI rather than a Python error. The engine refuses a
+non-mapping payload and probes its entrypoint at construction.
+
+## 077 - The customer_support profile cannot be backed at n=600
+
+Phase 7's power check refuses the profile the product leads with, and the
+arithmetic is not close enough to argue about.
+
+A profile declaring `calibration.sensitivity: 0.25` asserts it can detect a 25%
+deviation from its flag-rate budget. `customer_support` runs at a budget of
+0.10, and separating 0.125 from 0.100 needs **n >= 673**. The warrant is
+measured on the 600-item test split. Short by 73 items.
+
+| profile | budget | n needed at 25% | n measured | loads |
+|---|---|---|---|---|
+| customer_support | 0.10 | 673 | 600 | **no** |
+| internal_knowledge | 0.20 | 288 | 600 | yes |
+| decision_support | 0.50 | 58 | 600 | yes |
+
+The direction is worth stating because it is counter-intuitive: **a smaller
+budget is harder to warrant**, since a fixed *relative* tolerance is a smaller
+absolute gap and the sample size scales as `1/gap^2`. The tier under the most
+cost pressure is the one whose budget is hardest to stand behind.
+
+**Rejected: lowering `calibration_sensitivity` until the bundle loads.** The
+sensitivity is a declared statistical claim, and re-deriving it from the sample
+that has to support it is the same move as selecting a threshold on test. The
+number would then mean "whatever n we happened to have".
+
+**Rejected: exempting the profile.** An exemption is invariant 3 with extra
+steps.
+
+The fix is more test items, and nothing else. Until then `customer_support` is
+refused at load, which is the mechanism behaving correctly -- the refusal is the
+product working, not the product failing.
+
+## 078 - A declared ceiling with no measurement behind it is refused
+
+`max_fpr_hard_negatives` was defaulting to 1.0 when a manifest omitted it, and
+the check was skipped when the warrant carried no hard-negative measurement. Two
+different absences, both silently passing.
+
+Hard-negative FPR is measured on `hard-negatives-200`. The probe holds no
+warrant there (Phase 8), so on `triviaqa-600` the metric is `None`. A profile
+declaring `max_fpr_hard_negatives: 0.02` against that warrant was having its
+ceiling quietly ignored -- an unbacked guarantee on every certificate it issues.
+
+Two changes. The field is **required** in the manifest and may be `null`: "no
+ceiling declared on this envelope" is a claim and has to be written down, since
+a defaulted 1.0 and an explicit null are the same arithmetic and different
+statements. And a ceiling declared against a warrant with no such measurement is
+a **load failure**, on the same rule that stops `UNVALIDATED` counting as
+`VALID`: an absence is not a pass.
+
+The three shipped bundles therefore declare `null` with the reason inline, and
+the resolution notes carry it onto the record. That makes the Phase 8 gap
+visible in the artifact rather than inferable from a missing field.
