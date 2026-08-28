@@ -242,3 +242,63 @@ def test_the_extended_inventory_does_not_change_the_frozen_set() -> None:
     rebuilt = build_hinglish_pii(seed=1729)
     assert rebuilt.content_hash == evalset("hinglish-pii-200")["content_hash"]
     assert "extended_forms" not in rebuilt.construction
+
+
+# --------------------------------------------------------------------------- #
+# E.7 — the behavioural claim is a claim about a release, and expires with it
+# --------------------------------------------------------------------------- #
+
+
+def _declared_presidio_pin() -> str:
+    """The version requirements.txt pins, read rather than duplicated here."""
+    for line in (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines():
+        line = line.split("#")[0].strip()
+        if line.startswith("presidio-analyzer=="):
+            return line.split("==", 1)[1]
+    raise AssertionError("requirements.txt does not pin presidio-analyzer")
+
+
+def test_the_installed_presidio_is_the_one_the_claim_was_measured_on() -> None:
+    """``DECISIONS.md`` 084 and 087 report what *this release* does.
+
+    "Presidio ships no UPI VPA or IFSC recognizer in any configuration" is true
+    of 2.2.364 and unfalsifiable from inside this repository if the dependency
+    floats. requirements.txt pins it with ``==``; this asserts the environment
+    actually matches the pin, so a silent upgrade fails here rather than
+    quietly invalidating a published refusal.
+    """
+    import importlib.metadata as metadata
+
+    installed = metadata.version("presidio-analyzer")
+    declared = _declared_presidio_pin()
+    assert installed == declared, (
+        f"presidio-analyzer=={installed} is installed but requirements.txt pins "
+        f"{declared}. The measured recall in results/detectors.json and the "
+        f"refusals in DECISIONS 084/087 describe {declared}. Re-measure before "
+        f"moving the pin -- do not move the pin to match the environment."
+    )
+
+
+def test_no_shipped_configuration_recognises_upi_vpa_or_ifsc() -> None:
+    """The specific claim behind the Beat 3 refusal, checked against the library.
+
+    Not "Presidio is bad": stock and fully-enabled Presidio ship **no**
+    recognizer for these two entity types at all, which is why enabling the
+    Indian recognizers still misses every UPI VPA and every IFSC (DECISIONS
+    087). Only ``enabled_plus_custom`` -- recognizers we wrote -- catches them.
+
+    If upstream adds either, this fails, and the finding has to be re-measured
+    and re-stated rather than repeated.
+    """
+    claimed_absent = {"UPI_VPA", "IN_IFSC"}
+    for configuration in ("stock", "enabled"):
+        supported = set()
+        for recognizer in PresidioDetector(configuration).analyzer.registry.recognizers:
+            supported |= set(getattr(recognizer, "supported_entities", []) or [])
+        overlap = supported & claimed_absent
+        assert not overlap, (
+            f"presidio-analyzer=={_declared_presidio_pin()} configuration "
+            f"{configuration!r} now recognises {sorted(overlap)}. DECISIONS 084 "
+            f"and 087, results/detectors.json and the demo's Beat 3 all state "
+            f"that it does not. Re-measure and supersede those entries."
+        )
