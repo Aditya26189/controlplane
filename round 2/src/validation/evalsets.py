@@ -180,6 +180,40 @@ class EvalSet:
         )
 
     @property
+    def extraction_hash(self) -> str:
+        """Identity of the data an extraction actually read. ``DECISIONS.md`` 079.
+
+        Narrower than :meth:`content_hash` on purpose, and the difference is
+        exactly two fields: the set's **name** and each item's **declared
+        split**. Neither is an input to extraction — a forward pass reads a
+        prompt, not a collection's label for it — so a set that is renamed or
+        re-split has activations that remain, item for item, exactly correct.
+
+        Everything that *could* invalidate an activation is still covered: the
+        item ids, the question ids, the prompts, the responses, the labels and
+        their order. Any edit to those produces a different hash and the cache
+        is refused, which is the failure the check exists for.
+
+        This is a deliberate weakening of a guard and is recorded as one. It
+        exists so that enlarging a held-out split does not require re-running a
+        GPU hour to reproduce identical numbers.
+        """
+        return content_hash(
+            {
+                "items": [
+                    {
+                        "item_id": i.item_id,
+                        "question_id": i.question_id,
+                        "prompt": i.prompt,
+                        "response": i.response,
+                        "label": i.label,
+                    }
+                    for i in self.items
+                ]
+            }
+        )
+
+    @property
     def envelope_id(self) -> str:
         """The warrant key's third element: ``sha256:<16 hex>``.
 
@@ -506,13 +540,39 @@ class ExtractionCache:
         return out
 
     @classmethod
-    def load(cls, path: str | Path, expected_hash: Optional[str] = None) -> "ExtractionCache":
+    def load(
+        cls,
+        path: str | Path,
+        expected_hash: Optional[str] = None,
+        *,
+        expected_items: Optional["EvalSet"] = None,
+    ) -> "ExtractionCache":
         """Read a cache back, optionally checking it still matches its eval set.
+
+        Two checks, and a caller uses one or the other.
+
+        ``expected_hash`` is the strict one: the set's full content hash, which
+        covers its name and its declared splits as well as its data. Use it
+        whenever the set is expected to be byte-identical to the one extracted.
+
+        ``expected_items`` is for the case ``DECISIONS.md`` 079 introduces — a
+        set that was **re-split** and so has a different content hash while
+        holding the same items in the same order. It compares the data the cache
+        actually stores, item for item: the count, the question ids and the
+        labels. That is a direct comparison rather than a digest, so it is the
+        stronger check on everything it covers.
+
+        What it does not cover: a prompt or response edited while its
+        ``question_id`` and ``label`` stayed the same, because the cache stores
+        activations rather than text. That case is caught upstream instead —
+        eval sets are frozen and ``verify_manifest`` re-hashes every file
+        against the manifest, so an edited set is found before anything loads a
+        cache for it.
 
         Args:
             path: The ``.npz`` written by :meth:`save`.
-            expected_hash: The eval set's current content hash. Supplied by
-                callers that have the set in hand.
+            expected_hash: The set's current content hash.
+            expected_items: The set whose items the cache must match.
 
         Raises:
             EvalSetError: If the cache was extracted from different contents than
@@ -551,4 +611,42 @@ class ExtractionCache:
                 f"{expected_hash[:16]}. The set changed after extraction; re-extract "
                 "rather than validating against a cache that describes different data."
             )
+        if expected_items is not None:
+            cache._require_same_items(expected_items, path)
         return cache
+
+    def _require_same_items(self, evalset: "EvalSet", path: str | Path) -> None:
+        """Assert this cache holds the given set's items, in order.
+
+        Compared elementwise rather than by hash, so the error can name the row
+        that diverged. A cache silently describing different rows produces
+        plausible numbers under the wrong envelope and raises nothing of its own.
+        """
+        if self.n_items != len(evalset.items):
+            raise EvalSetError(
+                f"cache at {path} holds {self.n_items} items but "
+                f"{evalset.eval_set_id} has {len(evalset.items)}. These are "
+                "different sets, whatever their names."
+            )
+        expected_questions = np.array(
+            [i.question_id for i in evalset.items], dtype=object
+        )
+        mismatched = np.nonzero(self.question_ids != expected_questions)[0]
+        if mismatched.size:
+            row = int(mismatched[0])
+            raise EvalSetError(
+                f"cache at {path} disagrees with {evalset.eval_set_id} at row "
+                f"{row}: cache has question {self.question_ids[row]!r}, the set "
+                f"has {expected_questions[row]!r}. The item order changed, so "
+                "every activation is filed against the wrong row."
+            )
+        expected_labels = np.array([i.label for i in evalset.items])
+        mismatched = np.nonzero(self.labels != expected_labels)[0]
+        if mismatched.size:
+            row = int(mismatched[0])
+            raise EvalSetError(
+                f"cache at {path} disagrees with {evalset.eval_set_id} at row "
+                f"{row}: cache label {self.labels[row]}, set label "
+                f"{expected_labels[row]}. Relabelling changes what every "
+                "measured number means."
+            )
