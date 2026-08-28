@@ -106,10 +106,44 @@ policy:
     w_fnr: 5
     w_fpr_hard_negative: 2
 
+# Three points on ONE measured curve (SPEC.md 7.3), not three invented
+# thresholds. Same detector, same envelope; only target_flag_rate moves.
+# Selected on validation -- measured recall there was 0.19 / 0.37 / 0.72 at
+# f = 0.10 / 0.20 / 0.50, so each profile's min_recall is reachable at its own
+# point and at no other. Test is what gets reported, never what selects.
 profiles:
-  customer_support:      { inline_budget_ms: 200,  min_recall: 0.10, max_fpr: 0.02 }
-  internal_knowledge:    { inline_budget_ms: 500,  min_recall: 0.25, max_fpr: 0.05 }
-  decision_support:      { inline_budget_ms: 2000, min_recall: 0.50, max_fpr: 0.10 }
+  customer_support:
+    inline_budget_ms: 200
+    min_recall: 0.10
+    max_fpr: 0.02
+    operating_point: "P-customer-support"
+    target_flag_rate: 0.10
+    # High volume, and the economics are sized on the flag rate. A budget 40%
+    # wrong is a cost model 40% wrong, so a drifted calibration stops the deploy.
+    on_calibration_drift: "REFUSE"
+    calibration_sensitivity: 0.25
+  internal_knowledge:
+    inline_budget_ms: 500
+    min_recall: 0.25
+    max_fpr: 0.05
+    operating_point: "P-internal-knowledge"
+    target_flag_rate: 0.20
+    # Internal users tolerate friction and the corpus exists, so a drifted
+    # budget is quotable as long as it is quoted as measured rather than as
+    # declared.
+    on_calibration_drift: "WIDEN_BUDGET"
+    calibration_sensitivity: 0.25
+  decision_support:
+    inline_budget_ms: 2000
+    min_recall: 0.50
+    max_fpr: 0.10
+    operating_point: "P-decision-support"
+    target_flag_rate: 0.50
+    # Low volume, high consequence, review affordable. The per-item cost is paid
+    # either way, so the flag-rate budget is not load-bearing here. Declared
+    # rather than defaulted, so "considered and does not apply" is visible.
+    on_calibration_drift: "IGNORE"
+    calibration_sensitivity: 0.25
 
 detectors:
   presidio_configs: ["stock", "enabled", "enabled_plus_custom"]
