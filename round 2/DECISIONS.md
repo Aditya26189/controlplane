@@ -2514,3 +2514,88 @@ scores 0.6176 and is valid. Found by asking why the custom UPI recognizer had
 not moved the canary. An allowlist that silently drops a detector's output is
 the adapter misrepresenting the tool, and it happened to misrepresent it
 *downwards*, which is the direction least likely to be questioned.
+
+
+## 085 - Pre-registration: an out-of-sample set for the fitted recognizers
+
+**Written before `hinglish-pii-200b` is built and before any number on it
+exists.** Corrects a contamination in `084`.
+
+### What is wrong with 084
+
+Two of its four rows are in-sample and were not labelled as such.
+
+`presidio-enabled_plus_custom` at recall **0.6176**: the custom recognizers in
+`src/detectors/presidio_custom.py` were written by reading this set's failures.
+The sequence was measure stock -> diagnose the miss at the pattern stage ->
+widen the separator set -> re-measure. That is a detector fitted to the
+evaluation data by a human rather than by gradient descent, and the number is
+in-sample.
+
+`pii-reference` at recall **0.7941**: `git log --diff-filter=A` shows
+`src/detectors/pii_reference.py` and `evalsets/hinglish-pii-200.json` were added
+in the **same commit**, `e271be2`. The detector is ours and was co-developed
+with the set it is measured on. Same problem, and it was never disclosed.
+
+The canary is worse than either. `enabled_plus_custom` scores 20/20 on a 20-item
+gate whose pass condition is recall exactly 1.0 -- and the recognizers were
+extended until it passed. A gate that could not have failed is not evidence.
+
+`presidio-stock` (0.1176) and `presidio-enabled` (0.2843) are clean. Neither was
+ever adapted to this set, so the refusals the demo rests on are honest.
+
+### Why a fresh seed alone would not fix it
+
+`_apply_form` in `src/evalsets/identifiers.py` renders the `spaced` form by
+drawing `separator` from a **declared inventory of six** -- `" "`, `"-"`,
+`" - "`, `"."`, `" . "`, `"  "` -- and `chunk` from `{2, 3, 4}`. The custom
+recognizers use `_SEPARATOR = r"[\s.\-:]"` with a `{0,3}` repeat and a
+digit-pairs alternative, which covers **that entire inventory**.
+
+So the recognizers were fitted to the generator's declared space, readable from
+source, not to observed instances. Redrawing at a new seed produces different
+instances of forms already covered and tests nothing. This has to be said
+plainly because a new-seed holdout would have looked rigorous and measured
+nothing.
+
+### What is being built
+
+`hinglish-pii-200b`: the same 51 scenario templates and 26 near-miss templates,
+fresh identifier values at seed **20260828**, and an **extended form inventory**
+the recognizers were not written against:
+
+- separators added: `"/"`, `"_"`, `"|"`, `","`, and `""` (no separator);
+- chunk sizes added: 5 and 6.
+
+None of `/`, `_`, `|`, `,` is in `_SEPARATOR`. Items drawn from the extension
+should therefore fail, and how many do is the measurement.
+
+### What this holds out, and what it does not
+
+**Held out:** identifier values, the separator/chunk combinations outside the
+original inventory, and the pairing of scenario to form.
+
+**Not held out:** the 51 scenario templates and the three form *families*.
+Those are the population definition rather than a tuning artifact -- the
+recognizers were fitted to separators, not to scenario text. Reusing them keeps
+`200b` a sample from the same population plus a declared extension, rather than
+a different population.
+
+This is therefore **not a clean holdout**, and it is not claimed as one. It is a
+partial one that isolates the axis the fitting actually happened on. A clean
+holdout needs scenarios written by someone who has not read the recognizers.
+
+### Declared before measuring
+
+- **Report whatever comes out**, including a large drop.
+- The recognizers are **frozen** at commit `7ae7ac1` and are not touched
+  again in response to what `200b` shows. If they are ever extended to cover
+  `/` or `_`, that is a new detector version measured on a further set.
+- **The comparison that matters** is `enabled_plus_custom` on `200` versus on
+  `200b`. The gap is the fitting.
+- `stock` and `enabled` are measured on `200b` too. They were never fitted, so
+  their numbers should move only by sampling; a large move would mean `200b` is
+  a harder set rather than a fair one, and would be reported as such.
+- If `enabled_plus_custom` falls below the issuance bar on `200b`, its warrant
+  is **refused there**, and `084`'s VALID row stands only for `200` with the
+  contamination stated.
