@@ -3526,3 +3526,132 @@ Tolerant of `message.content` and the older `text`, and returns empty rather
 than raising when neither is present. A broken upstream is not a reason to fail
 the certificate — it is a reason for the certificate to say nothing was checked,
 which is a statement. A missing certificate is an absence nobody notices.
+
+---
+
+## 095 - Round 2 moved to the repository root; 021 is superseded on location, not on reasoning
+
+Block E, E.1-E.2. `021` decided Round 2 would be built under `round 2/`, and
+rejected the alternative it called *"overlay Round 2 on the root — destroys the
+Round 1 result and its history."* That rejection was correct and still is.
+
+**The clause that needed superseding is the location, not the reasoning.** An
+overlay writes Round 2 over Round 1's files and loses them. What happened here
+is the opposite operation: Round 1 was moved *whole* into `round1/` with
+`git mv`, in its own commit, before anything else moved. Nothing was deleted,
+no file was recreated, and `git log --follow` reaches the original commits
+through both renames — verified on `round1/src/probe.py` (5 commits, back to
+the package skeleton), `round1/README.md` (4, back to the pre-run version) and
+`round1/results/economics.json`. 021's reason for refusing the overlay is
+honoured by the method, not violated by the outcome.
+
+**Why it had to move at all.** The repository is named `controlplane`. Cloning
+it landed a reader on Round 1's README — the probe experiment, headline
+`lift 2.3x` — while the warrant system sat one level down in a directory whose
+name contains a space. Every `make` target, demo path and command a judge would
+type had to quote `"round 2"`. Block E's whole premise is that a judge clones
+the repo and within ten minutes understands what it claims and runs something
+that works. No README written inside `round 2/` fixes that, because the root one
+is what renders.
+
+### What made the move safe was built in 2024 hindsight, not decided here
+
+The audit that preceded the move (E.1, report-and-stop) found that **no
+artifact references an eval set by path.** Every one carries `eval_set_id` and
+a content hash; `evalsets/manifest.json` stores a bare filename resolved against
+`paths.evalsets_dir`. The only path-shaped string inside any artifact is
+`results/controlplane.db`, an echo of `store.path`, and `results/` kept its
+name. That property is why 172 files moved without a single artifact being
+regenerated, and it was a consequence of `003` and `009` rather than of anything
+done in this block.
+
+### Two classes of string were deliberately left stale
+
+**`provenance.dirty_paths`.** Artifacts record `round 2/CLAUDE.md`,
+`round 2/src/config.py` and similar. These are a record of which files were
+uncommitted when a number was produced — facts about a past tree, not pointers
+to inputs. They are not updated. Rewriting them would falsify provenance, which
+is the one edit this project cannot make.
+
+**The synthetic generator literals.** `controlplane/validation/synthetic.py`
+still says `"generator": "src.validation.synthetic.synthetic_evalset"` and
+`...synthetic_cache`. They sit inside `construction`, `construction` feeds
+`EvalSet.content_hash`, the content hash **is** the envelope id, and the
+envelope id is the third element of the warrant key (invariant 1). Verified
+directly before the rename: the same construction dict hashes to `6b7654bb…`
+with `src.` and `a682d25f…` with `controlplane.`. Renaming them would silently
+re-issue every synthetic fixture under a new envelope and orphan the warrants in
+`results/fixtures/`. They are frozen identities, not import paths, and both are
+commented in place saying so.
+
+`canary-src`, an eval-set id in `tests/test_smoke.py`, is untouched for the same
+reason.
+
+### The package was renamed in the same operation, on purpose
+
+`src/` became `controlplane/`: 74 files, 248 import sites. `src` is a directory
+name, not a package name; `make smoke` is meant to prove the package imports,
+and `import src` proves nothing about a project called controlplane. It also
+blocks installing the tree from a lockfile, which E.7 needs.
+
+Done now rather than later because E.9 freezes the layout once the demo harness
+lands, and the demo will hardcode paths. A rename afterwards is the thing E.9
+exists to forbid. 470 tests passed before the rename and after it.
+
+**Past entries in this file still say `src/`.** They are not edited. This file
+is append-only and those references were true when written; this entry is where
+a reader learns the package moved.
+
+### A reviewer could fairly object
+
+That the repository now mixes two projects at different depths, and that
+`round1/` reads as demoted. It is superseded, not abandoned — its result
+reproduced within its published interval, `round2` carries its operating point
+forward as a declared input, and both its README and the root README say so in
+their first lines. The alternative, a second repository, was rejected by 021 for
+a reason that has not changed: it would break the trace from the carried-forward
+operating point back to the run that measured it.
+
+---
+
+## 096 - Phase 6 economics was specified and never built, and five contracts still cite it
+
+Found by the E.1 path audit, which was looking for something else.
+
+`src/economics/sizing.py` — now `controlplane/economics/sizing.py` — is cited as
+load-bearing in **five** places: `config.yaml`, `CLAUDE.md` (the scenario-mixing
+pitfall), `SPEC.md` §6.4, `TASKS.md` Phase 6, and `KICKOFF.md`. `SPEC.md` §12
+lists `test_no_scenario_mixing` in the test table. **Neither the module nor the
+test exists.** Phase 6 was specified and the timeline went elsewhere.
+
+**The claim those five citations make is that no economic figure is typed by
+hand, because a module derives all of them from the single `workload` block.**
+That enforcement does not exist. What does exist:
+
+- `config.yaml` still declares exactly one `workload` block, so there is one
+  scenario to mix figures *from*, and no second one anywhere in the tree;
+- no economic figure appears in `results/RESULTS.md`, the warrant matrix, or any
+  committed artifact. The measured outputs are AUROC, recall, precision, flag
+  rate, lift and their intervals. Nothing downstream consumes `workload`.
+
+So the invariant is currently satisfied by absence rather than by construction —
+there are no economics figures to mix. That is a much weaker guarantee than the
+one the contracts describe, and it stops holding the moment anyone writes a cost
+number into the proposal or the deck.
+
+**Decision: log it and declare it, do not build it.** Building a sizing module
+now means new numbers with no measurement behind them, days before submission,
+in a block whose purpose is presentation. The honest form is a declared gap.
+
+**Consequences.** `docs/LIMITATIONS.md` carries it. Any cost or headcount figure
+in `docs/PROPOSAL.md` or the deck is hand-derived and must be labelled as a
+declared estimate, not a measured result — the same treatment as the two
+carried-forward Round 1 numbers in `021`. The contracts keep their references
+rather than having them quietly deleted: a spec that describes an unbuilt module
+and says so is scoped; one edited to hide it is not.
+
+**A reviewer could fairly object** that a spec citing a module that does not
+exist is exactly the failure this project is about — an artifact pointing at
+nothing. That is the right objection, it is why this entry exists, and the gap
+was found by the repository's own audit discipline rather than by a reader.
+
