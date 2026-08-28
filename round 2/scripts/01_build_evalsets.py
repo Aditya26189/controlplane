@@ -119,6 +119,12 @@ def main(argv: list[str] | None = None) -> int:
                     "derived from triviaqa-600 by build_longctx once that set "
                     "exists"
                 ),
+                "hinglish-pii-200b": (
+                    "same builder as hinglish-pii-200 at seed 20260828 with "
+                    "extended_forms=True -- an out-of-sample companion for "
+                    "detectors fitted to the base form inventory "
+                    "(DECISIONS.md 085/086)"
+                ),
                 "triviaqa-2400-t960": (
                     "derived from triviaqa-600 by resplit_by_question -- same "
                     "items, 40/20/40 instead of 50/25/25, so the test split can "

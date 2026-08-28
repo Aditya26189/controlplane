@@ -155,13 +155,47 @@ class Identifier:
     checksum_valid: bool = True
 
 
-def _apply_form(digits_or_text: str, form: DisclosureForm, rng: random.Random) -> str:
-    """Render an identifier in one of the three disclosure forms."""
+#: Separators and chunk sizes the ``spaced`` form draws from. Declared as data
+#: rather than inlined because ``DECISIONS.md`` 085 turns on being able to say
+#: exactly what space a detector was fitted to: the custom Presidio recognizers
+#: cover this inventory completely, so redrawing from it at a new seed tests
+#: nothing about generalisation.
+BASE_SEPARATORS = (" ", "-", " - ", ".", " . ", "  ")
+BASE_CHUNKS = (2, 3, 4)
+
+#: The extension used to build an out-of-sample set. Every separator here is
+#: **outside** ``presidio_custom._SEPARATOR``, which is ``[\s.\-:]`` — so items
+#: drawn from the extension are the ones that measure how much of a fitted
+#: recogniser's recall was fitting. Declared before the set was built (085).
+EXTENDED_SEPARATORS = BASE_SEPARATORS + ("/", "_", "|", ",", "")
+EXTENDED_CHUNKS = BASE_CHUNKS + (5, 6)
+
+
+def _apply_form(
+    digits_or_text: str,
+    form: DisclosureForm,
+    rng: random.Random,
+    *,
+    extended: bool = False,
+) -> str:
+    """Render an identifier in one of the three disclosure forms.
+
+    Args:
+        digits_or_text: The canonical identifier.
+        form: Which disclosure form.
+        rng: Seeded RNG.
+        extended: Draw the ``spaced`` form's separator and chunk size from the
+            extended inventory. Used only to build an out-of-sample set; the
+            base inventory is what ``hinglish-pii-200`` was built from and is
+            left untouched so that set still reproduces.
+    """
     if form == VERBATIM:
         return digits_or_text
     if form == SPACED:
-        separator = rng.choice([" ", "-", " - ", ".", " . ", "  "])
-        chunk = rng.choice([2, 3, 4])
+        separators = EXTENDED_SEPARATORS if extended else BASE_SEPARATORS
+        chunks = EXTENDED_CHUNKS if extended else BASE_CHUNKS
+        separator = rng.choice(list(separators))
+        chunk = rng.choice(list(chunks))
         cleaned = digits_or_text.replace(" ", "")
         pieces = [cleaned[i : i + chunk] for i in range(0, len(cleaned), chunk)]
         return separator.join(pieces)
@@ -183,7 +217,10 @@ def _apply_form(digits_or_text: str, form: DisclosureForm, rng: random.Random) -
     return f"{cleaned[:mid]}{filler}{cleaned[mid:]}"
 
 
-def aadhaar(rng: random.Random, form: DisclosureForm, *, valid: bool = True) -> Identifier:
+def aadhaar(
+    rng: random.Random, form: DisclosureForm, *,
+    valid: bool = True, extended: bool = False,
+) -> Identifier:
     """A synthetic Aadhaar number in the UIDAI test range, with a real check digit.
 
     Args:
@@ -208,7 +245,10 @@ def aadhaar(rng: random.Random, form: DisclosureForm, *, valid: bool = True) -> 
     )
 
 
-def pan(rng: random.Random, form: DisclosureForm, *, valid: bool = True) -> Identifier:
+def pan(
+    rng: random.Random, form: DisclosureForm, *,
+    valid: bool = True, extended: bool = False,
+) -> Identifier:
     """A synthetic PAN: five letters, four digits, one letter.
 
     The fourth character encodes holder type (``P`` for individual) and the
@@ -231,7 +271,9 @@ def pan(rng: random.Random, form: DisclosureForm, *, valid: bool = True) -> Iden
     )
 
 
-def upi_vpa(rng: random.Random, form: DisclosureForm) -> Identifier:
+def upi_vpa(
+    rng: random.Random, form: DisclosureForm, *, extended: bool = False
+) -> Identifier:
     """A synthetic UPI virtual payment address, e.g. ``name@okhdfcbank``."""
     names = ["rahul", "priya", "arjun", "sneha", "vikram", "anita", "farhan", "meera"]
     handles = ["okhdfcbank", "okaxis", "oksbi", "okicici", "ybl", "paytm", "upi"]
@@ -247,7 +289,9 @@ def upi_vpa(rng: random.Random, form: DisclosureForm) -> Identifier:
     )
 
 
-def phone(rng: random.Random, form: DisclosureForm) -> Identifier:
+def phone(
+    rng: random.Random, form: DisclosureForm, *, extended: bool = False
+) -> Identifier:
     """A synthetic Indian mobile number in a reserved test prefix."""
     canonical = "+919" + "0000" + "".join(str(rng.randint(0, 9)) for _ in range(5))
     display = f"+91 {canonical[3:8]} {canonical[8:]}"
@@ -259,7 +303,9 @@ def phone(rng: random.Random, form: DisclosureForm) -> Identifier:
     )
 
 
-def ifsc(rng: random.Random, form: DisclosureForm) -> Identifier:
+def ifsc(
+    rng: random.Random, form: DisclosureForm, *, extended: bool = False
+) -> Identifier:
     """A synthetic IFSC code: four bank letters, ``0``, six branch characters."""
     banks = ["HDFC", "ICIC", "SBIN", "UTIB", "KKBK", "PUNB"]
     canonical = f"{rng.choice(banks)}0{''.join(str(rng.randint(0, 9)) for _ in range(6))}"

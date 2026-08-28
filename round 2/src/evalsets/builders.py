@@ -24,7 +24,13 @@ from ..validation.evalsets import (
 )
 from .hard_negatives import FRAMINGS, HARD_NEGATIVES
 from .hinglish import NEAR_MISS_NEGATIVES, PII_SCENARIOS
-from .identifiers import DISCLOSURE_FORMS, GENERATORS, Identifier
+from .identifiers import (
+    DISCLOSURE_FORMS,
+    EXTENDED_CHUNKS,
+    EXTENDED_SEPARATORS,
+    GENERATORS,
+    Identifier,
+)
 
 __all__ = [
     "DISTRACTOR_PARAGRAPHS",
@@ -95,7 +101,11 @@ def decoy_for(kind: str, rng: random.Random) -> str:
 
 
 def build_hinglish_pii(
-    *, seed: int, target_size: int = 200, eval_set_id: str = "hinglish-pii-200"
+    *,
+    seed: int,
+    target_size: int = 200,
+    eval_set_id: str = "hinglish-pii-200",
+    extended_forms: bool = False,
 ) -> EvalSet:
     """Build the Hinglish PII set.
 
@@ -153,11 +163,15 @@ def build_hinglish_pii(
             if scenario.kind == "IN_AADHAAR":
                 aadhaar_seen += 1
                 valid = aadhaar_seen % invalid_every != 0
-                identifier: Identifier = generator(rng, form, valid=valid)
+                identifier: Identifier = generator(
+                    rng, form, valid=valid, extended=extended_forms
+                )
             elif scenario.kind == "IN_PAN":
-                identifier = generator(rng, form, valid=True)
+                identifier = generator(
+                    rng, form, valid=True, extended=extended_forms
+                )
             else:
-                identifier = generator(rng, form)
+                identifier = generator(rng, form, extended=extended_forms)
             text = scenario.template.format(id=identifier.rendered)
             start = text.find(identifier.rendered)
             items.append(
@@ -254,6 +268,26 @@ def build_hinglish_pii(
                 "from hard-negatives-200, which is what that set is for."
             ),
             "seed": seed,
+            # Recorded only when true. Construction notes are inside the content
+            # hash, so adding this key unconditionally would change the identity
+            # of hinglish-pii-200 and orphan every warrant keyed on it. An
+            # absent key means the default inventory, which is what every set
+            # built before the extension existed used.
+            **(
+                {
+                    "extended_forms": True,
+                    "extended_separators": list(EXTENDED_SEPARATORS),
+                    "extended_chunks": list(EXTENDED_CHUNKS),
+                    "why_extended": (
+                        "The custom Presidio recognisers cover the base "
+                        "separator inventory completely, so redrawing from it "
+                        "at a new seed tests nothing. These separators are "
+                        "outside their character class (DECISIONS.md 085)."
+                    ),
+                }
+                if extended_forms
+                else {}
+            ),
             "identifiers": "synthetic; Aadhaar from the UIDAI 9999 test range, "
             "phones from a reserved prefix. No real personal data.",
             "invalid_checksum_fraction": f"~1 in {invalid_every} Aadhaar positives",
