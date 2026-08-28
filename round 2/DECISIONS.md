@@ -3211,6 +3211,103 @@ because a late pilot means authoring 48 items under time pressure with the
 fallback in `4` already in force. The fallback exists for that case; the
 ordering exists so it is not needed.
 
+---
+
+### CORRECTION, before authoring: the factorial design cannot measure the probe
+
+Found by checking the clustering assumption behind the null band in `5`. The
+band was wrong, and underneath it the construction in `1` was wrong in a way
+that would have produced a confident, well-measured, meaningless result.
+
+#### The break
+
+`1` said to cross 60 scenarios with (correct / incorrect) x (identifier / none),
+**holding the surrounding text fixed**. The correctness axis was to be authored
+by varying the assistant's response.
+
+**The probe reads only the prompt.** `build_prompt(tokenizer, item.prompt,
+SYSTEM_PROMPT)` — question-time, before any generated token exists, which is the
+entire thesis. So within one scenario the `correct` and `incorrect` cells
+present the probe with **identical input carrying opposite labels**, and its
+AUROC on that axis is exactly 0.5 by construction.
+
+It would not have looked like a bug. Twenty-four distinct prompts across twelve
+scenarios and two identifier states give a perfectly normal score spread; the
+IQR-ratio check in `5` would have passed; AUROC would have come out at 0.5; and
+the conclusion would have been *"the probe ranks on this envelope but does not
+discriminate"* — plausible, correctly computed, and about an artifact of how the
+set was built.
+
+Third instance of this shape in the build, after the `pii-reference`-on-TriviaQA
+warrant (`089`) and the empty-string separator (`086`). All three produce
+arithmetically correct output about the wrong question.
+
+#### The corrected construction
+
+**Correctness cannot be authored. It is a property of the question and it is
+measured.** `_label_items` is the existing path: generate an answer, judge it
+against gold aliases, `label = 0 if correct else 1`.
+
+So the axes are no longer symmetric, and that is the fix rather than a
+compromise:
+
+| axis | how it is set |
+|---|---|
+| identifier present / absent | **authored**, frame held fixed within a question |
+| answer correct / incorrect | **measured**, by generating and judging |
+
+The stylistic confound `1` existed to prevent is now *impossible on the
+correctness axis*, because nothing about that label is written by us. It remains
+handled on the identifier axis by holding the frame fixed. Strictly better than
+the original.
+
+**Consequences, all of which need declaring:**
+
+1. **The questions must have checkable gold answers.** *"What is my balance"*
+   has none. So the set is banking **factual lookup** — IFSC codes, branch
+   details, product terms, fee schedules — with alias lists, not open-ended
+   support chat. That narrows the register and makes it less like real traffic;
+   declared rather than glossed.
+2. **Cell sizes are not controllable by construction.** Co-occurrence is
+   (identifier-present fraction) x (model error rate on these questions), and
+   only the first is ours. At 50% authored identifier presence and a plausible
+   error rate this lands near the 20-25% the original design targeted, but it is
+   an outcome rather than a setting. The `>= 25 per cell` check in `2` therefore
+   stays exactly where it is — after generation, before scoring.
+3. **The run needs generation, not just extraction.** A larger GPU job than
+   pre-registered. The pipeline already supports it.
+4. **Clustering is now two items per question, not four**, since the correctness
+   axis no longer multiplies the frame.
+
+#### The null band was also wrong, and by more than it looked
+
+`5` drew 24 **independent** items from TriviaQA test. The pilot's items are
+clustered, so their effective sample size is the number of questions, not the
+number of items, and their IQR runs narrower for reasons unrelated to
+saturation.
+
+Redrawn at the effective n:
+
+| draw | p5 of IQR ratio | p50 |
+|---|---|---|
+| 24 independent items (as pre-registered) | 0.605 | 0.921 |
+| **12 clusters (effective n = questions)** | **0.439** | 0.837 |
+
+The pre-registered threshold was **38% too high**. A pilot landing between 0.439
+and 0.605 would have been declared saturated when it was only clustered, and the
+scenarios would have been re-authored to fix a problem that did not exist —
+spending the one retry `6` allows on nothing.
+
+**The criterion becomes: IQR ratio below 0.439 is saturation.** Drawn at the
+number of clusters rather than the number of items, which is the same correction
+the cluster bootstrap in `1` makes to every interval on this set.
+
+#### What does not change
+
+`2` (decision_support only), `3` (a refusal is a result, reported as such), `4`
+(the fallback rule), `6` (one retry), `7` (`083` widening inside the interval)
+and `8` (pilot before proposal) all stand as written.
+
 
 ## 091 - What an envelope is, arrived at by three near-misses
 
