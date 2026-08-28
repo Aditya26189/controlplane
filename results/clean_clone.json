@@ -1,0 +1,297 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-28T20:39:10+00:00",
+    "git_commit": "4bfe21ec06ef7a79b4b29baa0fe54799a58ed62b",
+    "git_branch": "main",
+    "dirty": false,
+    "dirty_paths": [],
+    "dirty_excludes": "results",
+    "python": "3.12.10",
+    "libraries": {
+      "torch": "2.9.1",
+      "transformers": "5.8.0",
+      "scikit-learn": "1.7.2",
+      "numpy": "2.2.6",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "statsmodels": "0.14.6",
+      "presidio-analyzer": "2.2.364",
+      "bitsandbytes": "0.49.2"
+    },
+    "device": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
+      "cuda_available": false,
+      "device_name": "cpu"
+    },
+    "config_hash": "ae6eec9d1f8897af",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "workload": {
+        "name": "enterprise-3pct",
+        "monthly_interactions": 200000,
+        "base_error_rate": 0.03,
+        "review_minutes_per_item": 3.0,
+        "reviewer_monthly_cost_inr": 85000.0,
+        "reviewer_productive_hours": 160.0,
+        "measured_tpr": 0.1416,
+        "measured_fpr": 0.011
+      },
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ],
+        "prefill_chunk_tokens": 2048
+      },
+      "probe": {
+        "aggregations": [
+          "mean_pool",
+          "max_rolling_means",
+          "last_token"
+        ],
+        "rolling_window": 64,
+        "rolling_stride": 32,
+        "standardize": true,
+        "class_weight": "balanced",
+        "C_grid": [
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "evalsets": [
+        {
+          "id": "triviaqa-600",
+          "pad_tokens": null
+        },
+        {
+          "id": "triviaqa-longctx-600",
+          "pad_tokens": [
+            4000,
+            16000
+          ]
+        },
+        {
+          "id": "hinglish-pii-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "hard-negatives-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "canary-20",
+          "pad_tokens": null
+        }
+      ],
+      "validation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_n_test": 200,
+        "min_auroc_lower_ci": 0.55,
+        "warrant_ttl_hours": 24,
+        "controls": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature",
+          "canary",
+          "determinism"
+        ],
+        "null_control_band": [
+          0.45,
+          0.55
+        ],
+        "null_control_min_repeats": 8,
+        "null_control_max_repeats": 200,
+        "calibration_tolerance": 0.25
+      },
+      "drift": {
+        "window_size": 200,
+        "psi_stable": 0.1,
+        "psi_significant": 0.25,
+        "mmd_permutations": 500,
+        "features": [
+          "token_length",
+          "script_mix",
+          "embedding_centroid_distance",
+          "reference_perplexity",
+          "category_mix"
+        ],
+        "max_false_alarm_rate": 0.05
+      },
+      "sampling": {
+        "allocation_month_one": "proportional",
+        "allocation_thereafter": "neyman",
+        "expected_design_effect": 0.67,
+        "score_bands": 4,
+        "double_label_fraction": 0.1,
+        "recall_margin_tiers": [
+          0.05,
+          0.02
+        ],
+        "blind_queue": true
+      },
+      "policy": {
+        "engine": "opa",
+        "fail_closed_on_missing_warrant": true,
+        "weighted_error": {
+          "w_fpr_benign": 50.0,
+          "w_fnr": 5.0,
+          "w_fpr_hard_negative": 2.0
+        }
+      },
+      "profiles": {
+        "customer_support": {
+          "inline_budget_ms": 200,
+          "min_recall": 0.1,
+          "max_fpr": 0.02,
+          "operating_point": "P-customer-support",
+          "target_flag_rate": 0.1,
+          "on_calibration_drift": "REFUSE",
+          "calibration_sensitivity": 0.25
+        },
+        "internal_knowledge": {
+          "inline_budget_ms": 500,
+          "min_recall": 0.25,
+          "max_fpr": 0.05,
+          "operating_point": "P-internal-knowledge",
+          "target_flag_rate": 0.2,
+          "on_calibration_drift": "WIDEN_BUDGET",
+          "calibration_sensitivity": 0.25
+        },
+        "decision_support": {
+          "inline_budget_ms": 2000,
+          "min_recall": 0.5,
+          "max_fpr": 0.1,
+          "operating_point": "P-decision-support",
+          "target_flag_rate": 0.5,
+          "on_calibration_drift": "IGNORE",
+          "calibration_sensitivity": 0.25
+        }
+      },
+      "detectors": {
+        "presidio_configs": [
+          "stock",
+          "enabled",
+          "enabled_plus_custom"
+        ],
+        "qwen3guard": "Qwen/Qwen3Guard-Gen-0.6B"
+      },
+      "store": {
+        "path": "results/controlplane.db",
+        "retention_days": 400,
+        "hash_chain": true
+      },
+      "paths": {
+        "results_dir": "results",
+        "evalsets_dir": "evalsets",
+        "policies_dir": "policies"
+      }
+    }
+  },
+  "ok": true,
+  "commit": "4bfe21ec06ef7a79b4b29baa0fe54799a58ed62b",
+  "clone_path": "C:\\Users\\LawLight\\AppData\\Local\\Temp\\controlplane-clean-clone-b18_18zn\\controlplane",
+  "tracked_files": 270,
+  "steps": [
+    {
+      "name": "git clone",
+      "command": [
+        "git",
+        "clone",
+        "--quiet",
+        "C:\\Users\\LawLight\\Desktop\\accenture",
+        "C:\\Users\\LawLight\\AppData\\Local\\Temp\\controlplane-clean-clone-b18_18zn\\controlplane"
+      ],
+      "returncode": 0,
+      "duration_seconds": 3.92,
+      "ok": true,
+      "skipped": false,
+      "detail": "",
+      "tail": ""
+    },
+    {
+      "name": "fetch notes",
+      "command": [
+        "git",
+        "fetch",
+        "origin",
+        "refs/notes/*:refs/notes/*"
+      ],
+      "returncode": 0,
+      "duration_seconds": 0.27,
+      "ok": true,
+      "skipped": false,
+      "detail": "",
+      "tail": "From C:\\Users\\LawLight\\Desktop\\accenture\n * [new ref]         refs/notes/commits -> refs/notes/commits"
+    },
+    {
+      "name": "make smoke",
+      "command": [
+        "C:\\Users\\LawLight\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+        "scripts/smoke.py"
+      ],
+      "returncode": 0,
+      "duration_seconds": 6.33,
+      "ok": true,
+      "skipped": false,
+      "detail": "",
+      "tail": "ControlPlane smoke check\n============================================================\n  OK    python version: 3.12.10\n  OK    package imports: controlplane, and its model, policy and validation subpackages\n  OK    config loads: config hash ae6eec9d1f8897af, seed 1729\n  OK    provenance resolves: commit 4bfe21ec06ef, dirty=False\n  OK    artifacts readable: validation-T1-last_token.json -> AUROC 0.8256, VALID\n  OK    eval sets frozen: 4 frozen eval sets, content-hashed\n  OK    claim table parses: 26 claims, each naming an artifact and a field\n============================================================\nSMOKE OK: 7/7"
+    },
+    {
+      "name": "make test",
+      "command": [
+        "C:\\Users\\LawLight\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+        "-m",
+        "pytest",
+        "tests/",
+        "-q"
+      ],
+      "returncode": 0,
+      "duration_seconds": 502.55,
+      "ok": true,
+      "skipped": false,
+      "detail": "",
+      "tail": "........................................................................ [ 14%]\n........................................................................ [ 28%]\n........................................................................ [ 42%]\n........................................................................ [ 57%]\n........................................................................ [ 71%]\n........................................................................ [ 85%]\n........................................................................ [ 99%]\n.                                                                        [100%]\n============================== warnings summary ===============================\n<frozen importlib._bootstrap>:488\n  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute\n\n<frozen importlib._bootstrap>:488\n  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\nsys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute"
+    },
+    {
+      "name": "make verify",
+      "command": [
+        "C:\\Users\\LawLight\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+        "scripts/verify.py"
+      ],
+      "returncode": 0,
+      "duration_seconds": 5.14,
+      "ok": true,
+      "skipped": false,
+      "detail": "",
+      "tail": "decision_support recall, n=960                             0.7367       0.7367  OK\nCost of the training reduction, paired on 600 held-o      -0.0110      -0.0110  OK\nSelection-aware widening of the recall bound               1.5922       1.5922  OK\nRound 1 reproduced on Round 2's pipeline                   0.8256       0.8256  OK\n...landing inside Round 1's published interval                  A            A  OK\npresidio-stock recall on Hinglish PII, REFUSED             0.1176       0.1176  OK\npresidio-enabled recall, REFUSED                           0.2843       0.2843  OK\npresidio-enabled_plus_custom recall, VALID                 0.6176       0.6176  OK\nOur pii-reference recall, VALID                            0.7941       0.7941  OK\npresidio-stock reproduces out of sample                    0.1471       0.1471  OK\npii-reference false-positive rate on benign traffic        0.0000       0.0000  OK\nWarrant matrix cells VALID                                     13           13  OK\nWarrant matrix cells REFUSED                                    4            4  OK\nWarrant matrix cells never measured                            39           39  OK\n\n26/26 claims reproduce.\n\n==============================================================================\n2. Committed artifacts vs a re-run from cached activations\n==============================================================================\nre-derivation SKIPPED\n  extraction cache not found at results\\cache-triviaqa-600.npz. It is ~78 MB and gitignored, so a fresh clone does not have it. Regenerate it on a GPU with `make extract`, or copy it in. The claim check above still ran against the committed artifacts; this step, which proves those artifacts match the code, did not.\n\n==============================================================================\nVERIFIED (re-derivation skipped)"
+    },
+    {
+      "name": "verify: re-derivation from cache",
+      "command": [],
+      "returncode": null,
+      "duration_seconds": 0.0,
+      "ok": true,
+      "skipped": true,
+      "detail": "the extraction cache is gitignored, so a clean clone cannot re-derive. The claim table was still checked against the committed artifacts.",
+      "tail": ""
+    }
+  ],
+  "notes": [
+    "270 tracked files in the clone; no gitignored caches, databases or long-context eval sets came with it.",
+    "verify ran its claim check and reported its re-derivation SKIPPED, which is the designed behaviour on a fresh clone."
+  ]
+}
