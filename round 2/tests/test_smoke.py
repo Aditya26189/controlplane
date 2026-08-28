@@ -110,6 +110,32 @@ def test_smoke_matrix(tmp_path: Path) -> None:
     assert "Outstanding measurement" in results
 
 
+def test_smoke_policy_fixture(tmp_path: Path) -> None:
+    """The three operating points issue and the bundles resolve against them.
+
+    On a fixture cache, so this exercises the wiring rather than producing a
+    result. What it asserts is the shape the Phase 7 gate needs: one detector,
+    one envelope, three distinct thresholds, and every loaded profile stamped
+    with the hash of the rules that decided.
+    """
+    run_script("07_policy.py", "--fixture", out=tmp_path)
+    payload = json.loads((tmp_path / "policy.json").read_text(encoding="utf-8"))
+
+    points = payload["operating_points"]
+    assert len(points) == 3, "one point per profile"
+    warrants = [run["warrant"] for run in points]
+    assert len({w["detector_id"] for w in warrants}) == 1, "three points, one detector"
+    assert len({w["eval_set_id"] for w in warrants}) == 1, "three points, one envelope"
+    thresholds = {w["operating_point"]["threshold"] for w in warrants}
+    assert len(thresholds) == 3, "the operating points did not separate"
+
+    comparison = payload["comparison"]
+    for row in comparison["rows"]:
+        assert row["rule_id"], "a decision nobody can trace to a rule"
+        assert row["policy_hash"].startswith("sha256:")
+        assert row["fired"] == (row["threshold"] <= comparison["request"]["detector"]["score"])
+
+
 def test_kaggle_runner_refuses_before_it_can_spend_quota() -> None:
     """The two guards on the batch runner, exercised rather than assumed.
 
@@ -420,6 +446,8 @@ def test_every_script_has_a_smoke_test() -> None:
         "05_canary.py",
         # test_reconciliation_branches_are_fixed_constants
         "06_reconcile.py",
+        # test_smoke_policy_fixture
+        "07_policy.py",
     }
     exempt = {
         # Needs a GPU; its wiring is checked by the notebook's own self-check

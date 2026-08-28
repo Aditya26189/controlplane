@@ -25,6 +25,7 @@ results/smoke/
 # The audit store is generated; the hash chain is only meaningful for the run
 # that built it.
 results/controlplane.db
+results/policy.db
 results/*.db-journal
 
 # NEVER committed: review labels can contain real personal data

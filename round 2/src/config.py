@@ -533,11 +533,39 @@ class ProfileConfig:
     three invented thresholds (``SPEC.md`` §7.3). ``min_recall`` is what a
     warrant must clear for this profile to run, so when drift widens the bounds
     below it the profile suspends itself. That is Beat 4, step 5.
+
+    ``operating_point`` and ``target_flag_rate`` are what make "one curve"
+    checkable rather than asserted: all three profiles name the same detector
+    and envelope and differ only in where on that detector's score distribution
+    their threshold sits. The flag rate is the budget the threshold is chosen to
+    hit **on validation**; the measured rate on test is what every downstream
+    calculation uses.
+
+    The two calibration fields are the profile's position on the half of a
+    warrant that is not about ranking. A warrant asserts both how well a
+    detector ranks and what its operating point spends, and a profile sized on a
+    flag rate is relying on the second. ``src.policy`` consumes both.
+
+    Args:
+        inline_budget_ms: Latency budget for the inline path.
+        min_recall: Recall the profile requires, compared against the interval's
+            lower bound.
+        max_fpr: Maximum hard-negative FPR, compared against the upper bound.
+        operating_point: Id of the threshold this profile runs at.
+        target_flag_rate: The budget that threshold was selected to hit.
+        on_calibration_drift: ``REFUSE``, ``WIDEN_BUDGET`` or ``IGNORE``.
+        calibration_sensitivity: Relative deviation from the budget this profile
+            considers worth acting on. Checked at bundle load against the power
+            the warrant's sample actually has.
     """
 
     inline_budget_ms: int
     min_recall: float
     max_fpr: float
+    operating_point: str = "P-conservative"
+    target_flag_rate: float = 0.05
+    on_calibration_drift: str = "REFUSE"
+    calibration_sensitivity: float = 0.25
 
     def __post_init__(self) -> None:
         if self.inline_budget_ms <= 0:
@@ -551,6 +579,21 @@ class ProfileConfig:
             )
         if not 0.0 < self.max_fpr <= 1.0:
             raise ConfigError(f"profile.max_fpr must be in (0, 1], got {self.max_fpr}")
+        if not 0.0 < self.target_flag_rate < 1.0:
+            raise ConfigError(
+                "profile.target_flag_rate must be in (0, 1), got "
+                f"{self.target_flag_rate}"
+            )
+        if self.on_calibration_drift not in {"REFUSE", "WIDEN_BUDGET", "IGNORE"}:
+            raise ConfigError(
+                "profile.on_calibration_drift must be REFUSE, WIDEN_BUDGET or "
+                f"IGNORE, got {self.on_calibration_drift!r}"
+            )
+        if not 0.0 < self.calibration_sensitivity < 1.0:
+            raise ConfigError(
+                "profile.calibration_sensitivity is a relative deviation in "
+                f"(0, 1), got {self.calibration_sensitivity}"
+            )
 
 
 @dataclasses.dataclass(frozen=True)
