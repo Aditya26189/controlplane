@@ -354,3 +354,43 @@ def test_single_class_envelope_skips_the_lift_criterion(config: Config) -> None:
     )
     assert warrant.status is WarrantStatus.VALID, warrant.status_reason
     assert "lift" not in (warrant.status_reason or "")
+
+
+def test_a_refusal_names_the_build_it_refused(config: Config) -> None:
+    """E.7: a refusal is a measurement of one build, not a claim about a library.
+
+    "Presidio ships no UPI VPA or IFSC recognizer in any configuration" is a
+    statement about a release. It is true of ``presidio-analyzer==2.2.364`` and
+    becomes false the day upstream adds one, with nothing here noticing. The
+    version is already on the warrant, but a reader reads ``status_reason`` --
+    so the sentence itself has to carry it.
+
+    Generic on purpose: a probe refusal is also a statement about one build.
+    """
+    from controlplane.validation.issuance import issue_or_refuse
+
+    from controlplane.model import AccessTier, WarrantKey
+
+    from .factories import failing_controls, make_envelope, make_operating_point
+
+    warrant = issue_or_refuse(
+        config,
+        key=WarrantKey("presidio-stock", "P-declared", "envelope-hinglish"),
+        detector_version="2.2.364",
+        operating_point=make_operating_point("P-declared", "presidio-stock"),
+        metrics=make_metrics(),
+        envelope=make_envelope("envelope-hinglish"),
+        controls=failing_controls("canary"),
+        access_tier=AccessTier.T3_TEXT,
+        n_test=200,
+        base_rate=0.51,
+        validation_run_id="run-y",
+    )
+    assert warrant.status is WarrantStatus.REFUSED
+    assert warrant.status_reason.startswith("[presidio-stock==2.2.364] "), (
+        "a refusal must name the detector and the exact version it refused, so "
+        "the sentence stays true after the dependency moves. Got: "
+        f"{warrant.status_reason!r}"
+    )
+    # The version in the sentence is the one on the warrant, not a literal.
+    assert warrant.detector_version in warrant.status_reason

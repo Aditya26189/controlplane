@@ -278,7 +278,19 @@ def issue_or_refuse(
     status = WarrantStatus.VALID if not reasons else WarrantStatus.REFUSED
     status_reason = None
     if reasons:
-        status_reason = "; ".join(r.render() for r in reasons)
+        # The refusal names the exact build it refused. Without this prefix the
+        # sentence reads as a claim about a third-party library -- "Presidio
+        # ships no UPI VPA recognizer" -- which is true today and silently
+        # false the day upstream adds one, with nothing in this repository
+        # noticing. With it the sentence is a measurement of
+        # `presidio-stock==2.2.364` on a named envelope, which stays true
+        # permanently. Applies to every detector, not just the third-party
+        # ones: a probe refusal is also a statement about one build.
+        status_reason = "[%s==%s] %s" % (
+            key.detector_id,
+            detector_version,
+            "; ".join(r.render() for r in reasons),
+        )
         _LOG.warning(
             "REFUSED %s on %s: %s", key.detector_id, key.eval_set_id, status_reason
         )
