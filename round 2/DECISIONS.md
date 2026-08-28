@@ -2086,3 +2086,209 @@ Entry 077 stands. The refusal happened, is tagged at `phase-7`, and
 `results/policy-triviaqa-600.json` keeps its numbers. The fix was more evidence,
 not a weaker claim -- `calibration.sensitivity` is still 0.25 in all three
 bundles and was never touched.
+
+---
+
+### AMENDMENT (added with 081 and 082; the text above is left as written)
+
+This log is append-only, so nothing above has been edited. Two things in it are
+wrong and are corrected here at the point of the error.
+
+**1. The training-cost claim is withdrawn.** "Training on 960 instead of 1200
+cost nothing measurable" compared an AUROC measured on the 600-item test set
+against one measured on the 960-item test set. Training size and evaluation
+sample both moved, so the 0.0024 gap confounds them, and the interval narrowing
+from 0.0633 to 0.0522 is a test-`n` effect that says nothing about training size
+at all. The claim was not supported by any comparison that had been run.
+
+The paired comparison in **081** finds the opposite: the training reduction cost
+**0.0110 AUROC [0.0026, 0.0200]**, an interval that excludes zero. The sentence
+"the trade was close to free" was wrong, and wrong in the flattering direction.
+
+**2. The envelope framing is wrong, and so is the trigger.** The two ideas
+"envelope" is carrying are not *distribution* and *partition*. They are
+**distribution** and **sample**. The re-split left the distribution identical --
+the same 2400 items -- and drew a different sample from it. A warrant is a point
+estimate plus an interval, which is by construction a statement about a sample
+estimating a property of a distribution, and the system has no vocabulary for
+"same envelope, new measurement".
+
+The trigger is **Phase 6, not Phase 8**. On-traffic warrant renewal *is*
+same-distribution-new-sample, every renewal, indefinitely. If each renewal reads
+as a new envelope: the matrix accumulates rows that are all the same envelope,
+validation age resets on every renewal, and "this warrant has held for six
+weeks" becomes unsayable. Validation age is a banner field in demo Beat 1 and
+the continuity claim the whole staleness story rests on.
+
+**Shape of the likely resolution**, recorded so Phase 6 does not start cold: an
+envelope identity separate from the eval-set content hash, with warrants
+carrying a sample reference underneath it. A renewal then produces a new sample
+reference against an unchanged envelope identity, and age accrues against the
+envelope.
+
+**Not implemented now.** It changes the warrant key and every ledger row. Left
+to Phase 6, where the migration can be done once.
+
+
+## 081 - The paired comparison: the training reduction did cost AUROC
+
+Supersedes the training-cost claim in `080`, which was withdrawn before this ran.
+
+### What was wrong
+
+`080` compared AUROC 0.8256 on the 600-item test set against 0.8232 on the
+960-item test set and attributed the 0.0024 gap to the training reduction.
+**Training size and evaluation sample both changed between those numbers.** The
+gap confounds them. The interval narrowing 0.0633 -> 0.0522 is a test-`n`
+effect and is not evidence about training size in either direction.
+
+### The split relationship, measured rather than assumed (B.1)
+
+| check | expected | observed |
+|---|---|---|
+| `old_test & new_test` | 600 | **600** |
+| `new_train subset of old_train` | True | **True** |
+| `new_test superset of old_test` | True | **True** |
+
+It is a **promotion**, not a reshuffle: 240 items left train and 120 left
+validation, all landing in test, and nothing else moved. So the paired set is
+the entire old test split, n=600, and neither model trained on any of it.
+`leaked_from_old_train` and `leaked_from_new_train` are both empty.
+
+**This was luck resting on a reused seed, and it is worth naming as such.**
+`triviaqa-600`'s declared splits came from `rng(1729).permutation` at 50/25/25;
+`resplit_by_question` used the same generator and seed at 40/20/40. Same
+permutation, different cut points, therefore strict nesting. A re-split at a
+different seed would have reshuffled, cut the paired set to roughly 240 items,
+and the comparison below would have been badly underpowered. Recorded because
+the next person to re-split needs to know that reusing the source's seed is what
+buys a paired comparison.
+
+Sanity check that the pairing is real: the baseline model on the paired set
+reproduces the published 600-set numbers exactly -- AUROC 0.8255524136312324 to
+sixteen digits, and all three recalls to four.
+
+### The method (B.3)
+
+Paired bootstrap, 2000 resamples: draw items with replacement, recompute
+**both** models on that same resample, record the difference. Not two
+independent intervals compared for overlap -- both models score the same items,
+so most variance is shared and cancels in the difference; comparing overlap
+discards that and is underpowered in the way that looks like evidence of no
+difference.
+
+MDD is the smallest true difference this sample would detect 80% of the time at
+a two-sided 5% level, `(1.96 + 0.84) x SE`. It travels with every result,
+because a CI containing zero cannot be read without it.
+
+### The result, thresholds pinned to the 1200-run (this is what 079 asked)
+
+| quantity | 1200-trained | 960-trained | difference | 95% CI | MDD |
+|---|---|---|---|---|---|
+| AUROC | 0.8256 | 0.8145 | **-0.0110** | **[-0.0200, -0.0026]** | 0.0125 |
+| recall @ P-customer-support | 0.1661 | 0.1697 | +0.0036 | [-0.0201, +0.0281] | 0.0340 |
+| recall @ P-internal-knowledge | 0.3321 | 0.3249 | -0.0072 | [-0.0353, +0.0187] | 0.0387 |
+| recall @ P-decision-support | 0.7329 | 0.7256 | -0.0072 | [-0.0366, +0.0226] | 0.0428 |
+
+**AUROC: the interval excludes zero.** Training on 960 instead of 1200 cost
+0.0110 AUROC, between 0.0026 and 0.0200. That is a measured cost, and the
+opposite of what `080` reported.
+
+**The three warranted recalls: underpowered, and reported as such.** Every
+interval contains zero, and every MDD (0.034-0.043) is large relative to the
+differences observed. This sample **cannot** distinguish the two models at any
+operating point. It is not evidence that they perform alike, and it is not
+reported as such.
+
+That the AUROC difference resolves while the recall differences do not is
+expected rather than surprising: AUROC pools every threshold and so uses all 600
+items, while recall at a threshold is estimated from the positives above it --
+at `P-customer-support` roughly 47 of 277 positives.
+
+### Why the direction still favours the re-split
+
+The cost is real and it is small, and the decision it was taken for is
+unaffected: on the 960-item envelope every profile's recall lower bound clears
+its floor with margin (0.180 vs 0.10, 0.317 vs 0.25, 0.697 vs 0.50), and
+`customer_support` can now be warranted at all. A detector 0.011 AUROC weaker
+that can be warranted beats a stronger one that cannot.
+
+But that is a judgement about the trade, not a reason to have called the cost
+zero.
+
+
+## 082 - The thresholds moved, and the recall asymmetry is ROC geometry
+
+### C.1: the third confound was real
+
+Thresholds are selected on validation, and validation went 600 -> 480. Read from
+the run artifacts at full precision, not from config and not re-derived:
+
+| operating point | n=600 threshold | n=960 threshold | move |
+|---|---|---|---|
+| `P-customer-support` | 0.90454704755232651 | 0.89094813278895302 | -0.01359891 |
+| `P-internal-knowledge` | 0.81690146673133424 | 0.79828110607636127 | -0.01862036 |
+| `P-decision-support` | 0.46730787294702475 | 0.46556394163042264 | -0.00174393 |
+
+All three moved. So part of the published recall change is re-calibration, and
+the pinned comparison in `081` is what separates it out.
+
+`calibration.sensitivity` remaining 0.25 in all three bundles does not speak to
+this. That is an input to selection, not the selected value -- a distinction
+worth keeping, because "the config did not change" is exactly the kind of
+statement that gets mistaken for "the threshold did not change".
+
+### The three-way decomposition
+
+The published move from the 600-envelope to the 960-envelope splits into the
+model, the re-calibration, and the larger evaluation sample:
+
+| operating point | pub n=600 | model | re-calibration | test sample | pub n=960 | total |
+|---|---|---|---|---|---|---|
+| `P-customer-support` | 0.1661 | +0.0036 | **+0.0289** | +0.0185 | 0.2171 | +0.0510 |
+| `P-internal-knowledge` | 0.3321 | -0.0072 | **+0.0217** | +0.0137 | 0.3603 | +0.0281 |
+| `P-decision-support` | 0.7329 | -0.0072 | +0.0000 | +0.0111 | 0.7367 | +0.0039 |
+
+**Re-calibration is the largest single component of the customer_support move,
+and the model contributes almost none of it.** The +0.051 that `080` reported
+was not the detector getting better.
+
+The model column is the pinned paired result from `081` and is underpowered at
+every point; it is shown for completeness, not as three measured effects.
+
+### C.2: the geometry, and it confirms
+
+Measured ROC on the 960-item test split, local slope fitted by least squares
+over a window in FPR (a two-point derivative on an empirical step function is
+zero or infinite and describes nothing):
+
+| operating point | FPR | recall | flag rate | local slope | window |
+|---|---|---|---|---|---|
+| `P-customer-support` | 0.0152 | 0.2171 | 0.1062 | **6.70** | 0.065 |
+| `P-internal-knowledge` | 0.0436 | 0.3603 | 0.1865 | **5.27** | 0.093 |
+| `P-decision-support` | 0.2467 | 0.7367 | 0.4677 | **0.85** | 0.099 |
+
+**A 7.9x difference in local slope across three points on one curve.** The
+hypothesis holds: `P-customer-support` sits on the steep segment, which is why a
+threshold move of 0.0136 bought it +0.0289 recall while a move of 0.0017 bought
+`P-decision-support` nothing measurable.
+
+`results/roc_operating_points.png` draws it with a tangent at each point.
+
+### What this licenses saying
+
+The profile with the **highest traffic and the tightest latency budget** is also
+the one whose warranted recall is **most sensitive to threshold placement** --
+6.7 units of recall per unit of FPR against 0.85 at the escalation-heavy tier.
+
+That is a direct argument for warranting operating points individually rather
+than warranting a detector, and it is now demonstrated on our own measured curve
+rather than asserted. It also explains why `P-customer-support` was the profile
+whose calibration claim failed first in `077`: it is the point where the budget
+is smallest and the curve is steepest, so it is the most expensive place on the
+curve to make a promise and the hardest to keep one.
+
+The claim is about **local sensitivity**, not about which operating point is
+better. Nothing here says the steep point is a worse choice; it says its
+warranted number moves more for a given threshold change, which is a reason to
+warrant it separately rather than a reason to avoid it.
