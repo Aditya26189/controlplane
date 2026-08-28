@@ -274,3 +274,156 @@ def test_the_curve_auroc_agrees_with_the_rank_statistic() -> None:
     labels = (rng.random(700) < 0.45).astype(int)
     scores = rng.normal(labels * 1.1, 1.0)
     assert roc_curve(scores, labels).auroc == pytest.approx(_auroc(scores, labels), abs=1e-9)
+
+
+# --------------------------------------------------------------------------- #
+# Threshold-selection uncertainty — DECISIONS.md 083
+# --------------------------------------------------------------------------- #
+
+
+def _split_pair(n_val=480, n_test=960, seed=5, separation=1.2):
+    rng = np.random.default_rng(seed)
+    def draw(n):
+        labels = (rng.random(n) < 0.46).astype(int)
+        return rng.normal(labels * separation, 1.0), labels
+    return draw(n_val), draw(n_test)
+
+
+def test_selection_noise_widens_the_interval_it_is_added_to() -> None:
+    """The whole point: a threshold chosen from a sample is not a fixed number.
+
+    The conditional interval resamples test only, which is what every warrant in
+    this repo has reported. The selection-aware one also resamples validation
+    and reselects, and must be wider — if it is not, the reselection is not
+    reaching the threshold.
+    """
+    from src.validation.selection import selection_aware_recall
+
+    (vs, vy), (ts, ty) = _split_pair()
+    threshold = float(np.quantile(vs, 0.90))
+    bound = selection_aware_recall(
+        vs, vy, ts, ty,
+        operating_point_id="P-test", target_flag_rate=0.10,
+        threshold=threshold, n_bootstrap=400, seed=1729,
+    )
+    assert bound.selection_aware_width > bound.conditional_width
+    assert bound.widening > 1.0
+    assert bound.threshold_ci[0] < threshold < bound.threshold_ci[1]
+
+
+def test_the_widening_is_larger_where_fewer_negatives_position_the_threshold() -> None:
+    """``DECISIONS.md`` 082's geometry showing up in interval width.
+
+    A low-flag-rate point is positioned by a handful of validation negatives and
+    sits on a steep segment; a high-flag-rate point is positioned by many and
+    sits on a flat one. The first must widen more.
+    """
+    from src.validation.selection import selection_aware_recall
+
+    (vs, vy), (ts, ty) = _split_pair()
+    bounds = {}
+    for point, budget in (("low", 0.10), ("high", 0.50)):
+        bounds[point] = selection_aware_recall(
+            vs, vy, ts, ty,
+            operating_point_id=point, target_flag_rate=budget,
+            threshold=float(np.quantile(vs, 1.0 - budget)),
+            n_bootstrap=400, seed=1729,
+        )
+    assert (
+        bounds["low"].n_negatives_above_validation
+        < bounds["high"].n_negatives_above_validation
+    )
+    assert bounds["low"].widening > bounds["high"].widening
+
+
+def test_the_realised_rates_are_measured_on_test_not_taken_from_the_budget() -> None:
+    """Invariant 6. The target is what was aimed at; only the measured rate may
+    feed a downstream calculation."""
+    from src.validation.selection import selection_aware_recall
+
+    (vs, vy), (ts, ty) = _split_pair()
+    bound = selection_aware_recall(
+        vs, vy, ts, ty,
+        operating_point_id="P-test", target_flag_rate=0.10,
+        threshold=float(np.quantile(vs, 0.90)), n_bootstrap=200, seed=1729,
+    )
+    assert bound.realised_flag_rate == pytest.approx(
+        float((ts >= bound.threshold).mean())
+    )
+    assert bound.realised_fpr == pytest.approx(
+        float((ts[ty == 0] >= bound.threshold).mean())
+    )
+    # The realised rate is free to differ from the budget; that it does is the
+    # reason invariant 6 exists.
+    assert bound.target_flag_rate == 0.10
+
+
+def test_a_split_without_positives_supports_no_recall_bound() -> None:
+    from src.validation.selection import selection_aware_recall
+
+    (vs, vy), (ts, _) = _split_pair()
+    with pytest.raises(ValueError, match="needs positives"):
+        selection_aware_recall(
+            vs, vy, ts, np.zeros(len(ts), dtype=int),
+            operating_point_id="P-test", target_flag_rate=0.10,
+            threshold=0.5, n_bootstrap=50, seed=1,
+        )
+
+
+# --------------------------------------------------------------------------- #
+# The nesting check is at the point of the decision
+# --------------------------------------------------------------------------- #
+
+
+def test_a_reused_seed_nests_and_a_fresh_one_does_not(caplog) -> None:
+    """``DECISIONS.md`` 081's finding, enforced in code rather than discovered.
+
+    Nesting is not a property of re-splitting. It holds only when the call
+    reuses the source's seed and ordering, and the difference decides whether a
+    paired comparison is possible at all.
+    """
+    import logging
+    from src.evalsets.resplit import resplit_by_question
+
+    source = make_set(lambda q: TRAIN if q < 500 else VALIDATION if q < 750 else TEST)
+    # The source's own splits here are positional rather than permuted, so no
+    # seed reproduces them; what the test pins is that the check runs and that a
+    # non-nesting result is announced rather than silent.
+    with caplog.at_level(logging.WARNING):
+        resplit_by_question(
+            source, eval_set_id="derived", fractions=(0.4, 0.2, 0.4),
+            seed=4242, rationale="fixture",
+        )
+    assert any("does not nest" in r.message for r in caplog.records)
+
+
+def test_require_nested_refuses_rather_than_warning() -> None:
+    """For callers whose next step is a paired comparison, a warning is not
+    enough — the comparison would run on whatever intersection survived."""
+    from src.evalsets.resplit import resplit_by_question
+    from src.validation.evalsets import EvalSetError
+
+    source = make_set(lambda q: TRAIN if q < 500 else VALIDATION if q < 750 else TEST)
+    with pytest.raises(EvalSetError, match="does not nest"):
+        resplit_by_question(
+            source, eval_set_id="derived", fractions=(0.4, 0.2, 0.4),
+            seed=4242, rationale="fixture", require_nested=True,
+        )
+
+
+def test_the_nesting_check_does_not_change_the_frozen_identity() -> None:
+    """Construction notes are inside the content hash.
+
+    Recording the relationship there would change the identity of every set
+    already built, and ``triviaqa-2400-t960`` would stop hashing to the value
+    its warrants are keyed on.
+    """
+    from src.evalsets.resplit import resplit_by_question
+
+    source = make_set(lambda q: TRAIN if q < 500 else VALIDATION if q < 750 else TEST)
+    derived = resplit_by_question(
+        source, eval_set_id="derived", fractions=(0.4, 0.2, 0.4),
+        seed=4242, rationale="fixture",
+    )
+    assert "nests_within_source" not in derived.construction
+    assert "paired_with_source_n" not in derived.construction
