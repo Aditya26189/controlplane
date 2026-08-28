@@ -11,7 +11,7 @@ Ends by checking its own output against the fixture path with
 ``assert_metric_shape_compatible``, so a normalisation or polarity divergence is
 caught here rather than after the artifacts have been downloaded.
 
-Thin wrapper: parses arguments, calls ``src/``, writes files. No logic.
+Thin wrapper: parses arguments, calls ``controlplane/``, writes files. No logic.
 
 Usage:
     python scripts/00_extract.py --config config.yaml
@@ -30,18 +30,18 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import load_config, set_seeds, setup_logging, write_json_artifact
-from src.detectors.probe import LinearProbe
-from src.evalsets import save_evalset
-from src.extract.model import load_model
-from src.extract.pipeline import extract_triviaqa
-from src.validation.evalsets import TRAIN, split_by_question
-from src.validation.metrics_builder import (
+from controlplane.config import load_config, set_seeds, setup_logging, write_json_artifact
+from controlplane.detectors.probe import LinearProbe
+from controlplane.evalsets import save_evalset
+from controlplane.extract.model import load_model
+from controlplane.extract.pipeline import extract_triviaqa
+from controlplane.validation.evalsets import TRAIN, split_by_question
+from controlplane.validation.metrics_builder import (
     assert_metric_shape_compatible,
     build_warrant_metrics,
 )
-from src.validation.runner import validate, validate_transferred
-from src.validation.synthetic import synthetic_cache, synthetic_evalset
+from controlplane.validation.runner import validate, validate_transferred
+from controlplane.validation.synthetic import synthetic_cache, synthetic_evalset
 
 _LOG = logging.getLogger("scripts.00_extract")
 

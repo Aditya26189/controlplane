@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from src.model import (
+from controlplane.model import (
     Action,
     Metric,
     MetricKind,
@@ -32,10 +32,10 @@ from src.model import (
     WarrantStatus,
     utc_now,
 )
-from src.model.enums import CalibrationStatus
-from src.model.calibration import CalibrationClaim
-from src.matrix import WarrantMatrix
-from src.policy import (
+from controlplane.model.enums import CalibrationStatus
+from controlplane.model.calibration import CalibrationClaim
+from controlplane.matrix import WarrantMatrix
+from controlplane.policy import (
     BundleError,
     OnCalibrationDrift,
     PolicyBundle,
@@ -47,8 +47,8 @@ from src.policy import (
     resolve_bundle,
     weighted_error,
 )
-from src.policy.engine import RESERVED_KEYS
-from src.validation.calibration import n_to_detect_deviation
+from controlplane.policy.engine import RESERVED_KEYS
+from controlplane.validation.calibration import n_to_detect_deviation
 
 from .factories import failing_controls, make_operating_point, make_warrant
 
@@ -630,7 +630,7 @@ def test_the_shipped_bundles_load_and_agree_with_config(tmp_path) -> None:
     for policy and ``config.profiles`` is what routing sees; this asserts they
     have not come apart.
     """
-    from src.config import load_config
+    from controlplane.config import load_config
 
     config = load_config(str(Path(__file__).resolve().parents[1] / "config.yaml"))
     policies = Path(__file__).resolve().parents[1] / "policies"

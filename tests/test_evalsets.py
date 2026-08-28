@@ -16,9 +16,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src.config import Config
-from src.detectors.pii_reference import ReferencePiiDetector
-from src.evalsets import (
+from controlplane.config import Config
+from controlplane.detectors.pii_reference import ReferencePiiDetector
+from controlplane.evalsets import (
     build_canary_pii,
     build_hard_negatives,
     build_hinglish_pii,
@@ -30,13 +30,13 @@ from src.evalsets import (
     verify_manifest,
     write_manifest,
 )
-from src.evalsets.hard_negatives import FRAMINGS, HARD_NEGATIVES
-from src.evalsets.hinglish import NEAR_MISS_NEGATIVES, PII_SCENARIOS
-from src.evalsets.identifiers import DISCLOSURE_FORMS, GENERATORS, aadhaar
-from src.model import MetricError, WarrantStatus
-from src.validation.evalsets import EvalSetError
-from src.validation.stats import clopper_pearson
-from src.validation.text_runner import validate_text_detector
+from controlplane.evalsets.hard_negatives import FRAMINGS, HARD_NEGATIVES
+from controlplane.evalsets.hinglish import NEAR_MISS_NEGATIVES, PII_SCENARIOS
+from controlplane.evalsets.identifiers import DISCLOSURE_FORMS, GENERATORS, aadhaar
+from controlplane.model import MetricError, WarrantStatus
+from controlplane.validation.evalsets import EvalSetError
+from controlplane.validation.stats import clopper_pearson
+from controlplane.validation.text_runner import validate_text_detector
 
 
 @pytest.fixture(scope="module")
@@ -429,7 +429,7 @@ def test_clopper_pearson_brackets_the_point_estimate() -> None:
 
 def test_inapplicable_controls_are_fenced(hinglish, canary, config: Config) -> None:
     """``DECISIONS.md`` 034: the one escape hatch, fenced three ways."""
-    from src.model import ControlResult, WarrantError
+    from controlplane.model import ControlResult, WarrantError
 
     detector = ReferencePiiDetector()
     run = validate_text_detector(

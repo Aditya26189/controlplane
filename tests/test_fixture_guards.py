@@ -14,9 +14,9 @@ import dataclasses
 import numpy as np
 import pytest
 
-from src.config import Config
-from src.matrix import WarrantMatrix
-from src.model import (
+from controlplane.config import Config
+from controlplane.matrix import WarrantMatrix
+from controlplane.model import (
     DistributionEnvelope,
     FindingError,
     Metric,
@@ -24,8 +24,8 @@ from src.model import (
     WarrantStatus,
     utc_now,
 )
-from src.report.results import FIXTURE_MARKER, REQUIRED_EXTRACTIONS, render_results
-from src.validation.metrics_builder import (
+from controlplane.report.results import FIXTURE_MARKER, REQUIRED_EXTRACTIONS, render_results
+from controlplane.validation.metrics_builder import (
     assert_metric_shape_compatible,
     build_warrant_metrics,
 )
@@ -248,7 +248,7 @@ def test_the_type_already_forbids_a_kind_flip(config: Config) -> None:
     through the real types, which is a stronger position than having a test for
     it: the failure is unconstructible rather than merely detected.
     """
-    from src.model import MetricError
+    from controlplane.model import MetricError
 
     rng = np.random.default_rng(3)
     labels = (rng.random(200) < 0.4).astype(int)
@@ -299,7 +299,7 @@ def test_routing_tiebreak_is_stated_not_incidental(config: Config) -> None:
     regardless of the order the matrix yields them, which depends on ledger
     insertion order.
     """
-    from src.matrix import Profile, route
+    from controlplane.matrix import Profile, route
 
     def warrant(detector_id: str):
         return dataclasses.replace(
@@ -322,7 +322,7 @@ def test_routing_tiebreak_is_stated_not_incidental(config: Config) -> None:
 
 def test_an_unvalidated_cell_never_outranks_a_measured_one(config: Config) -> None:
     """Invariant 2: an absence is not a weak positive, however promising."""
-    from src.matrix import Profile, route
+    from controlplane.matrix import Profile, route
 
     weak_but_measured = dataclasses.replace(
         make_warrant(detector_id="probe-measured", eval_set_id="env"),

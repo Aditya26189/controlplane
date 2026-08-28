@@ -1,7 +1,7 @@
 """Two-pane demo runner. Renders; decides nothing.
 
 ``CLAUDE.md``: no logic in the demo runner. Every number on screen comes from
-:mod:`src.demo.session`, which uses the same probe, warrant, certificate and
+:mod:`controlplane.demo.session`, which uses the same probe, warrant, certificate and
 ledger code as the pipeline. This file lays out text.
 
 Usage:
@@ -22,13 +22,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import load_config, set_seeds, setup_logging
-from src.demo.session import DemoSession, RequestOutcome
-from src.demo.stream import Stream, record_stream
-from src.model import WarrantStatus
-from src.store import Ledger
-from src.validation.evalsets import SOURCE_SYNTHETIC
-from src.validation.synthetic import synthetic_cache, synthetic_evalset
+from controlplane.config import load_config, set_seeds, setup_logging
+from controlplane.demo.session import DemoSession, RequestOutcome
+from controlplane.demo.stream import Stream, record_stream
+from controlplane.model import WarrantStatus
+from controlplane.store import Ledger
+from controlplane.validation.evalsets import SOURCE_SYNTHETIC
+from controlplane.validation.synthetic import synthetic_cache, synthetic_evalset
 
 WIDTH = 62
 

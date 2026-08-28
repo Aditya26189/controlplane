@@ -6,7 +6,7 @@ seed: 1729
 
 # ---------------------------------------------------------------- workload
 # The ONE declared scenario. Every economic figure in every document is
-# computed from this block by src/economics/sizing.py. Nothing is typed by hand.
+# computed from this block by controlplane/economics/sizing.py. Nothing is typed by hand.
 workload:
   name: "enterprise-3pct"
   monthly_interactions: 200000

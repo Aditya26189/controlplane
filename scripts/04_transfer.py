@@ -11,7 +11,7 @@ Both aggregations are carried through, because the comparison is the point.
 ``max_rolling_means`` was built to survive it; reporting only one would leave
 the claim untested in exactly the place it matters.
 
-Thin wrapper: parses arguments, calls ``src/``, writes files (``CLAUDE.md``).
+Thin wrapper: parses arguments, calls ``controlplane/``, writes files (``CLAUDE.md``).
 
 Usage:
     python scripts/04_transfer.py --config config.yaml \
@@ -30,12 +30,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
-from src.evalsets.registry import load_evalset
-from src.store import Ledger, RecordKind
-from src.detectors.probe import LinearProbe
-from src.validation.evalsets import TRAIN, ExtractionCache, split_by_question
-from src.validation.runner import validate, validate_transferred
+from controlplane.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
+from controlplane.evalsets.registry import load_evalset
+from controlplane.store import Ledger, RecordKind
+from controlplane.detectors.probe import LinearProbe
+from controlplane.validation.evalsets import TRAIN, ExtractionCache, split_by_question
+from controlplane.validation.runner import validate, validate_transferred
 
 _LOG = logging.getLogger("scripts.04_transfer")
 

@@ -12,13 +12,13 @@ from pathlib import Path
 
 import pytest
 
-from src.config import Config
-from src.demo.session import DemoSession
-from src.demo.stream import Stream, record_stream
-from src.model import Action, EnvelopeState, WarrantStatus
-from src.store import Ledger, RecordKind
-from src.validation.evalsets import TEST, split_by_question
-from src.validation.synthetic import synthetic_cache, synthetic_evalset
+from controlplane.config import Config
+from controlplane.demo.session import DemoSession
+from controlplane.demo.stream import Stream, record_stream
+from controlplane.model import Action, EnvelopeState, WarrantStatus
+from controlplane.store import Ledger, RecordKind
+from controlplane.validation.evalsets import TEST, split_by_question
+from controlplane.validation.synthetic import synthetic_cache, synthetic_evalset
 
 
 @pytest.fixture(scope="module")
@@ -293,7 +293,7 @@ def test_prove_it_reproduces_the_prepared_run(session) -> None:
 
 
 def test_demo_runner_has_no_logic() -> None:
-    """``CLAUDE.md``: the runner renders. Decisions live in ``src/``.
+    """``CLAUDE.md``: the runner renders. Decisions live in ``controlplane/``.
 
     Checked by asserting the runner never imports the pieces that decide —
     no probe, no issuance, no statistics. It may only reach them through
@@ -303,10 +303,10 @@ def test_demo_runner_has_no_logic() -> None:
         Path(__file__).resolve().parents[1] / "demo" / "run_demo.py"
     ).read_text(encoding="utf-8")
     for forbidden in (
-        "from src.detectors",
-        "from src.validation.issuance",
-        "from src.validation.stats",
-        "from src.validation.controls",
+        "from controlplane.detectors",
+        "from controlplane.validation.issuance",
+        "from controlplane.validation.stats",
+        "from controlplane.validation.controls",
         "LinearProbe",
         "issue_or_refuse",
     ):

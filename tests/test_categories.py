@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import pytest
 
-from src.evalsets.categories import (
+from controlplane.evalsets.categories import (
     EVAL_SET_CATEGORY,
     LabelCategoryError,
     category_of,
     require_compatible,
 )
-from src.model import Category
+from controlplane.model import Category
 
 
 def test_a_pii_detector_cannot_be_warranted_against_hallucination_labels() -> None:

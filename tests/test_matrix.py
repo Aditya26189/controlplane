@@ -15,10 +15,10 @@ from pathlib import Path
 
 import pytest
 
-from src.config import Config
-from src.matrix import MatrixCell, Profile, WarrantMatrix, route
-from src.model import Action, WarrantKey, WarrantStatus, utc_now
-from src.store import Ledger
+from controlplane.config import Config
+from controlplane.matrix import MatrixCell, Profile, WarrantMatrix, route
+from controlplane.model import Action, WarrantKey, WarrantStatus, utc_now
+from controlplane.store import Ledger
 
 from .factories import failing_controls, make_warrant
 
@@ -214,7 +214,7 @@ def test_revalidation_shows_the_latest_cell(ledger, config: Config) -> None:
 
 def test_routing_adopts_the_new_warrant_bounds(config: Config) -> None:
     """The claim follows the detector actually used, not the one displaced."""
-    from src.model import Metric, MetricKind
+    from controlplane.model import Metric, MetricKind
 
     from .factories import make_metrics
 
@@ -243,7 +243,7 @@ def test_routing_adopts_the_new_warrant_bounds(config: Config) -> None:
 
 def test_a_profile_suspends_when_bounds_fall_below_its_minimum(config: Config) -> None:
     """Beat 4, step 5, and the difference between suspension and absence."""
-    from src.model import Metric, MetricKind
+    from controlplane.model import Metric, MetricKind
 
     from .factories import make_metrics
 
@@ -273,7 +273,7 @@ def test_a_profile_suspends_when_bounds_fall_below_its_minimum(config: Config) -
 
 def test_suspension_is_distinguishable_from_nothing_measured(config: Config) -> None:
     """Two different failures that must not read the same on screen."""
-    from src.model import Metric, MetricKind
+    from controlplane.model import Metric, MetricKind
 
     from .factories import make_metrics
 
@@ -300,7 +300,7 @@ def test_suspension_is_distinguishable_from_nothing_measured(config: Config) -> 
 
 def test_profile_compares_against_the_interval_bound_not_the_point(config: Config) -> None:
     """A declared minimum is a guarantee, and a point estimate is not one."""
-    from src.model import Metric, MetricKind
+    from controlplane.model import Metric, MetricKind
 
     from .factories import make_metrics
 

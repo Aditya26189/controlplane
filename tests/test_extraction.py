@@ -13,20 +13,20 @@ import dataclasses
 import numpy as np
 import pytest
 
-from src.config import Config
-from src.detectors.probe import LinearProbe
-from src.extract.model import PaddingError, assert_left_padding
-from src.extract.triviaqa import (
+from controlplane.config import Config
+from controlplane.detectors.probe import LinearProbe
+from controlplane.extract.model import PaddingError, assert_left_padding
+from controlplane.extract.triviaqa import (
     SHORT_ALIAS_CHARS,
     TriviaItem,
     is_correct,
     normalise_answer,
     split_questions,
 )
-from src.model import WarrantStatus
-from src.validation.evalsets import TEST, TRAIN, split_by_question
-from src.validation.runner import validate, validate_transferred
-from src.validation.synthetic import synthetic_cache, synthetic_evalset
+from controlplane.model import WarrantStatus
+from controlplane.validation.evalsets import TEST, TRAIN, split_by_question
+from controlplane.validation.runner import validate, validate_transferred
+from controlplane.validation.synthetic import synthetic_cache, synthetic_evalset
 
 
 # --------------------------------------------------------------------------- #
@@ -172,7 +172,7 @@ def test_efficient_attention_propagates_body_exceptions(exception) -> None:
     logic watching for ``OutOfMemoryError``. ``RuntimeError`` is in the list here
     because it is the one that actually bit.
     """
-    from src.extract.activations import efficient_attention
+    from controlplane.extract.activations import efficient_attention
 
     with pytest.raises(exception, match="boom"):
         with efficient_attention():
@@ -181,7 +181,7 @@ def test_efficient_attention_propagates_body_exceptions(exception) -> None:
 
 def test_efficient_attention_exits_cleanly() -> None:
     """And the ordinary path still works, exactly once."""
-    from src.extract.activations import efficient_attention
+    from controlplane.extract.activations import efficient_attention
 
     entered = 0
     with efficient_attention():
@@ -200,7 +200,7 @@ def test_efficient_attention_yields_once_even_without_torch_support(
     """
     import torch
 
-    from src.extract import activations
+    from controlplane.extract import activations
 
     monkeypatch.delattr(torch.backends.cuda, "sdp_kernel", raising=False)
     monkeypatch.setitem(
@@ -294,8 +294,8 @@ def test_forward_runs_the_trunk_not_the_causal_lm() -> None:
     the two terms are the same order of magnitude, so a plausible match is not
     evidence that the other term is small.
     """
-    from src.extract.activations import _hidden_states_at
-    from src.extract.model import LoadedModel
+    from controlplane.extract.activations import _hidden_states_at
+    from controlplane.extract.model import LoadedModel
 
     model = _fake_causal_lm()
     loaded = LoadedModel(
@@ -324,7 +324,7 @@ def test_base_model_falls_back_rather_than_guessing() -> None:
     Returning the wrapper is safe because nothing reads the return value — the
     activation arrives through a forward hook.
     """
-    from src.extract.activations import _base_model
+    from controlplane.extract.activations import _base_model
 
     class Opaque:
         def forward(self):
@@ -335,7 +335,7 @@ def test_base_model_falls_back_rather_than_guessing() -> None:
 
 
 def test_base_model_finds_the_trunk_on_a_causal_lm() -> None:
-    from src.extract.activations import _base_model
+    from controlplane.extract.activations import _base_model
 
     model = _fake_causal_lm()
     assert _base_model(model) is model.model
@@ -439,7 +439,7 @@ def test_trunk_allocates_far_less_than_the_causal_lm() -> None:
     import torch
     from torch.utils._python_dispatch import TorchDispatchMode
 
-    from src.extract.activations import _base_model
+    from controlplane.extract.activations import _base_model
 
     class Counter(TorchDispatchMode):
         def __init__(self) -> None:
@@ -529,7 +529,7 @@ def test_chunked_prefill_matches_a_single_pass() -> None:
 
     from transformers import DynamicCache
 
-    from src.extract.activations import _prefill_in_chunks
+    from controlplane.extract.activations import _prefill_in_chunks
 
     model = _tiny_qwen()
     trunk = model.model
@@ -575,7 +575,7 @@ def test_chunking_bounds_the_attention_workspace() -> None:
     import torch
     from torch.utils._python_dispatch import TorchDispatchMode
 
-    from src.extract.activations import _prefill_in_chunks
+    from controlplane.extract.activations import _prefill_in_chunks
 
     seq, chunk = 512, 64
 
@@ -625,8 +625,8 @@ def test_chunked_and_unchunked_capture_agree(monkeypatch) -> None:
     pytest.importorskip("transformers")
     import torch
 
-    from src.extract.activations import _hidden_states_at
-    from src.extract.model import LoadedModel
+    from controlplane.extract.activations import _hidden_states_at
+    from controlplane.extract.model import LoadedModel
 
     model = _tiny_qwen()
     loaded = LoadedModel(
@@ -649,8 +649,8 @@ def test_chunking_is_skipped_for_batches() -> None:
     """
     pytest.importorskip("transformers")
 
-    from src.extract.activations import _hidden_states_at
-    from src.extract.model import LoadedModel
+    from controlplane.extract.activations import _hidden_states_at
+    from controlplane.extract.model import LoadedModel
 
     model = _tiny_qwen()
     loaded = LoadedModel(
@@ -677,7 +677,7 @@ def test_long_context_resumes_from_a_partial(tmp_path, monkeypatch) -> None:
     fail fast on memory rather than to run long, so nobody added it. Once memory
     stopped being the constraint, duration became one.
     """
-    from src.extract import pipeline
+    from controlplane.extract import pipeline
 
     calls: list[int] = []
 
@@ -718,7 +718,7 @@ def test_partial_from_a_different_run_is_refused(tmp_path, monkeypatch) -> None:
     Truncating it would silently misalign every feature against its label, which
     is the failure this repo exists to refuse rather than to survive.
     """
-    from src.extract import pipeline
+    from controlplane.extract import pipeline
 
     partial = tmp_path / "results" / "cache-longctx-partial.npz"
     partial.parent.mkdir(parents=True)

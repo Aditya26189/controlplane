@@ -44,17 +44,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import load_config, set_seeds, setup_logging
-from src.detectors.probe import LinearProbe
-from src.evalsets.registry import load_evalset, save_evalset
-from src.validation.evalsets import (
+from controlplane.config import load_config, set_seeds, setup_logging
+from controlplane.detectors.probe import LinearProbe
+from controlplane.evalsets.registry import load_evalset, save_evalset
+from controlplane.validation.evalsets import (
     TRAIN,
     VALIDATION,
     EvalSet,
     ExtractionCache,
     split_by_question,
 )
-from src.validation.stats import auroc as roc_auc
+from controlplane.validation.stats import auroc as roc_auc
 
 _LOG = logging.getLogger("scripts.05_canary")
 

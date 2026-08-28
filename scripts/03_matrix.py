@@ -8,7 +8,7 @@ Built from the ledger rather than from the runs in memory, so the matrix and the
 audit log cannot disagree. If a warrant is not in the log it is not in the
 matrix, which is the property that makes the matrix evidence.
 
-Thin wrapper: parses arguments, calls ``src/``, writes files. No logic.
+Thin wrapper: parses arguments, calls ``controlplane/``, writes files. No logic.
 
 Usage:
     python scripts/03_matrix.py --config config.yaml
@@ -26,26 +26,26 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import (
+from controlplane.config import (
     load_config,
     provenance,
     set_seeds,
     setup_logging,
     write_json_artifact,
 )
-from src.detectors.pii_reference import ReferencePiiDetector
-from src.evalsets import (
+from controlplane.detectors.pii_reference import ReferencePiiDetector
+from controlplane.evalsets import (
     build_canary_pii,
     build_hard_negatives,
     build_hinglish_pii,
     build_longctx,
 )
-from src.matrix import Profile, WarrantMatrix, route
-from src.report import render_results
-from src.store import Ledger, RecordKind
-from src.validation.ablation import run_ablation
-from src.validation.synthetic import synthetic_cache, synthetic_evalset
-from src.validation.text_runner import validate_text_detector
+from controlplane.matrix import Profile, WarrantMatrix, route
+from controlplane.report import render_results
+from controlplane.store import Ledger, RecordKind
+from controlplane.validation.ablation import run_ablation
+from controlplane.validation.synthetic import synthetic_cache, synthetic_evalset
+from controlplane.validation.text_runner import validate_text_detector
 
 _LOG = logging.getLogger("scripts.03_matrix")
 

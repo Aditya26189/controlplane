@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.config import (
+from controlplane.config import (
     Config,
     ConfigError,
     _from_mapping,
@@ -125,7 +125,7 @@ def test_config_hash_is_stable_across_processes(
     """
     code = (
         "import sys; sys.path.insert(0, sys.argv[1]);"
-        "from src.config import load_config;"
+        "from controlplane.config import load_config;"
         "print(load_config(sys.argv[1] + '/config.yaml').config_hash)"
     )
     seen = set()

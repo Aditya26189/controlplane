@@ -5,7 +5,7 @@ produces a diff full of execution counts and output blobs, and a reviewer cannot
 tell a logic change from a re-run. So the notebook is generated from here, and
 this file is what gets reviewed.
 
-The notebook itself contains **no logic**. Every cell calls into ``src/`` or
+The notebook itself contains **no logic**. Every cell calls into ``controlplane/`` or
 runs a shell command. That is the same rule the demo runner follows and for the
 same reason: logic that lives only in a notebook is unreviewable and unrunnable
 by anything else.
@@ -167,7 +167,7 @@ assert total / 2**30 > 14, (
 ## 1 — Get the repository, and prove it is the right half
 
 **This repository contains two projects.** Round 1 sits at the root; Round 2
-sits in `round 2/`. They have separate `src/`, separate `config.yaml`, and
+sits in `round 2/`. They have separate `controlplane/`, separate `config.yaml`, and
 incompatible schemas — Round 1's `ProbeConfig` has no `aggregations` field, so
 pointing this notebook at the root fails several cells in, after the model has
 loaded.
@@ -210,8 +210,8 @@ def is_round_two(path: Path) -> bool:
     # Round 2 has an extraction stage and a matrix; Round 1 has neither.
     return (
         (path / "config.yaml").is_file()
-        and (path / "src" / "extract").is_dir()
-        and (path / "src" / "matrix").is_dir()
+        and (path / "controlplane" / "extract").is_dir()
+        and (path / "controlplane" / "matrix").is_dir()
     )
 
 
@@ -221,7 +221,7 @@ if PROJECT is None:
         "Round 2 not found.",
         "",
         "This repository holds two projects: Round 1 at the root and Round 2 in",
-        "'round 2/'. They have separate src/ and config.yaml, and Round 1's",
+        "'round 2/'. They have separate controlplane/ and config.yaml, and Round 1's",
         "ProbeConfig has no 'aggregations' field -- so pointing this notebook at",
         "the root fails several cells in, after the model has loaded.",
         "",
@@ -243,9 +243,9 @@ if PROJECT is None:
     raise SystemExit(chr(10).join(problem))
 
 # Drop any half-imported Round 1 modules before adding Round 2 to the path.
-# Python caches by module name, so a stale 'src' would shadow the right one and
+# Python caches by module name, so a stale 'controlplane' would shadow the right one and
 # the failure would look like a missing attribute rather than a wrong import.
-for name in [n for n in sys.modules if n == "src" or n.startswith("src.")]:
+for name in [n for n in sys.modules if n == "controlplane" or n.startswith("controlplane.")]:
     del sys.modules[name]
 
 sys.path.insert(0, str(PROJECT))
@@ -272,7 +272,7 @@ idea does not work"* rather than as a bug.
         code(
             """
 import logging
-from src.config import load_config, set_seeds, setup_logging
+from controlplane.config import load_config, set_seeds, setup_logging
 
 setup_logging(logging.INFO)
 config = load_config("config.yaml")
@@ -327,7 +327,7 @@ print("rolling window/stride:", config.probe.rolling_window, config.probe.rollin
         ),
         code(
             """
-from src.extract.model import load_model
+from controlplane.extract.model import load_model
 
 loaded = load_model(config.model.name, quantization=config.model.quantization)
 print(loaded.provenance())
@@ -356,7 +356,7 @@ disk and the cell below re-runs only the long half.
         ),
         code(
             """
-from src.extract.pipeline import extract_triviaqa
+from controlplane.extract.pipeline import extract_triviaqa
 
 result = extract_triviaqa(
     config,
@@ -461,7 +461,7 @@ Flash-Attention-2 does not help: it needs sm_80 and a T4 is sm_75.
 # Recovery only. Guarded, because running this after a successful pass repeats
 # three hours of work -- which is exactly how one session was spent.
 import torch
-from src.extract.pipeline import _extract_long_context
+from controlplane.extract.pipeline import _extract_long_context
 
 if result.long_cache is not None:
     print("long-context pass already complete:",
@@ -496,7 +496,7 @@ and gitignored — download them, do not commit them.
         ),
         code(
             """
-from src.evalsets import save_evalset
+from controlplane.evalsets import save_evalset
 
 save_evalset(result.short_evalset, "evalsets")
 short_path = result.short_cache.save("results/cache-triviaqa-600.npz")
@@ -528,7 +528,7 @@ and it is what Beat 4 shows.
         ),
         code(
             """
-from src.validation.runner import validate
+from controlplane.validation.runner import validate
 
 variant = f"T1-{config.probe.aggregations[0]}"
 source = validate(
@@ -543,8 +543,8 @@ print(source.summary())
         ),
         code(
             """
-from src.validation.metrics_builder import assert_metric_shape_compatible, build_warrant_metrics
-from src.validation.synthetic import synthetic_cache, synthetic_evalset
+from controlplane.validation.metrics_builder import assert_metric_shape_compatible, build_warrant_metrics
+from controlplane.validation.synthetic import synthetic_cache, synthetic_evalset
 
 fixture_evalset = synthetic_evalset(
     eval_set_id="shape-check-synthetic",
@@ -569,9 +569,9 @@ print("shape check passed — both paths produce the same metric structure")
         ),
         code(
             """
-from src.detectors.probe import LinearProbe
-from src.validation.evalsets import TRAIN, split_by_question
-from src.validation.runner import validate_transferred
+from controlplane.detectors.probe import LinearProbe
+from controlplane.validation.evalsets import TRAIN, split_by_question
+from controlplane.validation.runner import validate_transferred
 
 if result.long_evalset is not None:
     splits = split_by_question(result.short_evalset, seed=config.seed)
@@ -593,7 +593,7 @@ if result.long_evalset is not None:
             """
 ## 6 — Validate, and build the warrant matrix
 
-The measured numbers. Each script is a thin wrapper over `src/`; they are run
+The measured numbers. Each script is a thin wrapper over `controlplane/`; they are run
 as subprocesses with `check=True` so a failure stops the notebook rather than
 leaving a run that looks successful and is missing artifacts.
 

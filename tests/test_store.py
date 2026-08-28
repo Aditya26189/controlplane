@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from src.model import (
+from controlplane.model import (
     Category,
     WarrantKey,
     WarrantStatus,
@@ -22,7 +22,7 @@ from src.model import (
     chain_hash,
     utc_now,
 )
-from src.store import GENESIS_HASH, Ledger, LedgerError, RecordKind
+from controlplane.store import GENESIS_HASH, Ledger, LedgerError, RecordKind
 
 from .factories import (
     failing_controls,

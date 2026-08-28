@@ -296,7 +296,7 @@ n_h ∝ W_h · √(q_h(1−q_h))
 
 ### 6.4 The price list — computed, never typed
 
-`src/economics/sizing.py` derives all of this from the single declared workload in `config.yaml`. The README pulls the rendered table. **No figure here is written by hand**, which is also how invariant 6 is enforced structurally rather than by discipline.
+`controlplane/economics/sizing.py` derives all of this from the single declared workload in `config.yaml`. The README pulls the rendered table. **No figure here is written by hand**, which is also how invariant 6 is enforced structurally rather than by discipline.
 
 | Claim | Extra labels | Cost | Why |
 |---|---|---|---|

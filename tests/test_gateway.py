@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from src.gateway import RESPONSE_KEY, ControlPlaneAdapter
-from src.model import Action, WarrantStatus
-from src.policy.compose import DetectorVerdict, compose
+from controlplane.gateway import RESPONSE_KEY, ControlPlaneAdapter
+from controlplane.model import Action, WarrantStatus
+from controlplane.policy.compose import DetectorVerdict, compose
 
 from .factories import make_warrant
 

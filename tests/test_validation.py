@@ -17,12 +17,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src.config import Config
-from src.detectors.aggregation import AggregationError, aggregate, max_rolling_means, mean_pool
-from src.detectors.probe import LinearProbe, ProbeError, select_regularisation
-from src.model import MetricKind, WarrantStatus
-from src.validation import controls as controls_module
-from src.validation.controls import (
+from controlplane.config import Config
+from controlplane.detectors.aggregation import AggregationError, aggregate, max_rolling_means, mean_pool
+from controlplane.detectors.probe import LinearProbe, ProbeError, select_regularisation
+from controlplane.model import MetricKind, WarrantStatus
+from controlplane.validation import controls as controls_module
+from controlplane.validation.controls import (
     canary_control,
     determinism_control,
     label_shuffle_control,
@@ -30,7 +30,7 @@ from src.validation.controls import (
     padding_fault_control,
     run_controls,
 )
-from src.validation.evalsets import (
+from controlplane.validation.evalsets import (
     SOURCE_MEASURED,
     EvalSetError,
     ExtractionCache,
@@ -38,9 +38,9 @@ from src.validation.evalsets import (
     normalise_question,
     split_by_question,
 )
-from src.validation import issuance as issuance_module
-from src.validation.runner import validate
-from src.validation.stats import (
+from controlplane.validation import issuance as issuance_module
+from controlplane.validation.runner import validate
+from controlplane.validation.stats import (
     MeasurementError,
     auroc,
     estimated,
@@ -49,7 +49,7 @@ from src.validation.stats import (
     recall_at,
     threshold_for_flag_rate,
 )
-from src.validation.synthetic import synthetic_cache, synthetic_evalset
+from controlplane.validation.synthetic import synthetic_cache, synthetic_evalset
 
 
 def _executable_lines(path: Path) -> list[tuple[int, str]]:
@@ -120,7 +120,7 @@ def test_no_override(fixture_evalset, fixture_cache, splits, config: Config) -> 
     named. Then textual: assert the issuance signature offers nothing that could
     relax the bar.
     """
-    from src.validation.issuance import issue_or_refuse
+    from controlplane.validation.issuance import issue_or_refuse
 
     from .factories import (
         PASSING_CONTROLS,
@@ -129,7 +129,7 @@ def test_no_override(fixture_evalset, fixture_cache, splits, config: Config) -> 
         make_metrics,
         make_operating_point,
     )
-    from src.model import AccessTier, WarrantKey
+    from controlplane.model import AccessTier, WarrantKey
 
     key = WarrantKey("probe-x", "P-conservative", "triviaqa-600")
     kwargs = dict(
@@ -186,7 +186,7 @@ def test_a_failed_control_cannot_be_promoted_after_the_fact(config: Config) -> N
         status=WarrantStatus.REFUSED,
         status_reason="canary recall 0.85",
     )
-    from src.model import WarrantError
+    from controlplane.model import WarrantError
 
     with pytest.raises(WarrantError, match="failed, so this warrant cannot hold"):
         refused.with_status(WarrantStatus.VALID, "operational necessity")
@@ -413,7 +413,7 @@ def test_selection_cannot_be_asked_to_use_test(config: Config) -> None:
     parameters = set(inspect.signature(select_regularisation).parameters)
     assert "test_index" not in parameters
     with pytest.raises(ProbeError, match="must not be selected on test"):
-        from src.detectors.probe import ProbeFit
+        from controlplane.detectors.probe import ProbeFit
 
         ProbeFit(
             C=0.01, selected_on="test", selection_scores={}, n_train=10,

@@ -2,7 +2,7 @@
 
 One test per case in 088, named for the case, so a reader can check the code
 against the rule rather than inferring the rule from the code. The rules were
-committed at `543899e`, before `src/policy/compose.py` existed.
+committed at `543899e`, before `controlplane/policy/compose.py` existed.
 """
 
 from __future__ import annotations
@@ -11,8 +11,8 @@ import dataclasses
 
 import pytest
 
-from src.model import Action, Category, WarrantStatus
-from src.policy.compose import RESTRICTIVENESS, ComposedDecision, DetectorVerdict, compose
+from controlplane.model import Action, Category, WarrantStatus
+from controlplane.policy.compose import RESTRICTIVENESS, ComposedDecision, DetectorVerdict, compose
 
 from .factories import failing_controls, make_finding, make_warrant
 

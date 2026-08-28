@@ -12,7 +12,7 @@ from datetime import timedelta
 
 import pytest
 
-from src.model import (
+from controlplane.model import (
     AccessTier,
     Action,
     Category,

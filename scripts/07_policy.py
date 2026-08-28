@@ -1,6 +1,6 @@
 """Issue the three operating points, load the three bundles, and decide one input.
 
-Thin wrapper: parses arguments, calls ``src/``, writes files. No logic
+Thin wrapper: parses arguments, calls ``controlplane/``, writes files. No logic
 (``CLAUDE.md``). Anything this script decides is a decision nobody can review in
 a diff of the pipeline.
 
@@ -20,13 +20,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
-from src.evalsets.registry import load_evalset
-from src.evalsets.resplit import cache_source_id
-from src.policy.runner import issue_operating_points, run_profile_comparison
-from src.store import Ledger
-from src.validation.evalsets import ExtractionCache
-from src.validation.synthetic import synthetic_cache, synthetic_evalset
+from controlplane.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
+from controlplane.evalsets.registry import load_evalset
+from controlplane.evalsets.resplit import cache_source_id
+from controlplane.policy.runner import issue_operating_points, run_profile_comparison
+from controlplane.store import Ledger
+from controlplane.validation.evalsets import ExtractionCache
+from controlplane.validation.synthetic import synthetic_cache, synthetic_evalset
 
 _LOG = logging.getLogger("scripts.07_policy")
 

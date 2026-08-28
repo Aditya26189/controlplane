@@ -1,7 +1,7 @@
 """Paired comparison of the 1200-trained and 960-trained probes.
 
 Answers the claim ``DECISIONS.md`` 079 committed to and 080 did not actually
-test. Thin wrapper: parses arguments, calls ``src/``, writes files. No logic
+test. Thin wrapper: parses arguments, calls ``controlplane/``, writes files. No logic
 (``CLAUDE.md``).
 
 Thresholds are read from the **run artifacts** rather than recomputed, because
@@ -24,20 +24,20 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
-from src.evalsets.registry import load_evalset
-from src.evalsets.resplit import cache_source_id
-from src.validation.evalsets import TEST, VALIDATION, ExtractionCache, split_by_question
-from src.report.plots import plot_roc_operating_points
-from src.validation.paired import (
+from controlplane.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
+from controlplane.evalsets.registry import load_evalset
+from controlplane.evalsets.resplit import cache_source_id
+from controlplane.validation.evalsets import TEST, VALIDATION, ExtractionCache, split_by_question
+from controlplane.report.plots import plot_roc_operating_points
+from controlplane.validation.paired import (
     compare_models,
     fit_on,
     fixture_thresholds,
     split_relationship,
 )
-from src.validation.roc import roc_curve
-from src.validation.selection import selection_aware_recall
-from src.validation.synthetic import synthetic_cache, synthetic_evalset
+from controlplane.validation.roc import roc_curve
+from controlplane.validation.selection import selection_aware_recall
+from controlplane.validation.synthetic import synthetic_cache, synthetic_evalset
 
 _LOG = logging.getLogger("scripts.08_paired")
 
@@ -99,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
     evalsets_dir = PROJECT_ROOT / config.paths.evalsets_dir
 
     if args.fixture:
-        from src.evalsets.resplit import resplit_by_question
+        from controlplane.evalsets.resplit import resplit_by_question
 
         base = synthetic_evalset(
             eval_set_id="paired-fixture-base", n_items=1200, base_rate=0.46,

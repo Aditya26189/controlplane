@@ -1,6 +1,6 @@
 """Build, freeze, register and validate the evaluation sets.
 
-Thin wrapper: parses arguments, calls ``src/``, writes files. No logic
+Thin wrapper: parses arguments, calls ``controlplane/``, writes files. No logic
 (``CLAUDE.md``).
 
 The TriviaQA sets are **not** built here. They need model generations to label —
@@ -24,9 +24,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
-from src.detectors.pii_reference import ReferencePiiDetector
-from src.evalsets import (
+from controlplane.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
+from controlplane.detectors.pii_reference import ReferencePiiDetector
+from controlplane.evalsets import (
     build_canary_pii,
     build_hard_negatives,
     build_hinglish_pii,
@@ -35,8 +35,8 @@ from src.evalsets import (
     verify_manifest,
     write_manifest,
 )
-from src.store import Ledger, RecordKind
-from src.validation.text_runner import validate_text_detector
+from controlplane.store import Ledger, RecordKind
+from controlplane.validation.text_runner import validate_text_detector
 
 _LOG = logging.getLogger("scripts.01_build_evalsets")
 

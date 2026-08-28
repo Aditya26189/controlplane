@@ -5,9 +5,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from src.drift import population_stability_index, state_for_psi
-from src.model.enums import EnvelopeState
-from src.model.findings import EnvelopeFeature
+from controlplane.drift import population_stability_index, state_for_psi
+from controlplane.model.enums import EnvelopeState
+from controlplane.model.findings import EnvelopeFeature
 
 
 def _feature(values: np.ndarray, bins: int = 10) -> EnvelopeFeature:
@@ -134,7 +134,7 @@ def test_non_finite_psi_revokes() -> None:
 
 
 def _envelope(n_bins: int, n_reference: int):
-    from src.model.findings import DistributionEnvelope
+    from controlplane.model.findings import DistributionEnvelope
 
     return DistributionEnvelope(
         envelope_id="env", eval_set_id="e", n_reference=n_reference,
@@ -155,7 +155,7 @@ def test_the_null_band_grows_with_bins_and_shrinks_with_window() -> None:
     rather than asserted, because that is what makes the guard's threshold
     defensible.
     """
-    from src.drift import simulate_null_psi
+    from controlplane.drift import simulate_null_psi
 
     narrow = simulate_null_psi([0.125] * 8, n=200, n_reference=2400, stable_band=0.10)
     wide = simulate_null_psi([0.05] * 20, n=200, n_reference=600, stable_band=0.10)
@@ -177,7 +177,7 @@ def test_the_reference_is_resampled_not_held_exact() -> None:
     optimistic number passes a configuration that alarms four times as often as
     it promised, so both sides are drawn.
     """
-    from src.drift import simulate_null_psi
+    from controlplane.drift import simulate_null_psi
 
     small_reference = simulate_null_psi([0.1] * 10, n=200, n_reference=300, stable_band=0.10)
     large_reference = simulate_null_psi([0.1] * 10, n=200, n_reference=100_000, stable_band=0.10)
@@ -189,7 +189,7 @@ def test_the_reference_is_resampled_not_held_exact() -> None:
 
 def test_a_configuration_that_alarms_on_its_own_reference_is_refused(monkeypatch) -> None:
     """A monitor that cries wolf gets switched off, which is the same as absent."""
-    from src.drift import DriftMonitor
+    from controlplane.drift import DriftMonitor
 
     with pytest.raises(ValueError, match="not scale-free"):
         DriftMonitor(
@@ -201,7 +201,7 @@ def test_a_configuration_that_alarms_on_its_own_reference_is_refused(monkeypatch
 
 def test_the_shipped_configuration_passes_its_own_guard() -> None:
     """8 bins against a 2400-item reference at a 200-window: measured 0.5%."""
-    from src.drift import DriftMonitor
+    from controlplane.drift import DriftMonitor
 
     monitor = DriftMonitor(
         _envelope(n_bins=8, n_reference=2400),
@@ -213,8 +213,8 @@ def test_the_shipped_configuration_passes_its_own_guard() -> None:
 
 def test_no_verdict_below_the_window_minimum() -> None:
     """``INSUFFICIENT_DATA`` is a state, not a default to INSIDE."""
-    from src.drift import DriftMonitor
-    from src.model.enums import EnvelopeState
+    from controlplane.drift import DriftMonitor
+    from controlplane.model.enums import EnvelopeState
 
     monitor = DriftMonitor(
         _envelope(n_bins=8, n_reference=2400),
@@ -231,8 +231,8 @@ def test_no_verdict_below_the_window_minimum() -> None:
 
 def test_a_feature_the_traffic_does_not_carry_is_not_scored_as_stable() -> None:
     """Absence is not a measurement (``DECISIONS.md`` 050)."""
-    from src.drift import DriftMonitor
-    from src.model.enums import EnvelopeState
+    from controlplane.drift import DriftMonitor
+    from controlplane.model.enums import EnvelopeState
 
     monitor = DriftMonitor(
         _envelope(n_bins=8, n_reference=2400),

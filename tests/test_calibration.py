@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import pytest
 
-from src.model.enums import CalibrationStatus, MetricKind
-from src.model.findings import OperatingPoint
-from src.model.metrics import Metric
-from src.model.serde import from_jsonable, to_jsonable
-from src.validation.calibration import assess_calibration, n_to_detect_deviation
+from controlplane.model.enums import CalibrationStatus, MetricKind
+from controlplane.model.findings import OperatingPoint
+from controlplane.model.metrics import Metric
+from controlplane.model.serde import from_jsonable, to_jsonable
+from controlplane.validation.calibration import assess_calibration, n_to_detect_deviation
 
 
 def _flag_rate(value: float, low: float, high: float, n: int = 600) -> Metric:
@@ -109,7 +109,7 @@ def test_underpowered_is_a_stored_field_not_a_property() -> None:
     # raises TypeError -- which is how this broke reading the ledger back. The
     # recomputed value has to agree with the written one, or the record and the
     # object it decodes to are two different claims.
-    from src.model.calibration import CalibrationClaim
+    from controlplane.model.calibration import CalibrationClaim
 
     restored = from_jsonable(CalibrationClaim, payload)
     assert restored.underpowered == payload["underpowered"]
@@ -167,7 +167,7 @@ def test_every_issued_warrant_carries_a_calibration_claim() -> None:
     """
     import inspect
 
-    from src.validation import issuance
+    from controlplane.validation import issuance
 
     source = inspect.getsource(issuance)
     assert "assess_calibration" in source, (

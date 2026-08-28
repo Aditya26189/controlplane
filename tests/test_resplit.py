@@ -13,8 +13,8 @@ import dataclasses
 import numpy as np
 import pytest
 
-from src.evalsets.resplit import cache_source_id, resplit_by_question
-from src.validation.evalsets import (
+from controlplane.evalsets.resplit import cache_source_id, resplit_by_question
+from controlplane.validation.evalsets import (
     TEST,
     TRAIN,
     VALIDATION,
@@ -265,7 +265,7 @@ def test_a_cache_of_the_wrong_length_is_refused(tmp_path) -> None:
 def test_validate_refuses_a_cache_from_an_unrelated_set(tmp_path) -> None:
     """The re-split exemption is narrow: it applies only to a set that declares
     this cache's set as its source, and only after the items are compared."""
-    from src.config import load_config
+    from controlplane.config import load_config
     from pathlib import Path as _Path
 
     config = load_config(str(_Path(__file__).resolve().parents[1] / "config.yaml"))
@@ -275,7 +275,7 @@ def test_validate_refuses_a_cache_from_an_unrelated_set(tmp_path) -> None:
     # not apply even though the data would compare equal.
     assert "derived_from" not in unrelated.construction
     with pytest.raises(ValueError, match="Re-extract"):
-        from src.validation.runner import validate
+        from controlplane.validation.runner import validate
 
         validate(
             config,

@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from src.detectors.presidio_adapter import (
+from controlplane.detectors.presidio_adapter import (
     CONFIGURATIONS,
     INDIAN_RECOGNIZERS,
     PresidioDetector,
@@ -126,8 +126,8 @@ def test_the_allowlist_covers_every_entity_the_custom_recognizers_emit() -> None
     were missing from the allowlist, which understated ``enabled_plus_custom``
     and refused a warrant it should have been issued.
     """
-    from src.detectors.presidio_adapter import _IDENTIFIER_ENTITIES
-    from src.detectors.presidio_custom import custom_recognizers
+    from controlplane.detectors.presidio_adapter import _IDENTIFIER_ENTITIES
+    from controlplane.detectors.presidio_custom import custom_recognizers
 
     emitted = set()
     for recognizer in custom_recognizers():
@@ -188,8 +188,8 @@ def test_an_unclassified_entity_raises_rather_than_being_dropped() -> None:
     Every entity must be classified as an identifier or as ignorable, so the
     lists have to be extended deliberately.
     """
-    from src.detectors import presidio_adapter
-    from src.detectors.presidio_adapter import UnclassifiedEntityError
+    from controlplane.detectors import presidio_adapter
+    from controlplane.detectors.presidio_adapter import UnclassifiedEntityError
 
     detector = PresidioDetector("stock")
     original = presidio_adapter._IGNORED_ENTITIES
@@ -205,7 +205,7 @@ def test_an_unclassified_entity_raises_rather_than_being_dropped() -> None:
 def test_every_entity_the_shipped_sets_provoke_is_classified() -> None:
     """The guard must not fire on our own corpora — otherwise it is a landmine
     rather than a check."""
-    from src.detectors.presidio_adapter import UnclassifiedEntityError
+    from controlplane.detectors.presidio_adapter import UnclassifiedEntityError
 
     for name in ("hinglish-pii-200", "hinglish-pii-200b", "hard-negatives-200", "canary-20-pii"):
         texts = [item["prompt"] for item in evalset(name)["items"]]
@@ -237,7 +237,7 @@ def test_the_extended_inventory_does_not_change_the_frozen_set() -> None:
     ``hinglish-pii-200`` and orphan every warrant keyed on it, so the key is
     written only when the extension is used.
     """
-    from src.evalsets.builders import build_hinglish_pii
+    from controlplane.evalsets.builders import build_hinglish_pii
 
     rebuilt = build_hinglish_pii(seed=1729)
     assert rebuilt.content_hash == evalset("hinglish-pii-200")["content_hash"]

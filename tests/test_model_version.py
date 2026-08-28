@@ -11,12 +11,12 @@ import dataclasses
 
 import pytest
 
-from src.drift.model_version import (
+from controlplane.drift.model_version import (
     ModelVersionInvalidation,
     invalidate_for_model_change,
     pins_to_model,
 )
-from src.model import AccessTier, WarrantStatus
+from controlplane.model import AccessTier, WarrantStatus
 
 from .factories import failing_controls, make_warrant
 

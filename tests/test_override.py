@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from src.model import utc_now
-from src.model.override import (
+from controlplane.model import utc_now
+from controlplane.model.override import (
     FLAGGED,
     UNFLAGGED,
     HumanDecision,
@@ -22,7 +22,7 @@ from src.model.override import (
     OverrideError,
     OverrideRecord,
 )
-from src.store import Ledger, RecordKind
+from controlplane.store import Ledger, RecordKind
 
 
 def record(**overrides) -> OverrideRecord:

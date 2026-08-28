@@ -13,17 +13,17 @@ import dataclasses
 import numpy as np
 import pytest
 
-from src.validation.evalsets import TEST, TRAIN, VALIDATION, EvalItem, EvalSet
-from src.validation.paired import (
+from controlplane.validation.evalsets import TEST, TRAIN, VALIDATION, EvalItem, EvalSet
+from controlplane.validation.paired import (
     PairedDifference,
     paired_bootstrap,
     split_relationship,
 )
-from src.validation.roc import roc_curve
+from controlplane.validation.roc import roc_curve
 
 
 def _auroc(scores: np.ndarray, labels: np.ndarray) -> float:
-    from src.validation.paired import _auroc as impl
+    from controlplane.validation.paired import _auroc as impl
 
     return impl(scores, labels)
 
@@ -297,7 +297,7 @@ def test_selection_noise_widens_the_interval_it_is_added_to() -> None:
     and reselects, and must be wider — if it is not, the reselection is not
     reaching the threshold.
     """
-    from src.validation.selection import selection_aware_recall
+    from controlplane.validation.selection import selection_aware_recall
 
     (vs, vy), (ts, ty) = _split_pair()
     threshold = float(np.quantile(vs, 0.90))
@@ -318,7 +318,7 @@ def test_the_widening_is_larger_where_fewer_negatives_position_the_threshold() -
     sits on a steep segment; a high-flag-rate point is positioned by many and
     sits on a flat one. The first must widen more.
     """
-    from src.validation.selection import selection_aware_recall
+    from controlplane.validation.selection import selection_aware_recall
 
     (vs, vy), (ts, ty) = _split_pair()
     bounds = {}
@@ -339,7 +339,7 @@ def test_the_widening_is_larger_where_fewer_negatives_position_the_threshold() -
 def test_the_realised_rates_are_measured_on_test_not_taken_from_the_budget() -> None:
     """Invariant 6. The target is what was aimed at; only the measured rate may
     feed a downstream calculation."""
-    from src.validation.selection import selection_aware_recall
+    from controlplane.validation.selection import selection_aware_recall
 
     (vs, vy), (ts, ty) = _split_pair()
     bound = selection_aware_recall(
@@ -359,7 +359,7 @@ def test_the_realised_rates_are_measured_on_test_not_taken_from_the_budget() -> 
 
 
 def test_a_split_without_positives_supports_no_recall_bound() -> None:
-    from src.validation.selection import selection_aware_recall
+    from controlplane.validation.selection import selection_aware_recall
 
     (vs, vy), (ts, _) = _split_pair()
     with pytest.raises(ValueError, match="needs positives"):
@@ -383,7 +383,7 @@ def test_a_reused_seed_nests_and_a_fresh_one_does_not(caplog) -> None:
     paired comparison is possible at all.
     """
     import logging
-    from src.evalsets.resplit import resplit_by_question
+    from controlplane.evalsets.resplit import resplit_by_question
 
     source = make_set(lambda q: TRAIN if q < 500 else VALIDATION if q < 750 else TEST)
     # The source's own splits here are positional rather than permuted, so no
@@ -400,8 +400,8 @@ def test_a_reused_seed_nests_and_a_fresh_one_does_not(caplog) -> None:
 def test_require_nested_refuses_rather_than_warning() -> None:
     """For callers whose next step is a paired comparison, a warning is not
     enough — the comparison would run on whatever intersection survived."""
-    from src.evalsets.resplit import resplit_by_question
-    from src.validation.evalsets import EvalSetError
+    from controlplane.evalsets.resplit import resplit_by_question
+    from controlplane.validation.evalsets import EvalSetError
 
     source = make_set(lambda q: TRAIN if q < 500 else VALIDATION if q < 750 else TEST)
     with pytest.raises(EvalSetError, match="does not nest"):
@@ -418,7 +418,7 @@ def test_the_nesting_check_does_not_change_the_frozen_identity() -> None:
     already built, and ``triviaqa-2400-t960`` would stop hashing to the value
     its warrants are keyed on.
     """
-    from src.evalsets.resplit import resplit_by_question
+    from controlplane.evalsets.resplit import resplit_by_question
 
     source = make_set(lambda q: TRAIN if q < 500 else VALIDATION if q < 750 else TEST)
     derived = resplit_by_question(

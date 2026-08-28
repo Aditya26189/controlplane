@@ -1,7 +1,7 @@
 """Every script actually runs. ``SPEC.md`` §10, ``test_smoke``.
 
 **Why this exists, written after the second time it was needed.** The test suite
-imports from ``src/`` and never executes a script, so a script can be broken for
+imports from ``controlplane/`` and never executes a script, so a script can be broken for
 a whole phase without a single test failing. It has now happened twice:
 
 * ``scripts/02_validate.py`` referenced ``RecordKind`` without importing it, for
@@ -10,7 +10,7 @@ a whole phase without a single test failing. It has now happened twice:
   (``DECISIONS.md`` 040): a fix applied at one call site when the cause was a
   shared concept.
 
-Scripts are where ``src/`` is wired together, and wiring is exactly what unit
+Scripts are where ``controlplane/`` is wired together, and wiring is exactly what unit
 tests do not exercise. These run each one end to end at the smallest size that
 still does real work, and assert the artifacts appear.
 
@@ -183,7 +183,7 @@ def test_smoke_paired_fixture(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(
-    not __import__("src.detectors.presidio_adapter", fromlist=["x"]).presidio_available(),
+    not __import__("controlplane.detectors.presidio_adapter", fromlist=["x"]).presidio_available(),
     reason="presidio-analyzer not installed",
 )
 def test_smoke_detectors(tmp_path: Path) -> None:
@@ -252,8 +252,8 @@ def test_transfer_refuses_a_mismatched_cache(tmp_path) -> None:
     """
     import importlib.util
 
-    from src.evalsets.registry import save_evalset
-    from src.validation.synthetic import synthetic_cache, synthetic_evalset
+    from controlplane.evalsets.registry import save_evalset
+    from controlplane.validation.synthetic import synthetic_cache, synthetic_evalset
 
     spec = importlib.util.spec_from_file_location(
         "transfer_script", PROJECT_ROOT / "scripts" / "04_transfer.py"
@@ -297,9 +297,9 @@ def test_canary_is_all_positive_and_clears_its_own_threshold(tmp_path) -> None:
     """
     import importlib.util
 
-    from src.evalsets.registry import load_evalset, save_evalset
-    from src.validation.evalsets import TRAIN
-    from src.validation.synthetic import synthetic_cache, synthetic_evalset
+    from controlplane.evalsets.registry import load_evalset, save_evalset
+    from controlplane.validation.evalsets import TRAIN
+    from controlplane.validation.synthetic import synthetic_cache, synthetic_evalset
 
     spec = importlib.util.spec_from_file_location(
         "canary_script", PROJECT_ROOT / "scripts" / "05_canary.py"
@@ -536,7 +536,7 @@ def test_every_script_has_a_smoke_test() -> None:
     uncovered = scripts - covered - exempt
     assert not uncovered, (
         f"scripts without a smoke test: {sorted(uncovered)}. Scripts are where "
-        "src/ is wired together, and wiring is what unit tests do not exercise."
+        "controlplane/ is wired together, and wiring is what unit tests do not exercise."
     )
 
 

@@ -1,6 +1,6 @@
 """Shared pytest fixtures.
 
-Puts the project root on ``sys.path`` so ``import src...`` resolves regardless
+Puts the project root on ``sys.path`` so ``import controlplane...`` resolves regardless
 of where pytest was invoked from, and provides the fixtures more than one test
 file needs.
 
@@ -20,7 +20,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import Config, load_config  # noqa: E402  (path set up above)
+from controlplane.config import Config, load_config  # noqa: E402  (path set up above)
 
 
 @pytest.fixture(scope="session")

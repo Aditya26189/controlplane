@@ -29,10 +29,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src.config import Config
-from src.matrix import Profile, WarrantMatrix, route
-from src.model import Metric, MetricKind, WarrantStatus, utc_now
-from src.validation.metrics_builder import build_warrant_metrics
+from controlplane.config import Config
+from controlplane.matrix import Profile, WarrantMatrix, route
+from controlplane.model import Metric, MetricKind, WarrantStatus, utc_now
+from controlplane.validation.metrics_builder import build_warrant_metrics
 
 from .factories import make_metrics, make_warrant
 
@@ -41,7 +41,7 @@ from .factories import make_metrics, make_warrant
 # Control 1: every metric has exactly one implementation
 # --------------------------------------------------------------------------- #
 
-SRC = Path(__file__).resolve().parents[1] / "src"
+SRC = Path(__file__).resolve().parents[1] / "controlplane"
 
 
 def test_warrant_metrics_has_exactly_one_construction_site() -> None:
@@ -250,9 +250,9 @@ def test_lift_lower_bound_refuses_a_warrant_no_better_than_chance(
     lower bound is zero. AUROC's lower bound cleared 0.55, so nothing refused
     it before.
     """
-    from src.validation.issuance import MIN_LIFT_LOWER_BOUND, issue_or_refuse
+    from controlplane.validation.issuance import MIN_LIFT_LOWER_BOUND, issue_or_refuse
 
-    from src.model import AccessTier, WarrantKey
+    from controlplane.model import AccessTier, WarrantKey
 
     from .factories import (
         PASSING_CONTROLS,
@@ -293,9 +293,9 @@ def test_a_useful_detector_still_issues(config: Config) -> None:
     Recall 0.216 [0.129, 0.306] at a 5% flag rate is lift 4.3 [2.6, 6.1].
     A criterion that refused this would be a bar chosen to produce a demo.
     """
-    from src.validation.issuance import issue_or_refuse
+    from controlplane.validation.issuance import issue_or_refuse
 
-    from src.model import AccessTier, WarrantKey
+    from controlplane.model import AccessTier, WarrantKey
 
     from .factories import PASSING_CONTROLS, make_envelope, make_operating_point
 
@@ -326,9 +326,9 @@ def test_a_useful_detector_still_issues(config: Config) -> None:
 
 def test_single_class_envelope_skips_the_lift_criterion(config: Config) -> None:
     """Lift needs recall, and a single-class envelope has none."""
-    from src.validation.issuance import issue_or_refuse
+    from controlplane.validation.issuance import issue_or_refuse
 
-    from src.model import AccessTier, WarrantKey
+    from controlplane.model import AccessTier, WarrantKey
 
     from .factories import PASSING_CONTROLS, make_envelope, make_operating_point
 

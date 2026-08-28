@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Optional
 
-from src.model import (
+from controlplane.model import (
     AccessTier,
     Action,
     Category,

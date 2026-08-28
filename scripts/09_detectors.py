@@ -1,6 +1,6 @@
 """Validate the Presidio configurations and issue or refuse their warrants.
 
-Thin wrapper: parses arguments, calls ``src/``, writes files. No logic
+Thin wrapper: parses arguments, calls ``controlplane/``, writes files. No logic
 (``CLAUDE.md``).
 
 The point of this stage is the **refusal**. Stock Presidio is measured on
@@ -23,12 +23,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
-from src.detectors.presidio_adapter import CONFIGURATIONS, PresidioDetector, presidio_available
-from src.detectors.pii_reference import ReferencePiiDetector
-from src.evalsets.registry import load_evalset
-from src.store import Ledger
-from src.validation.text_runner import validate_text_detector
+from controlplane.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
+from controlplane.detectors.presidio_adapter import CONFIGURATIONS, PresidioDetector, presidio_available
+from controlplane.detectors.pii_reference import ReferencePiiDetector
+from controlplane.evalsets.registry import load_evalset
+from controlplane.store import Ledger
+from controlplane.validation.text_runner import validate_text_detector
 
 _LOG = logging.getLogger("scripts.09_detectors")
 

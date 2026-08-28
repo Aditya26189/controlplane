@@ -15,7 +15,7 @@ from datetime import timedelta
 import numpy as np
 import pytest
 
-from src.drift import (
+from controlplane.drift import (
     DriftMonitor,
     DriftVerdict,
     apply_ladder,
@@ -23,9 +23,9 @@ from src.drift import (
     ladder_policy_hash,
     respond_to_drift,
 )
-from src.drift.psi import PsiResult
-from src.matrix import MatrixCell, Profile, WarrantMatrix
-from src.model import (
+from controlplane.drift.psi import PsiResult
+from controlplane.matrix import MatrixCell, Profile, WarrantMatrix
+from controlplane.model import (
     Action,
     DistributionEnvelope,
     EnvelopeFeature,
@@ -392,7 +392,7 @@ def test_the_phase_5_gate(tmp_path) -> None:
     warrant on that envelope, adopt its bounds, and write a certificate
     explaining all of it — which then seals into the append-only ledger.
     """
-    from src.store import Ledger
+    from controlplane.store import Ledger
 
     short_values = _draw(_SHORT, 600, 1729)
     short = _warrant_on("triviaqa-600", short_values)

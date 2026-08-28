@@ -20,7 +20,7 @@ Read `CONTRIBUTING.md` before Phase 0. These are part of every gate, not extras:
 
 `git init` if needed. First commit is the existing documents as `docs: add project contracts and build plan`. Then branch.
 
-Build `src/config.py`: dataclasses mirroring `config.yaml`, YAML load with validation, fractional-depth → layer-index resolution, SHA-256 config hashing, and `provenance()` returning config hash, git commit, `dirty` flag from `git status --porcelain`, library versions, device, UTC timestamp.
+Build `controlplane/config.py`: dataclasses mirroring `config.yaml`, YAML load with validation, fractional-depth → layer-index resolution, SHA-256 config hashing, and `provenance()` returning config hash, git commit, `dirty` flag from `git status --porcelain`, library versions, device, UTC timestamp.
 
 **Gate:** config hash stable across runs. `provenance()` correctly reports `dirty` after touching a file. Docs commit plus ≥3 scaffold commits. Tagged `phase-0`.
 
@@ -78,7 +78,7 @@ Envelope computation stored in the warrant. PSI per feature, MMD on embeddings, 
 
 ## Phase 6 — On-traffic warrant
 
-`src/economics/sizing.py` with the derivative propagation. Stratified estimator. Sampling scheduler with proportional allocation for month one and Neyman thereafter. Blinded interleaved label queue. Double-labelling at ~10% and Cohen's κ. The computed price list.
+`controlplane/economics/sizing.py` with the derivative propagation. Stratified estimator. Sampling scheduler with proportional allocation for month one and Neyman thereafter. Blinded interleaved label queue. Double-labelling at ~10% and Cohen's κ. The computed price list.
 
 **Gate:**
 - `test_sizing_derivative` passes — sizing for recall differs from sizing for prevalence by `(∂R/∂q)²`.
