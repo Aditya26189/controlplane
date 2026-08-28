@@ -1,8 +1,8 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-28T13:26:24+00:00",
-    "git_commit": "3cee06da562f80165e77a350d017e165833582c9",
-    "git_branch": "phase/8-detectors",
+    "timestamp_utc": "2026-08-28T19:23:47+00:00",
+    "git_commit": "cd1cc243750e05e646b7d961e70aca7aae1589a7",
+    "git_branch": "main",
     "dirty": false,
     "dirty_paths": [],
     "dirty_excludes": "results",
@@ -210,9 +210,9 @@
       "envelope_id": "sha256:1e2dee9d8fa91cba",
       "model_name": "none (stateless text detector)",
       "data_source": "measured",
-      "started_at": "2026-08-28T13:25:18+00:00",
-      "completed_at": "2026-08-28T13:25:30+00:00",
-      "duration_seconds": 11.972260099835694,
+      "started_at": "2026-08-28T19:22:40+00:00",
+      "completed_at": "2026-08-28T19:22:52+00:00",
+      "duration_seconds": 12.05713739991188,
       "splits": {
         "train": 0,
         "validation": 0,
@@ -370,8 +370,8 @@
         },
         "eval_set_id": "hinglish-pii-200b",
         "validation_run_id": "run-98fa4d9d029b",
-        "issued_at": "2026-08-28T13:25:18+00:00",
-        "expires_at": "2026-08-29T13:25:18+00:00",
+        "issued_at": "2026-08-28T19:22:40+00:00",
+        "expires_at": "2026-08-29T19:22:40+00:00",
         "metrics": {
           "auroc": {
             "name": "auroc",
@@ -530,7 +530,7 @@
         "access_tier": 3,
         "status": "REFUSED",
         "kappa": null,
-        "status_reason": "control:canary: measured 0.2000 (margin -0.8000), required recall == 1.0; auroc_lower_ci: measured 0.4328, required > 0.55; lift_lower_ci: measured 1.050 [0.510, 1.672] at measured flag rate 0.1400, required > 1.0 \u2014 otherwise not demonstrably better than random sampling at the same budget",
+        "status_reason": "[presidio-stock==2.2.364] control:canary: measured 0.2000 (margin -0.8000), required recall == 1.0; auroc_lower_ci: measured 0.4328, required > 0.55; lift_lower_ci: measured 1.050 [0.510, 1.672] at measured flag rate 0.1400, required > 1.0 \u2014 otherwise not demonstrably better than random sampling at the same budget",
         "superseded_by": null,
         "calibration": {
           "status": "UNKNOWN",
@@ -553,7 +553,7 @@
         }
       },
       "warrant_status": "REFUSED",
-      "status_reason": "control:canary: measured 0.2000 (margin -0.8000), required recall == 1.0; auroc_lower_ci: measured 0.4328, required > 0.55; lift_lower_ci: measured 1.050 [0.510, 1.672] at measured flag rate 0.1400, required > 1.0 \u2014 otherwise not demonstrably better than random sampling at the same budget"
+      "status_reason": "[presidio-stock==2.2.364] control:canary: measured 0.2000 (margin -0.8000), required recall == 1.0; auroc_lower_ci: measured 0.4328, required > 0.55; lift_lower_ci: measured 1.050 [0.510, 1.672] at measured flag rate 0.1400, required > 1.0 \u2014 otherwise not demonstrably better than random sampling at the same budget"
     },
     {
       "run_id": "run-61a57a117e58",
@@ -563,9 +563,9 @@
       "envelope_id": "sha256:d28e4de2024de10d",
       "model_name": "none (stateless text detector)",
       "data_source": "measured",
-      "started_at": "2026-08-28T13:25:30+00:00",
-      "completed_at": "2026-08-28T13:25:39+00:00",
-      "duration_seconds": 8.77778820018284,
+      "started_at": "2026-08-28T19:22:53+00:00",
+      "completed_at": "2026-08-28T19:23:02+00:00",
+      "duration_seconds": 8.860158700030297,
       "splits": {
         "train": 0,
         "validation": 0,
@@ -691,8 +691,8 @@
         },
         "eval_set_id": "hard-negatives-200",
         "validation_run_id": "run-61a57a117e58",
-        "issued_at": "2026-08-28T13:25:30+00:00",
-        "expires_at": "2026-08-29T13:25:30+00:00",
+        "issued_at": "2026-08-28T19:22:53+00:00",
+        "expires_at": "2026-08-29T19:22:53+00:00",
         "metrics": {
           "auroc": null,
           "recall": null,
@@ -819,7 +819,7 @@
         "access_tier": 3,
         "status": "REFUSED",
         "kappa": null,
-        "status_reason": "control:canary: measured 0.2000 (margin -0.8000), required recall == 1.0",
+        "status_reason": "[presidio-stock==2.2.364] control:canary: measured 0.2000 (margin -0.8000), required recall == 1.0",
         "superseded_by": null,
         "calibration": {
           "status": "UNKNOWN",
@@ -842,7 +842,7 @@
         }
       },
       "warrant_status": "REFUSED",
-      "status_reason": "control:canary: measured 0.2000 (margin -0.8000), required recall == 1.0"
+      "status_reason": "[presidio-stock==2.2.364] control:canary: measured 0.2000 (margin -0.8000), required recall == 1.0"
     },
     {
       "run_id": "run-43b35cfa2f00",
@@ -852,9 +852,9 @@
       "envelope_id": "sha256:1e2dee9d8fa91cba",
       "model_name": "none (stateless text detector)",
       "data_source": "measured",
-      "started_at": "2026-08-28T13:25:39+00:00",
-      "completed_at": "2026-08-28T13:25:51+00:00",
-      "duration_seconds": 11.729295999975875,
+      "started_at": "2026-08-28T19:23:02+00:00",
+      "completed_at": "2026-08-28T19:23:14+00:00",
+      "duration_seconds": 11.884095399873331,
       "splits": {
         "train": 0,
         "validation": 0,
@@ -1012,8 +1012,8 @@
         },
         "eval_set_id": "hinglish-pii-200b",
         "validation_run_id": "run-43b35cfa2f00",
-        "issued_at": "2026-08-28T13:25:39+00:00",
-        "expires_at": "2026-08-29T13:25:39+00:00",
+        "issued_at": "2026-08-28T19:23:02+00:00",
+        "expires_at": "2026-08-29T19:23:02+00:00",
         "metrics": {
           "auroc": {
             "name": "auroc",
@@ -1172,7 +1172,7 @@
         "access_tier": 3,
         "status": "REFUSED",
         "kappa": null,
-        "status_reason": "control:canary: measured 0.6000 (margin -0.4000), required recall == 1.0; auroc_lower_ci: measured 0.5323, required > 0.55",
+        "status_reason": "[presidio-enabled==2.2.364] control:canary: measured 0.6000 (margin -0.4000), required recall == 1.0; auroc_lower_ci: measured 0.5323, required > 0.55",
         "superseded_by": null,
         "calibration": {
           "status": "UNKNOWN",
@@ -1195,7 +1195,7 @@
         }
       },
       "warrant_status": "REFUSED",
-      "status_reason": "control:canary: measured 0.6000 (margin -0.4000), required recall == 1.0; auroc_lower_ci: measured 0.5323, required > 0.55"
+      "status_reason": "[presidio-enabled==2.2.364] control:canary: measured 0.6000 (margin -0.4000), required recall == 1.0; auroc_lower_ci: measured 0.5323, required > 0.55"
     },
     {
       "run_id": "run-c71f2511f6f4",
@@ -1205,9 +1205,9 @@
       "envelope_id": "sha256:d28e4de2024de10d",
       "model_name": "none (stateless text detector)",
       "data_source": "measured",
-      "started_at": "2026-08-28T13:25:51+00:00",
-      "completed_at": "2026-08-28T13:26:00+00:00",
-      "duration_seconds": 9.139851300045848,
+      "started_at": "2026-08-28T19:23:14+00:00",
+      "completed_at": "2026-08-28T19:23:23+00:00",
+      "duration_seconds": 9.24335250002332,
       "splits": {
         "train": 0,
         "validation": 0,
@@ -1333,8 +1333,8 @@
         },
         "eval_set_id": "hard-negatives-200",
         "validation_run_id": "run-c71f2511f6f4",
-        "issued_at": "2026-08-28T13:25:51+00:00",
-        "expires_at": "2026-08-29T13:25:51+00:00",
+        "issued_at": "2026-08-28T19:23:14+00:00",
+        "expires_at": "2026-08-29T19:23:14+00:00",
         "metrics": {
           "auroc": null,
           "recall": null,
@@ -1461,7 +1461,7 @@
         "access_tier": 3,
         "status": "REFUSED",
         "kappa": null,
-        "status_reason": "control:canary: measured 0.6000 (margin -0.4000), required recall == 1.0",
+        "status_reason": "[presidio-enabled==2.2.364] control:canary: measured 0.6000 (margin -0.4000), required recall == 1.0",
         "superseded_by": null,
         "calibration": {
           "status": "UNKNOWN",
@@ -1484,7 +1484,7 @@
         }
       },
       "warrant_status": "REFUSED",
-      "status_reason": "control:canary: measured 0.6000 (margin -0.4000), required recall == 1.0"
+      "status_reason": "[presidio-enabled==2.2.364] control:canary: measured 0.6000 (margin -0.4000), required recall == 1.0"
     },
     {
       "run_id": "run-ec0724112192",
@@ -1494,9 +1494,9 @@
       "envelope_id": "sha256:1e2dee9d8fa91cba",
       "model_name": "none (stateless text detector)",
       "data_source": "measured",
-      "started_at": "2026-08-28T13:26:01+00:00",
-      "completed_at": "2026-08-28T13:26:12+00:00",
-      "duration_seconds": 11.78519789990969,
+      "started_at": "2026-08-28T19:23:23+00:00",
+      "completed_at": "2026-08-28T19:23:35+00:00",
+      "duration_seconds": 11.878082700073719,
       "splits": {
         "train": 0,
         "validation": 0,
@@ -1654,8 +1654,8 @@
         },
         "eval_set_id": "hinglish-pii-200b",
         "validation_run_id": "run-ec0724112192",
-        "issued_at": "2026-08-28T13:26:01+00:00",
-        "expires_at": "2026-08-29T13:26:01+00:00",
+        "issued_at": "2026-08-28T19:23:23+00:00",
+        "expires_at": "2026-08-29T19:23:23+00:00",
         "metrics": {
           "auroc": {
             "name": "auroc",
@@ -1847,9 +1847,9 @@
       "envelope_id": "sha256:d28e4de2024de10d",
       "model_name": "none (stateless text detector)",
       "data_source": "measured",
-      "started_at": "2026-08-28T13:26:13+00:00",
-      "completed_at": "2026-08-28T13:26:22+00:00",
-      "duration_seconds": 9.231846499955282,
+      "started_at": "2026-08-28T19:23:35+00:00",
+      "completed_at": "2026-08-28T19:23:45+00:00",
+      "duration_seconds": 9.675640299916267,
       "splits": {
         "train": 0,
         "validation": 0,
@@ -1975,8 +1975,8 @@
         },
         "eval_set_id": "hard-negatives-200",
         "validation_run_id": "run-2589fa2513ca",
-        "issued_at": "2026-08-28T13:26:13+00:00",
-        "expires_at": "2026-08-29T13:26:13+00:00",
+        "issued_at": "2026-08-28T19:23:35+00:00",
+        "expires_at": "2026-08-29T19:23:35+00:00",
         "metrics": {
           "auroc": null,
           "recall": null,
@@ -2136,9 +2136,9 @@
       "envelope_id": "sha256:1e2dee9d8fa91cba",
       "model_name": "none (stateless text detector)",
       "data_source": "measured",
-      "started_at": "2026-08-28T13:26:22+00:00",
-      "completed_at": "2026-08-28T13:26:23+00:00",
-      "duration_seconds": 1.0113347999285907,
+      "started_at": "2026-08-28T19:23:45+00:00",
+      "completed_at": "2026-08-28T19:23:46+00:00",
+      "duration_seconds": 1.0147460999432951,
       "splits": {
         "train": 0,
         "validation": 0,
@@ -2296,8 +2296,8 @@
         },
         "eval_set_id": "hinglish-pii-200b",
         "validation_run_id": "run-cfb1a1fe05b3",
-        "issued_at": "2026-08-28T13:26:22+00:00",
-        "expires_at": "2026-08-29T13:26:22+00:00",
+        "issued_at": "2026-08-28T19:23:45+00:00",
+        "expires_at": "2026-08-29T19:23:45+00:00",
         "metrics": {
           "auroc": {
             "name": "auroc",
@@ -2489,9 +2489,9 @@
       "envelope_id": "sha256:d28e4de2024de10d",
       "model_name": "none (stateless text detector)",
       "data_source": "measured",
-      "started_at": "2026-08-28T13:26:23+00:00",
-      "completed_at": "2026-08-28T13:26:24+00:00",
-      "duration_seconds": 0.2738686001393944,
+      "started_at": "2026-08-28T19:23:46+00:00",
+      "completed_at": "2026-08-28T19:23:47+00:00",
+      "duration_seconds": 0.3023709999397397,
       "splits": {
         "train": 0,
         "validation": 0,
@@ -2617,8 +2617,8 @@
         },
         "eval_set_id": "hard-negatives-200",
         "validation_run_id": "run-7d9e8e9cbc46",
-        "issued_at": "2026-08-28T13:26:23+00:00",
-        "expires_at": "2026-08-29T13:26:23+00:00",
+        "issued_at": "2026-08-28T19:23:46+00:00",
+        "expires_at": "2026-08-29T19:23:46+00:00",
         "metrics": {
           "auroc": null,
           "recall": null,
