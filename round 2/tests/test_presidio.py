@@ -173,3 +173,72 @@ def test_the_score_is_a_maximum_not_a_count() -> None:
 def test_a_message_with_no_identifier_scores_zero() -> None:
     detector = PresidioDetector("enabled")
     assert detector.score(["Account balance kitna hai bhai?"])[0] == 0.0
+
+
+# --------------------------------------------------------------------------- #
+# The allowlist is a hard failure, not a filter — DECISIONS.md 086
+# --------------------------------------------------------------------------- #
+
+
+def test_an_unclassified_entity_raises_rather_than_being_dropped() -> None:
+    """The general form of the bug 084 hit, closed for every future adapter.
+
+    A filter lets any adapter understate its detector with nothing in the output
+    to show for it, and the understatement is in the direction nobody audits.
+    Every entity must be classified as an identifier or as ignorable, so the
+    lists have to be extended deliberately.
+    """
+    from src.detectors import presidio_adapter
+    from src.detectors.presidio_adapter import UnclassifiedEntityError
+
+    detector = PresidioDetector("stock")
+    original = presidio_adapter._IGNORED_ENTITIES
+    try:
+        # Remove a class the analyzer really emits on this input.
+        presidio_adapter._IGNORED_ENTITIES = frozenset(original - {"DATE_TIME", "URL"})
+        with pytest.raises(UnclassifiedEntityError, match="classifies neither"):
+            detector.find("Call me on 12 January 2026 or see https://example.com")
+    finally:
+        presidio_adapter._IGNORED_ENTITIES = original
+
+
+def test_every_entity_the_shipped_sets_provoke_is_classified() -> None:
+    """The guard must not fire on our own corpora — otherwise it is a landmine
+    rather than a check."""
+    from src.detectors.presidio_adapter import UnclassifiedEntityError
+
+    for name in ("hinglish-pii-200", "hinglish-pii-200b", "hard-negatives-200", "canary-20-pii"):
+        texts = [item["prompt"] for item in evalset(name)["items"]]
+        for configuration in CONFIGURATIONS:
+            try:
+                PresidioDetector(configuration).score(texts)
+            except UnclassifiedEntityError as exc:  # pragma: no cover - failure path
+                pytest.fail(f"{configuration} on {name}: {exc}")
+
+
+def test_the_holdout_is_a_different_envelope_with_the_same_shape() -> None:
+    """``hinglish-pii-200b`` must be a new identity, not a renamed copy."""
+    base, holdout = evalset("hinglish-pii-200"), evalset("hinglish-pii-200b")
+    assert base["eval_set_id"] != holdout["eval_set_id"]
+    assert base["content_hash"] != holdout["content_hash"]
+    assert len(base["items"]) == len(holdout["items"])
+    prompts = {i["prompt"] for i in base["items"]}
+    overlap = sum(1 for i in holdout["items"] if i["prompt"] in prompts)
+    assert overlap < len(holdout["items"]) // 4, (
+        f"{overlap} of {len(holdout['items'])} holdout prompts are identical to "
+        "the base set; the identifiers were meant to be redrawn"
+    )
+
+
+def test_the_extended_inventory_does_not_change_the_frozen_set() -> None:
+    """Construction notes are inside the content hash.
+
+    Recording ``extended_forms`` unconditionally would change the identity of
+    ``hinglish-pii-200`` and orphan every warrant keyed on it, so the key is
+    written only when the extension is used.
+    """
+    from src.evalsets.builders import build_hinglish_pii
+
+    rebuilt = build_hinglish_pii(seed=1729)
+    assert rebuilt.content_hash == evalset("hinglish-pii-200")["content_hash"]
+    assert "extended_forms" not in rebuilt.construction

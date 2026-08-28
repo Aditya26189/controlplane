@@ -2599,3 +2599,94 @@ holdout needs scenarios written by someone who has not read the recognizers.
 - If `enabled_plus_custom` falls below the issuance bar on `200b`, its warrant
   is **refused there**, and `084`'s VALID row stands only for `200` with the
   contamination stated.
+
+
+## 086 - The holdout was built, and it is underpowered. Reporting it anyway.
+
+Executes the pre-registration in `085`. Two of its findings are useful and the
+third is a failure of my own design, reported because `085` committed to
+reporting whatever came out.
+
+### Result on `hinglish-pii-200b`
+
+| detector | `200` (in-sample for rows 3-4) | `200b` | change |
+|---|---|---|---|
+| `presidio-stock` | 0.1176 [0.0500, 0.2000] | 0.1471 [0.0714, 0.2341] | +0.0295 |
+| `presidio-enabled` | 0.2843 [0.2075, 0.3810] | 0.3137 [0.2340, 0.3977] | +0.0294 |
+| `presidio-enabled_plus_custom` | 0.6176 [0.5185, 0.7128] | 0.6471 [0.5667, 0.7359] | +0.0295 |
+| `pii-reference` | 0.7941 [0.6981, 0.8846] | 0.8333 [0.7592, 0.9035] | +0.0392 |
+
+**Nothing dropped.** The fitted detectors did not fall on the holdout.
+
+### Why that is not the vindication it looks like
+
+All four moved up by almost exactly the same amount, including the two that were
+never fitted to anything. A uniform shift across fitted and unfitted detectors
+alike is a property of the *set*, not of the detectors: `200b` is marginally
+easier. It says nothing about whether the fitting inflated row 3.
+
+The reason is a defect in how I built the extension, and it is the `MDD` lesson
+from `081` in a different costume: **I did not check whether the holdout had the
+power to detect the thing it was built to detect.**
+
+- The extended inventory applies only to the `spaced` disclosure form, which is
+  **34 of 102** positives. The other two thirds were never affected.
+- Of the five separators added, one was the **empty string** — which renders an
+  identifier contiguously, i.e. in its *canonical* form. That is the easiest
+  case, not a novel one. I added it as an extension and it works as a
+  simplification.
+- Measured directly: only **5 of 102** positives in `200b` carry a separator
+  outside `presidio_custom._SEPARATOR`. At n=5 nothing is measurable.
+
+So `085`'s central comparison — `enabled_plus_custom` on `200` versus `200b` —
+**was not actually testable by the set I built to test it.** The number is
+reported and the claim it was meant to support is not made.
+
+### What is now established, and what is not
+
+**Established:** row 3's recall does not collapse out of sample, on a set whose
+identifier values, form pairings and a small fraction of formats it had not
+seen. That is weak positive evidence.
+
+**Not established:** that the custom recognizers generalise to formatting they
+were not written against. The holdout contains almost none of it.
+
+`084`'s row 3 and row 4 therefore remain **in-sample numbers**, now with an
+out-of-sample companion that does not contradict them and does not confirm the
+thing at issue.
+
+### What a real test needs
+
+A set where the `spaced` and `obfuscated` forms are generated from an inventory
+disjoint from the fitted one, across all three forms rather than one, sized so
+that a drop of the size worth caring about would be visible. Roughly: if row 3's
+true out-of-sample recall were 0.45 rather than 0.65, detecting that at 80% power
+needs on the order of 90-100 affected positives, not 5.
+
+The recognizers stay frozen at `7ae7ac1` regardless. They are not being adjusted
+in response to any of this.
+
+### Two corrections to 084 that are established
+
+**The AUROC criterion is not the recall criterion restated.** It was put to me
+that with FPR = 0 the two are algebraically linked, `AUROC = 0.5 + 0.5 x recall`.
+The premise does not hold, and the fault is in how `084` reported it: the
+FPR = 0.0000 quoted there is on **`hard-negatives-200`**, a different set. On
+`hinglish-pii-200`'s own 98 negatives, stock's FPR is **0.1020**. The identity
+for a binary detector is `0.5 + 0.5 x (recall - FPR)` = 0.5078, which matches the
+measured AUROC of 0.5079.
+
+They remain highly correlated for a near-binary detector, so they are not two
+independent hurdles and `084` should not be read as though four separate
+criteria were cleared. But they are not the same number: AUROC nets off the
+false positives on the set's own negatives, and for `pii-reference` — twelve
+distinct score levels and FPR 0.4388 on this set — the binary identity gives
+0.6777 against a measured 0.7734, because the ranking above the threshold
+carries real information.
+
+**`pii-reference` is ours and was co-developed with the set.**
+`git log --diff-filter=A` puts `src/detectors/pii_reference.py` and
+`evalsets/hinglish-pii-200.json` in the same commit, `e271be2`. `084` presented
+its 0.7941 as a reference point without disclosing that. It is disclosed now,
+and it is why the honest comparison in the demo is stock-versus-enabled, both of
+which are genuinely out-of-sample.
