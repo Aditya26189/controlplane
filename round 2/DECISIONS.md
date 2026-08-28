@@ -1945,3 +1945,86 @@ a **load failure**, on the same rule that stops `UNVALIDATED` counting as
 The three shipped bundles therefore declare `null` with the reason inline, and
 the resolution notes carry it onto the record. That makes the Phase 8 gap
 visible in the artifact rather than inferable from a missing field.
+
+
+## 079 - Pre-registration: a larger test split so customer_support can be warranted
+
+**Written before the re-split runs and before any number on the new set exists.**
+Entry 077 records the refusal this responds to.
+
+### The problem, in numbers
+
+`customer_support` declares a 0.10 flag-rate budget and 25% calibration
+sensitivity. Separating 0.125 from 0.100 needs n >= 673. `triviaqa-600` holds
+2400 items split 1200 / 600 / 600 (50/25/25), so the warrant is measured at
+n = 600. Short by 73.
+
+### What is being done
+
+A **new frozen eval set**, `triviaqa-2400-t960`: the same 2400 items in the same
+order, with the declared splits reallocated 40/20/40 -> train 960, validation
+480, test 960.
+
+**This is not a re-scoring of `triviaqa-600`.** `split` is inside the content
+hash, so a reallocation produces a different hash and therefore a different
+identity (invariant 9). The old set keeps its id, its envelope, its warrants and
+its published numbers, all untouched. The new set is a new envelope, scored
+once. Nothing already reported is reopened.
+
+### Why the split size is not a peek
+
+n = 960 is chosen from a power calculation, not from an outcome. 960 clears the
+673 that a 0.10 budget needs, with enough margin to also clear the 865 an 0.08
+budget would need. No number on the new set exists yet; the only input to the
+choice is arithmetic that was already in entry 077.
+
+What *was* learned from the old set is that 600 is insufficient. Acting on that
+by building a larger held-out sample is the intended response to an underpowered
+result. Acting on it by lowering the declared sensitivity until 600 suffices
+would not be, which is why 077 rejected it.
+
+### The activations are reused, and that loosens a check
+
+The extraction cache is keyed to the eval set's full content hash, which
+includes `split`. The new set would therefore be refused a cache whose
+activations are, item for item, exactly correct -- `split` is not an input to
+extraction. A GPU re-extraction to reproduce identical activations would be
+waste dressed as rigour.
+
+So `EvalSet` gains an **extraction identity**: a hash over item ids, question
+ids, prompts, responses, labels and their order, excluding `split` and the set's
+name. The cache is checked against that instead.
+
+This is a genuine weakening and is recorded as one. What it still catches: any
+edit to a prompt, a response, a label, the item set, or their order -- every way
+the activations could stop describing the data. What it no longer catches: a set
+renamed or re-split. Both are cases where the activations are unchanged by
+construction.
+
+### Declared success criterion
+
+The re-split succeeds if **all** of these hold on the new envelope:
+
+1. All three operating points issue `VALID` with all five controls passing.
+2. Each profile's recall lower bound clears its `min_recall` -- 0.10 / 0.25 /
+   0.50 for customer_support / internal_knowledge / decision_support.
+3. `customer_support` loads: n_test >= 673 at a 0.10 budget.
+4. The three profiles produce **three distinct actions** on one input.
+
+### What we commit to before seeing the result
+
+- **Report whatever comes out, including if it is worse.** Train shrinks
+  1200 -> 960 and validation 600 -> 480. AUROC on the old set was 0.8256
+  [0.7934, 0.8567]; recall lower bounds were 0.126 / 0.279 / 0.686 at
+  thresholds 0.9045 / 0.8169 / 0.4673. If the new numbers are lower, they are
+  the numbers, and both sets stay published side by side.
+- **If a profile's recall lower bound falls below its floor, that is the
+  result.** It gets reported as a profile that cannot be backed, exactly as
+  customer_support was. It does not get fixed by lowering the floor.
+- **One re-split, not a search.** If 40/20/40 fails the criterion above, we do
+  not try 35/20/45. A sequence of splits tried until one passes is selection on
+  test wearing a different hat. The next move after a failure would be more
+  items, and it would be pre-registered on its own terms.
+- The refusal is already shipped and tagged (`phase-7`). Whatever happens here,
+  the history retains the run where the governance layer refused the flagship
+  profile.
