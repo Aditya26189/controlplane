@@ -2762,3 +2762,107 @@ category is what makes the number honest.
 Identical on every axis the builder controls. The +0.03 is roughly **3 items in
 102** and comes from redrawn identifier values and a different scenario-to-form
 pairing. Mundane, and better stated than left as an unexplained property.
+
+
+## 088 - Composition rules for two warranted detectors, written before the code
+
+Phase 8, D.2. The rules below are the design; `src/policy/compose.py` implements
+them. Written first because a composition rule inferred from an implementation
+is a rule nobody chose.
+
+### The claim this answers
+
+The brief observes that a fabricated detail about a person is simultaneously a
+hallucination and a privacy concern, which makes clean categorisation hard.
+
+**Our answer is that no categorisation is required.** A warrant certifies a
+detector's operating point, not a taxonomy bucket. Two detectors score the same
+input, each carries its own warrant with its own measured bounds on its own
+envelope, and the policy layer composes the two decisions. Nothing has to decide
+which category the input "really" is.
+
+**We are deliberately not building a taxonomy classifier** that assigns an input
+to both categories. That would concede the point while appearing to answer it:
+it reintroduces exactly the categorisation step the argument says is
+unnecessary, and it would need its own warrant on its own eval set, which
+nobody has measured.
+
+### What composes, and what does not
+
+**Actions compose. Bounds do not.**
+
+An action is a decision about one request, and the composed action is a function
+of the two detectors' actions. A bound is a measured claim about a detector on
+an envelope, and there is no arithmetic that turns two detectors' bounds into a
+joint bound without a measurement of the pair. Their errors are not independent
+-- both read the same text -- and assuming independence to multiply them would
+manufacture a number nobody measured.
+
+So a composed certificate carries **both bounds, side by side, each labelled
+with its detector and envelope**, and claims no joint recall. A reader can see
+what each detector was worth; nobody can read off what the pair was worth,
+because that was never measured.
+
+### The four cases
+
+**1. Both VALID, both flag.** Action: the **more restrictive** of the two, by the
+ladder `ALLOW < REDACT < CONFIRM < ESCALATE < BLOCK`. Bounds: both cited.
+
+The reason for most-restrictive rather than a vote: the two detectors are
+looking for different things, so agreement that *something* is wrong is not two
+opinions on one question. A PII finding and a hallucination finding on one
+response are two separate true statements, and the response has to satisfy both.
+
+**2. Both VALID, they disagree** — one flags, one does not. Action: the
+**flagging detector's action**. Bounds: both cited, and the certificate records
+that the other detector did not fire.
+
+Explicitly **not** a vote, and not the conservative default either. A
+disagreement between detectors looking for different things is not evidence of
+uncertainty -- the PII detector not firing on a hallucination is the PII
+detector working correctly. Treating it as a dissenting vote would let a
+correct silence cancel a correct finding.
+
+**3. One VALID, one REFUSED.** Action: the valid detector's action, taken alone.
+Bounds: the valid detector's only. The refusal is recorded in `unchecked`.
+
+The composed decision **does not** inherit the refusal. A refused detector is
+out of service on that envelope; it contributes no finding and no bound, and
+treating its absence as a veto would take a working detector out of service
+because an unrelated one failed its controls. But the certificate must say what
+was not checked, because "we checked for PII" and "our PII detector is out of
+service" produce identical-looking `ALLOW`s otherwise.
+
+Nor does it degrade the tier. Tier is a property of the access a detector has,
+not of how many detectors ran.
+
+**4. One VALID, one UNVALIDATED.** Action: the valid detector's action,
+**unless** the unvalidated detector fires, in which case the profile's
+conservative default applies. Bounds: the valid detector's only. The unvalidated
+detector's finding is recorded with `warrant_id: null`.
+
+This is the case that must stay distinct from 3, and the distinction is
+`CLAUDE.md` invariant 2. `REFUSED` means *measured here and failed*: its output
+is known to be unreliable on this envelope and is ignored. `UNVALIDATED` means
+*never measured here*: its output is information of unknown quality, which is
+not the same as no information and not the same as bad information.
+
+So an unvalidated detector's finding cannot be quoted with a bound -- there is
+no bound -- but it can trigger the conservative default, which is what a
+profile's `conservative_default` is for. Enqueuing the cell for validation is
+how the matrix fills itself in.
+
+### The rule that overrides all four
+
+If **no** detector holds a valid warrant on this envelope, the composed
+certificate claims no bounds at all and the profile's conservative default
+applies. Two unvalidated detectors do not add up to one validated one.
+
+### What a composed certificate must carry
+
+- every finding, including those from detectors with no warrant;
+- `warrants_relied_upon` naming only the detectors whose bounds are quoted;
+- `claimed_bounds` keyed **by detector**, never merged;
+- `weakest_warrant_status` across the detectors actually relied upon;
+- `unchecked` naming every detector that did not contribute and why -- refused,
+  unvalidated, or not run.
