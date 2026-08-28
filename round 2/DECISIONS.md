@@ -3205,3 +3205,58 @@ Message content. The store is queried by session under DPDP Rule 6 and is not a
 place to accumulate text; records carry an opaque `item_ref`. Reviewer identity
 likewise — `reviewer_ref` is opaque, and exists for inter-rater agreement rather
 than for attribution.
+
+
+## 094 - The LiteLLM adapter, and the line that keeps it an adapter
+
+Phase 8, D.4. `CLAUDE.md` rules a gateway out of scope, and the distinction is
+easy to lose by accretion: a gateway owns the request path, terminates
+connections, holds credentials and routes — it becomes something an enterprise
+has to operate and trust. This sits behind LiteLLM, which already does that job,
+and adds one thing: the certificate.
+
+The upstream call is **injected**, not imported, so the adapter never holds a
+key. `test_the_adapter_owns_no_credentials_and_no_routing` greps its own source
+for `api_key`, `base_url`, `requests.`, `httpx.` and `retry`, so the boundary is
+enforced rather than remembered.
+
+### How a certificate reaches an unmodified client
+
+The gate is *no application code change*, which rules out a second endpoint or a
+wrapper the caller has to invoke. Two places remain:
+
+- **inline**, on an additive namespaced key `response["control_plane"]`. An
+  OpenAI-format client ignores keys it does not know, so the certificate reaches
+  a caller who wants it and is invisible to one who does not;
+- **out of band**, in the ledger, addressable by the request id the caller
+  already has.
+
+Both, because a field in a response the caller may discard is not an audit
+trail, and a ledger the caller cannot see does not make the demo work.
+
+### The inline path claims less than the async path, and says so
+
+They are not the same check at different speeds. An inline certificate claims
+what the fast tier supports and lists the deep checks in `unchecked`, with
+`deep_checks_pending` on the object. Presenting an inline result as though the
+deep checks had passed would be the unbacked claim this project refuses: a
+caller would read an `ALLOW` meaning *nothing fast found anything* as *nothing
+found anything*.
+
+### A budget overrun is recorded, not enforced
+
+The tempting behaviour is to drop the certificate when the checks exceed the
+profile's inline budget, so the latency promise holds. That is wrong in the
+direction that matters: the response goes out uncertified and **looks identical
+to one that passed**. A slow check is a fact about the deployment; it belongs on
+the certificate where somebody can see it, not disappeared to protect a number.
+
+So the certificate is always issued and the overrun goes in `unchecked` with
+both figures.
+
+### A malformed upstream response still gets a certificate
+
+Tolerant of `message.content` and the older `text`, and returns empty rather
+than raising when neither is present. A broken upstream is not a reason to fail
+the certificate — it is a reason for the certificate to say nothing was checked,
+which is a statement. A missing certificate is an absence nobody notices.
