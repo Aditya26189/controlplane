@@ -31,6 +31,7 @@ from typing import Any, Optional
 import numpy as np
 
 from ..validation.evalsets import SPLITS, TEST, TRAIN, VALIDATION, EvalItem, EvalSet, EvalSetError
+from ..validation.paired import split_relationship
 
 __all__ = ["cache_source_id", "resplit_by_question"]
 
@@ -45,6 +46,7 @@ def resplit_by_question(
     seed: int,
     rationale: str,
     min_test_items: Optional[int] = None,
+    require_nested: bool = False,
 ) -> EvalSet:
     """Reassign declared splits by question, leaving every item otherwise intact.
 
@@ -67,6 +69,12 @@ def resplit_by_question(
             many test items or the call raises. Pass the number the
             pre-registration committed to, so that missing it is an error here
             rather than a disappointment three stages later.
+        require_nested: Refuse to build a set whose splits do not nest inside
+            the source's. Nesting is what makes a paired comparison between the
+            two possible, and it is **not** automatic — it happens only when
+            this call reuses the source's seed and ordering. Default false,
+            because a non-nested re-split is legitimate; the consequence is
+            recorded either way.
 
     Returns:
         A new :class:`EvalSet`.
@@ -148,9 +156,48 @@ def resplit_by_question(
             "the cache instead of re-extracting."
         )
 
+    # Whether the new splits nest inside the source's, computed here rather
+    # than left to be discovered later. Nesting is not a property of
+    # re-splitting -- it holds only when this call reuses the source's seed and
+    # ordering, so the same permutation is cut at different points. It was true
+    # for triviaqa-2400-t960 by exactly that route, and the whole paired
+    # comparison in DECISIONS 081 depended on it. Somebody re-splitting at a
+    # fresh seed gets a reshuffle, a much smaller paired set, and no warning
+    # unless it is checked at the point of the decision.
+    #
+    # Deliberately NOT written into ``construction``. Construction notes are
+    # inside the content hash, so recording it there would change the identity
+    # of every set already built -- ``triviaqa-2400-t960`` would stop hashing to
+    # the value its warrants are keyed on. And it does not need to be stored:
+    # unlike the derivation pointer, which tells a reader where to look, nesting
+    # is recomputable from the two frozen files at any time. What was missing
+    # was the check happening at the moment of the decision, not the fact being
+    # unavailable afterwards.
+    relationship = split_relationship(source, new)
+    nests = relationship.is_promotion
+
+    if not nests:
+        message = (
+            "%s does not nest inside %s: new_train subset of old_train is %s, "
+            "new_test superset of old_test is %s. Only %d items are held out by "
+            "both, so a paired comparison between models trained on the two "
+            "splits will be limited to that. Nesting requires reusing the "
+            "source's seed and ordering." % (
+                eval_set_id, source.eval_set_id,
+                relationship.new_train_within_old_train,
+                relationship.new_test_contains_old_test,
+                len(relationship.paired_item_ids),
+            )
+        )
+        if require_nested:
+            raise EvalSetError(message)
+        _LOG.warning(message)
+
     _LOG.info(
-        "%s: re-split from %s into %s (extraction identity unchanged: %s)",
+        "%s: re-split from %s into %s (extraction identity unchanged: %s; "
+        "nests within source: %s, %d items held out by both)",
         eval_set_id, source.eval_set_id, counts, new.extraction_hash[:16],
+        nests, len(relationship.paired_item_ids),
     )
     return new
 

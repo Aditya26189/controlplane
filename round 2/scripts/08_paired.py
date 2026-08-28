@@ -27,7 +27,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
 from src.evalsets.registry import load_evalset
 from src.evalsets.resplit import cache_source_id
-from src.validation.evalsets import TEST, ExtractionCache, split_by_question
+from src.validation.evalsets import TEST, VALIDATION, ExtractionCache, split_by_question
 from src.report.plots import plot_roc_operating_points
 from src.validation.paired import (
     compare_models,
@@ -36,6 +36,7 @@ from src.validation.paired import (
     split_relationship,
 )
 from src.validation.roc import roc_curve
+from src.validation.selection import selection_aware_recall
 from src.validation.synthetic import synthetic_cache, synthetic_evalset
 
 _LOG = logging.getLogger("scripts.08_paired")
@@ -197,9 +198,38 @@ def main(argv: list[str] | None = None) -> int:
         config_hash=config.config_hash,
     )
 
+    # Threshold-selection uncertainty (DECISIONS 083). The recall intervals the
+    # warrants report are conditional on a threshold chosen from a handful of
+    # validation items; this propagates that choice into the bound.
+    budgets = {
+        p.operating_point: p.target_flag_rate for p in config.profiles.values()
+    } if not args.fixture else {"P-fixture-low": 0.10, "P-fixture-high": 0.50}
+    validation_scores = variant_probe.score(features[variant_splits[VALIDATION]])
+    validation_labels = cache.labels[variant_splits[VALIDATION]]
+    bounds = [
+        selection_aware_recall(
+            validation_scores,
+            validation_labels,
+            variant_probe.score(features[rows]),
+            cache.labels[rows],
+            operating_point_id=point,
+            target_flag_rate=budgets[point],
+            threshold=variant_threshold,
+            n_bootstrap=args.bootstrap,
+            seed=config.seed,
+        ).to_payload()
+        for point, (_, variant_threshold) in thresholds.items()
+        if point in budgets
+    ]
+
     write_json_artifact(
         results / "paired_comparison.json",
-        {"provenance": provenance(config), **payload, "roc": curve.to_payload()},
+        {
+            "provenance": provenance(config),
+            **payload,
+            "roc": curve.to_payload(),
+            "selection_aware_bounds": bounds,
+        },
     )
     _LOG.info("wrote %s and %s", results / "paired_comparison.json", plot_path)
 
@@ -211,6 +241,17 @@ def main(argv: list[str] | None = None) -> int:
                 row["quantity"], row["baseline"], row["variant"], row["difference"],
                 row["ci_low"], row["ci_high"], row["minimum_detectable"],
             )
+    _LOG.info("-- threshold-selection uncertainty")
+    for b in bounds:
+        _LOG.info(
+            "   %-28s recall %.4f  conditional [%.4f, %.4f] w=%.4f  "
+            "selection-aware [%.4f, %.4f] w=%.4f  %.2fx  (%d val negatives above)",
+            b["operating_point_id"], b["recall"],
+            b["conditional_ci"][0], b["conditional_ci"][1], b["conditional_width"],
+            b["selection_aware_ci"][0], b["selection_aware_ci"][1],
+            b["selection_aware_width"], b["widening"],
+            b["n_negatives_above_validation"],
+        )
     _LOG.info("-- ROC geometry on the variant test split")
     for point in curve.points:
         _LOG.info(
