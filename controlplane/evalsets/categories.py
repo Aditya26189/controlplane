@@ -68,6 +68,13 @@ EVAL_SET_CATEGORY: Mapping[str, Optional[Category]] = {
     "canary-20-pii": Category.PII,
     "canary-20-triviaqa": Category.HALLUCINATION,
     "hard-negatives-200": None,
+    # The banking pilot carries TWO label columns. `EvalItem.label` is the
+    # measured correctness axis, so that is what this entry declares; the
+    # authored identifier flag lives in `meta["pii"]` and is never the label.
+    # DECISIONS 090 requires a run to say which column it measures against,
+    # and a run that does not is refused by `require_compatible`.
+    "banking-dual-24": Category.HALLUCINATION,
+    "banking-dual-240": Category.HALLUCINATION,
 }
 
 

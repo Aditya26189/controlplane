@@ -1,0 +1,300 @@
+"""The banking dual-labelled pilot. ``DECISIONS.md`` 090 (corrected), 101.
+
+The pilot's whole value is that it can measure what it claims to. Two ways it
+could fail to, both of which produce a well-formed set and a plausible number:
+
+- **the frame moves with the identifier**, so the identifier axis measures
+  authorship rather than identifier presence;
+- **correctness gets authored rather than measured**, which is the defect the
+  correction to ``090`` caught before anything was written.
+
+Both are asserted here rather than left to inspection.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+
+import pytest
+
+from controlplane.evalsets.banking import (
+    BANKING_PILOT_QUESTIONS,
+    PILOT_EVAL_SET_ID,
+    BankingQuestion,
+    build_banking_dual_pilot,
+    evalset_from_draft,
+    wrong_count_by_question,
+)
+
+SEED = 1729
+
+
+@pytest.fixture(scope="module")
+def draft():
+    return build_banking_dual_pilot(seed=SEED)
+
+
+# --------------------------------------------------------------------------- #
+# Shape
+# --------------------------------------------------------------------------- #
+
+
+def test_twelve_questions_in_two_identifier_states(draft) -> None:
+    assert len(BANKING_PILOT_QUESTIONS) == 12
+    assert len(draft.items) == 24
+    assert len({i.question_id for i in draft.items}) == 12
+    for question_id in {i.question_id for i in draft.items}:
+        states = sorted(i.pii for i in draft.items if i.question_id == question_id)
+        assert states == [0, 1], f"{question_id} does not have exactly two states"
+
+
+def test_labels_are_absent_because_correctness_is_measured(draft) -> None:
+    """The correction to 090, enforced.
+
+    A ``PilotDraftItem`` has no label field at all. If one is ever added, a
+    placeholder becomes possible, and a placeholder is indistinguishable from a
+    measurement once it reaches an artifact.
+    """
+    fields = {f.name for f in dataclasses.fields(draft.items[0])}
+    assert "label" not in fields, (
+        "the draft grew a label field. Correctness on this set is measured by "
+        "generating an answer and judging it, not authored -- see the "
+        "correction to DECISIONS 090."
+    )
+
+
+def test_the_identifier_kind_matches_what_the_clause_says(draft) -> None:
+    """A clause reading "mera registered number" must not carry an Aadhaar.
+
+    It did on the first build, because the generators were cycled by index
+    rather than declared per question. Sloppy artifacts get noticed by readers
+    before reviewers.
+    """
+    expected = {
+        "phone": ("number", "mobile"),
+        "pan": ("pan",),
+        "upi_vpa": ("upi",),
+        "aadhaar": ("aadhaar",),
+    }
+    for question in BANKING_PILOT_QUESTIONS:
+        clause = question.identifier_clause.lower()
+        words = expected[question.identifier_kind]
+        assert any(w in clause for w in words), (
+            f"{question.question_id}: clause {clause!r} does not mention "
+            f"{words} but declares kind {question.identifier_kind!r}"
+        )
+
+
+def test_the_identifier_axis_is_not_one_entity_type() -> None:
+    kinds = [q.identifier_kind for q in BANKING_PILOT_QUESTIONS]
+    assert len(set(kinds)) == 4
+    for kind in set(kinds):
+        assert kinds.count(kind) == 3, f"{kind} appears {kinds.count(kind)} times"
+
+
+# --------------------------------------------------------------------------- #
+# The frame is held fixed -- the one confound this design must exclude
+# --------------------------------------------------------------------------- #
+
+
+def test_the_two_states_differ_only_by_the_identifier_clause(draft) -> None:
+    by_question: dict[str, dict[int, str]] = {}
+    for item in draft.items:
+        by_question.setdefault(item.question_id, {})[item.pii] = item.prompt
+
+    for question in BANKING_PILOT_QUESTIONS:
+        plain, with_pii = by_question[question.question_id][0], by_question[
+            question.question_id
+        ][1]
+        assert plain.startswith(question.frame_prefix)
+        assert with_pii.startswith(question.frame_prefix)
+        assert plain.endswith(question.ask)
+        assert with_pii.endswith(question.ask)
+        # Deleting the inserted clause must recover the plain prompt exactly.
+        head, tail = len(question.frame_prefix), len(question.ask)
+        assert plain[head : len(plain) - tail].strip() == ""
+
+
+def test_a_frame_that_moves_with_the_identifier_is_refused() -> None:
+    """The assertion must fire, or it is decoration.
+
+    A question whose plain state carries extra text between frame and ask lets
+    the surrounding words co-vary with the label, which would make the
+    identifier axis a measurement of how the two states were written.
+    """
+    bad = dataclasses.replace(
+        BANKING_PILOT_QUESTIONS[0],
+        frame_prefix="Namaste.",
+        ask="NEFT ka full form kya hota hai?",
+        identifier_clause="Mera number {identifier} hai.",
+    )
+    # Force divergence: make prompt() emit different framing per state.
+    class Divergent(BankingQuestion):
+        def prompt(self, identifier):  # type: ignore[override]
+            if identifier is None:
+                return "Namaste. Bas ek sawaal. NEFT ka full form kya hota hai?"
+            return "Namaste. Mera number 9 hai. NEFT ka full form kya hota hai?"
+
+    diverged = Divergent(**dataclasses.asdict(bad))
+    with pytest.raises(ValueError, match="differ by more than the clause"):
+        build_banking_dual_pilot(seed=SEED, questions=(diverged,))
+
+
+# --------------------------------------------------------------------------- #
+# Provenance on every gold answer -- DECISIONS 101
+# --------------------------------------------------------------------------- #
+
+
+def test_every_gold_answer_carries_its_source_and_date(draft) -> None:
+    for item in draft.items:
+        assert item.gold_source, f"{item.item_id} has no gold source"
+        assert item.gold_checked == "2026-08-29", item.item_id
+        assert item.rot_class in ("structural", "rate"), item.item_id
+        assert item.gold_aliases, f"{item.item_id} has no gold answer"
+
+
+def test_slow_moving_facts_are_preferred_over_fast_ones() -> None:
+    """101 prefers structural rules; rates are allowed but must be the minority.
+
+    Fee schedules and regulator-set thresholds move on a scale of months.
+    Composition rules move on a scale of years. A set built mostly from the
+    former rots between authoring and presentation.
+    """
+    classes = [q.rot_class for q in BANKING_PILOT_QUESTIONS]
+    assert classes.count("rate") <= 3, (
+        f"{classes.count('rate')} of {len(classes)} gold answers are rate-class. "
+        "Prefer structural rules; they do not rot between authoring and the demo."
+    )
+    assert classes.count("structural") >= 9
+
+
+def test_both_ends_of_the_difficulty_range_are_represented() -> None:
+    """101: twelve questions cannot estimate an error rate, but they can span.
+
+    The band in 101 tests construction rather than luck only if both ends were
+    authored deliberately.
+    """
+    expectations = [q.expected for q in BANKING_PILOT_QUESTIONS]
+    assert expectations.count("expect_correct") >= 3
+    assert expectations.count("expect_incorrect") >= 3
+
+
+def test_the_measured_label_can_contradict_the_authored_expectation(draft) -> None:
+    """The expectation is a construction diagnostic and never drives a label.
+
+    Asserted by making the answers disagree with the expectations on purpose:
+    every question authored as ``expect_incorrect`` is answered correctly, and
+    every ``expect_correct`` one is answered wrongly. If the label followed the
+    expectation the set would be self-fulfilling, and the pilot would measure
+    the author rather than the model.
+    """
+    answers = []
+    for item in draft.items:
+        if item.expected == "expect_incorrect":
+            answers.append(item.gold_aliases[0])
+        else:
+            answers.append("definitely not the answer")
+
+    evalset = evalset_from_draft(draft, answers)
+    by_id = {i.item_id: i for i in evalset.items}
+
+    contradicted = 0
+    for item in draft.items:
+        label = by_id[item.item_id].label
+        if item.expected == "expect_incorrect":
+            assert label == 0, f"{item.item_id}: answered correctly, labelled wrong"
+            contradicted += 1
+        elif item.expected == "expect_correct":
+            assert label == 1, f"{item.item_id}: answered wrongly, labelled correct"
+            contradicted += 1
+    assert contradicted >= 12, "the expectations were not actually contradicted"
+
+
+# --------------------------------------------------------------------------- #
+# Labelling
+# --------------------------------------------------------------------------- #
+
+
+def test_correctness_is_judged_by_the_same_matcher_triviaqa_uses(draft) -> None:
+    answers = []
+    for item in draft.items:
+        answers.append(item.gold_aliases[0] if item.pii == 0 else "definitely wrong")
+    evalset = evalset_from_draft(draft, answers)
+    for item in evalset.items:
+        expected = 0 if item.meta["pii"] == 0 else 1
+        assert item.label == expected, f"{item.item_id} mislabelled"
+
+
+def test_a_single_class_result_raises_rather_than_being_reported(draft) -> None:
+    """Every answer correct means the set measures nothing, and says so."""
+    answers = [i.gold_aliases[0] for i in draft.items]
+    with pytest.raises(RuntimeError, match="single-class set supports no ranking"):
+        evalset_from_draft(draft, answers)
+
+
+def test_a_mismatched_answer_count_is_refused(draft) -> None:
+    with pytest.raises(ValueError, match="answers for"):
+        evalset_from_draft(draft, ["x"] * 5)
+
+
+def test_the_labelled_set_carries_the_draft_hash(draft) -> None:
+    """The prompts scored are provably the prompts frozen."""
+    answers = ["wrong"] * 23 + [draft.items[-1].gold_aliases[0]]
+    evalset = evalset_from_draft(draft, answers)
+    assert evalset.construction["draft_content_hash"] == draft.content_hash
+
+
+# --------------------------------------------------------------------------- #
+# The acceptance band counts questions, not items
+# --------------------------------------------------------------------------- #
+
+
+def test_the_wrong_count_is_over_questions_not_items(draft) -> None:
+    """101's band is derived for 12 clusters, so it must be counted on 12.
+
+    Counting items would compare a 24-draw statistic against a band computed
+    for 12 -- the same unit error the cluster bootstrap exists to prevent.
+    """
+    answers = []
+    for item in draft.items:
+        # Make exactly two questions wrong, in both of their states.
+        wrong = item.question_id in {"bq01-neft-full-form", "bq02-ifsc-length"}
+        answers.append("definitely wrong" if wrong else item.gold_aliases[0])
+    evalset = evalset_from_draft(draft, answers)
+    assert wrong_count_by_question(evalset) == 2
+    assert sum(1 for i in evalset.items if i.label == 1) == 4
+
+
+def test_a_question_wrong_in_one_state_only_still_counts_once(draft) -> None:
+    answers = []
+    for item in draft.items:
+        wrong = item.question_id == "bq01-neft-full-form" and item.pii == 1
+        answers.append("definitely wrong" if wrong else item.gold_aliases[0])
+    evalset = evalset_from_draft(draft, answers)
+    assert wrong_count_by_question(evalset) == 1
+
+
+# --------------------------------------------------------------------------- #
+# Reproducibility
+# --------------------------------------------------------------------------- #
+
+
+def test_the_draft_is_reproducible_at_a_seed() -> None:
+    a = build_banking_dual_pilot(seed=SEED)
+    b = build_banking_dual_pilot(seed=SEED)
+    assert a.content_hash == b.content_hash
+    assert [i.prompt for i in a.items] == [i.prompt for i in b.items]
+
+
+def test_a_different_seed_changes_the_identifiers_but_not_the_questions() -> None:
+    a = build_banking_dual_pilot(seed=SEED)
+    b = build_banking_dual_pilot(seed=SEED + 1)
+    assert a.content_hash != b.content_hash
+    plain_a = [i.prompt for i in a.items if i.pii == 0]
+    plain_b = [i.prompt for i in b.items if i.pii == 0]
+    assert plain_a == plain_b, "the questions themselves must not depend on the seed"
+
+
+def test_the_eval_set_id_is_the_pilot_not_the_full_set(draft) -> None:
+    """240 items were pre-registered; this is the 24-item pilot that gates them."""
+    assert draft.eval_set_id == PILOT_EVAL_SET_ID == "banking-dual-24"

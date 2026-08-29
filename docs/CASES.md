@@ -183,3 +183,23 @@ look fine.
 | a failed cleanup is reported | an operation reporting success without completing is the same failure one level down | `test_a_failed_cleanup_is_reported_rather_than_swallowed` | `results/clean_clone.json` |
 | every case here has a covering test | this table cannot drift from the suite | `test_every_case_names_a_real_test` | — |
 | the scripts are wired together | each stage runs end to end in a subprocess | `test_every_script_has_a_smoke_test` | — |
+
+## 10. The banking pilot (`DECISIONS.md` 090 corrected, 101)
+
+Not yet measured. The prompts are frozen; correctness is judged on the GPU
+pass and nothing here reports a number about the probe.
+
+| case | expected behaviour | test | artifact |
+|---|---|---|---|
+| correctness is measured, never authored | the draft has no label field at all, so a placeholder cannot exist | `test_labels_are_absent_because_correctness_is_measured` | `evalsets/banking-dual-24.draft.json` |
+| the frame is held fixed within a question | the two identifier states differ only by the inserted clause | `test_the_two_states_differ_only_by_the_identifier_clause` | `evalsets/banking-dual-24.draft.json` |
+| a frame that moves with the identifier is refused | otherwise the identifier axis measures authorship | `test_a_frame_that_moves_with_the_identifier_is_refused` | — |
+| the identifier matches what its clause says | a clause reading "registered number" must not carry an Aadhaar | `test_the_identifier_kind_matches_what_the_clause_says` | — |
+| every gold answer carries source and check-date | the one artifact class that previously had no provenance | `test_every_gold_answer_carries_its_source_and_date` | `evalsets/banking-dual-24.draft.json` |
+| slow-moving facts preferred over rates | structural rules move over years, thresholds over months | `test_slow_moving_facts_are_preferred_over_fast_ones` | — |
+| both ends of difficulty are represented | 101's band tests construction only if the span was deliberate | `test_both_ends_of_the_difficulty_range_are_represented` | — |
+| the label can contradict the authored expectation | proves the expectation never drives a label | `test_the_measured_label_can_contradict_the_authored_expectation` | — |
+| a single-class result raises | every answer correct means the set measures nothing | `test_a_single_class_result_raises_rather_than_being_reported` | — |
+| the wrong-count is over questions, not items | 101's band is derived for 12 clusters, so it is counted on 12 | `test_the_wrong_count_is_over_questions_not_items` | — |
+| the labelled set carries the draft hash | the prompts scored are provably the prompts frozen | `test_the_labelled_set_carries_the_draft_hash` | — |
+| the draft is reproducible at a seed | and the questions themselves do not depend on it | `test_the_draft_is_reproducible_at_a_seed` | `results/pilot_envelope.json` |

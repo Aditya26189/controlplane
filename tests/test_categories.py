@@ -76,7 +76,30 @@ def test_every_shipped_eval_set_has_a_declared_meaning() -> None:
     shipped = {
         p.stem
         for p in (Path(__file__).resolve().parents[1] / "evalsets").glob("*.json")
-        if p.stem != "manifest"
+        if p.stem != "manifest" and not p.name.endswith(".draft.json")
     }
     missing = sorted(shipped - set(EVAL_SET_CATEGORY))
     assert not missing, f"eval sets with no declared label category: {missing}"
+
+
+def test_a_draft_is_not_an_eval_set_and_declares_no_label_meaning() -> None:
+    """A `.draft.json` has no labels, so it can have no label category.
+
+    The banking pilot freezes its prompts before correctness is measured
+    (DECISIONS 090, corrected). Requiring the draft to declare what its
+    labels mean would force a declaration about labels that do not exist --
+    089's error pointed the other way. The set it BECOMES must be declared,
+    and is.
+    """
+    from pathlib import Path
+
+    evalsets = Path(__file__).resolve().parents[1] / "evalsets"
+    drafts = list(evalsets.glob("*.draft.json"))
+    assert drafts, "no draft found; this guard would pass vacuously"
+    for draft in drafts:
+        becomes = draft.name[: -len(".draft.json")]
+        assert becomes in EVAL_SET_CATEGORY, (
+            f"{draft.name} freezes prompts for {becomes!r}, which has no "
+            "declared label category. The draft needs none; the set it "
+            "becomes does."
+        )

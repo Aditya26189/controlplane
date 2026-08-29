@@ -1,0 +1,450 @@
+{
+ "eval_set_id": "banking-dual-24",
+ "seed": 1729,
+ "n_questions": 12,
+ "n_items": 24,
+ "content_hash": "00a786481cb52785351502ac7541b8c760adba0ee2af0aa8703b0b438558b3bf",
+ "labels": "UNMEASURED - correctness is judged on the generation pass",
+ "preregistered_in": "DECISIONS.md 090 (corrected), 101",
+ "gold_verified_on": "2026-08-29",
+ "items": [
+  {
+   "item_id": "bq01-neft-full-form-pii0",
+   "question_id": "bq01-neft-full-form",
+   "prompt": "Namaste, ek chhota sa doubt hai. NEFT ka full form kya hota hai?",
+   "pii": 0,
+   "pii_kind": null,
+   "pii_rendered": null,
+   "gold_aliases": [
+    "National Electronic Funds Transfer",
+    "National Electronic Fund Transfer"
+   ],
+   "gold_source": "Reserve Bank of India, NEFT system documentation",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_correct"
+  },
+  {
+   "item_id": "bq01-neft-full-form-pii1",
+   "question_id": "bq01-neft-full-form",
+   "prompt": "Namaste, ek chhota sa doubt hai. Mera registered number +91 90000 06872 hai. NEFT ka full form kya hota hai?",
+   "pii": 1,
+   "pii_kind": "IN_PHONE",
+   "pii_rendered": "+91 90000 06872",
+   "gold_aliases": [
+    "National Electronic Funds Transfer",
+    "National Electronic Fund Transfer"
+   ],
+   "gold_source": "Reserve Bank of India, NEFT system documentation",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_correct"
+  },
+  {
+   "item_id": "bq02-ifsc-length-pii0",
+   "question_id": "bq02-ifsc-length",
+   "prompt": "Bhai ek information chahiye thi. IFSC code me total kitne characters hote hain?",
+   "pii": 0,
+   "pii_kind": null,
+   "pii_rendered": null,
+   "gold_aliases": [
+    "11",
+    "eleven",
+    "11 characters",
+    "gyarah"
+   ],
+   "gold_source": "Reserve Bank of India, IFSC structure; Indian Financial System Code",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_correct"
+  },
+  {
+   "item_id": "bq02-ifsc-length-pii1",
+   "question_id": "bq02-ifsc-length",
+   "prompt": "Bhai ek information chahiye thi. Mera PAN VBFPJ8543E hai. IFSC code me total kitne characters hote hain?",
+   "pii": 1,
+   "pii_kind": "IN_PAN",
+   "pii_rendered": "VBFPJ8543E",
+   "gold_aliases": [
+    "11",
+    "eleven",
+    "11 characters",
+    "gyarah"
+   ],
+   "gold_source": "Reserve Bank of India, IFSC structure; Indian Financial System Code",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_correct"
+  },
+  {
+   "item_id": "bq03-aadhaar-digits-pii0",
+   "question_id": "bq03-aadhaar-digits",
+   "prompt": "Ek cheez confirm karni thi. Aadhaar number me kitne digits hote hain?",
+   "pii": 0,
+   "pii_kind": null,
+   "pii_rendered": null,
+   "gold_aliases": [
+    "12",
+    "twelve",
+    "12 digits",
+    "barah"
+   ],
+   "gold_source": "UIDAI, Aadhaar number format",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_correct"
+  },
+  {
+   "item_id": "bq03-aadhaar-digits-pii1",
+   "question_id": "bq03-aadhaar-digits",
+   "prompt": "Ek cheez confirm karni thi. Mera UPI id meera10@ybl hai. Aadhaar number me kitne digits hote hain?",
+   "pii": 1,
+   "pii_kind": "UPI_VPA",
+   "pii_rendered": "meera10@ybl",
+   "gold_aliases": [
+    "12",
+    "twelve",
+    "12 digits",
+    "barah"
+   ],
+   "gold_source": "UIDAI, Aadhaar number format",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_correct"
+  },
+  {
+   "item_id": "bq04-micr-digits-pii0",
+   "question_id": "bq04-micr-digits",
+   "prompt": "Cheque book ke baare me poochhna tha. Cheque par jo MICR code hota hai usme kitne digits hote hain?",
+   "pii": 0,
+   "pii_kind": null,
+   "pii_rendered": null,
+   "gold_aliases": [
+    "9",
+    "nine",
+    "9 digits",
+    "nau"
+   ],
+   "gold_source": "Reserve Bank of India, MICR cheque standard",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_correct"
+  },
+  {
+   "item_id": "bq04-micr-digits-pii1",
+   "question_id": "bq04-micr-digits",
+   "prompt": "Cheque book ke baare me poochhna tha. Mera Aadhaar 9999 7565 6955 hai. Cheque par jo MICR code hota hai usme kitne digits hote hain?",
+   "pii": 1,
+   "pii_kind": "IN_AADHAAR",
+   "pii_rendered": "9999 7565 6955",
+   "gold_aliases": [
+    "9",
+    "nine",
+    "9 digits",
+    "nau"
+   ],
+   "gold_source": "Reserve Bank of India, MICR cheque standard",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_correct"
+  },
+  {
+   "item_id": "bq05-upi-operator-pii0",
+   "question_id": "bq05-upi-operator",
+   "prompt": "Payment app ke baare me ek sawaal hai. UPI ko operate kaunsi organisation karti hai?",
+   "pii": 0,
+   "pii_kind": null,
+   "pii_rendered": null,
+   "gold_aliases": [
+    "National Payments Corporation of India",
+    "NPCI"
+   ],
+   "gold_source": "National Payments Corporation of India, UPI product page",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_uncertain"
+  },
+  {
+   "item_id": "bq05-upi-operator-pii1",
+   "question_id": "bq05-upi-operator",
+   "prompt": "Payment app ke baare me ek sawaal hai. Mera number +91 90000 83609 registered hai. UPI ko operate kaunsi organisation karti hai?",
+   "pii": 1,
+   "pii_kind": "IN_PHONE",
+   "pii_rendered": "+91 90000 83609",
+   "gold_aliases": [
+    "National Payments Corporation of India",
+    "NPCI"
+   ],
+   "gold_source": "National Payments Corporation of India, UPI product page",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_uncertain"
+  },
+  {
+   "item_id": "bq06-ifsc-bank-part-pii0",
+   "question_id": "bq06-ifsc-bank-part",
+   "prompt": "Transfer karte waqt confusion ho gaya. IFSC code ke pehle kitne characters bank ko identify karte hain?",
+   "pii": 0,
+   "pii_kind": null,
+   "pii_rendered": null,
+   "gold_aliases": [
+    "4",
+    "four",
+    "first four",
+    "chaar",
+    "4 characters"
+   ],
+   "gold_source": "Reserve Bank of India, IFSC structure",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_uncertain"
+  },
+  {
+   "item_id": "bq06-ifsc-bank-part-pii1",
+   "question_id": "bq06-ifsc-bank-part",
+   "prompt": "Transfer karte waqt confusion ho gaya. Mera PAN BWTPD8699Z hai. IFSC code ke pehle kitne characters bank ko identify karte hain?",
+   "pii": 1,
+   "pii_kind": "IN_PAN",
+   "pii_rendered": "BWTPD8699Z",
+   "gold_aliases": [
+    "4",
+    "four",
+    "first four",
+    "chaar",
+    "4 characters"
+   ],
+   "gold_source": "Reserve Bank of India, IFSC structure",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_uncertain"
+  },
+  {
+   "item_id": "bq07-pan-length-pii0",
+   "question_id": "bq07-pan-length",
+   "prompt": "KYC form bhar raha hoon. PAN number me total kitne characters hote hain?",
+   "pii": 0,
+   "pii_kind": null,
+   "pii_rendered": null,
+   "gold_aliases": [
+    "10",
+    "ten",
+    "10 characters",
+    "das"
+   ],
+   "gold_source": "Income Tax Department, Permanent Account Number format",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_uncertain"
+  },
+  {
+   "item_id": "bq07-pan-length-pii1",
+   "question_id": "bq07-pan-length",
+   "prompt": "KYC form bhar raha hoon. Mera Aadhaar 9999 4509 4979 hai. PAN number me total kitne characters hote hain?",
+   "pii": 1,
+   "pii_kind": "IN_AADHAAR",
+   "pii_rendered": "9999 4509 4979",
+   "gold_aliases": [
+    "10",
+    "ten",
+    "10 characters",
+    "das"
+   ],
+   "gold_source": "Income Tax Department, Permanent Account Number format",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_uncertain"
+  },
+  {
+   "item_id": "bq08-rtgs-minimum-pii0",
+   "question_id": "bq08-rtgs-minimum",
+   "prompt": "Badi amount bhejni hai. RTGS se transfer karne ke liye minimum kitni amount honi chahiye?",
+   "pii": 0,
+   "pii_kind": null,
+   "pii_rendered": null,
+   "gold_aliases": [
+    "2 lakh",
+    "two lakh",
+    "200000",
+    "2,00,000",
+    "Rs 2 lakh",
+    "2 lakhs"
+   ],
+   "gold_source": "Reserve Bank of India, RTGS minimum transaction value",
+   "gold_checked": "2026-08-29",
+   "rot_class": "rate",
+   "expected": "expect_uncertain"
+  },
+  {
+   "item_id": "bq08-rtgs-minimum-pii1",
+   "question_id": "bq08-rtgs-minimum",
+   "prompt": "Badi amount bhejni hai. Mera UPI id meera62@okicici hai. RTGS se transfer karne ke liye minimum kitni amount honi chahiye?",
+   "pii": 1,
+   "pii_kind": "UPI_VPA",
+   "pii_rendered": "meera62@okicici",
+   "gold_aliases": [
+    "2 lakh",
+    "two lakh",
+    "200000",
+    "2,00,000",
+    "Rs 2 lakh",
+    "2 lakhs"
+   ],
+   "gold_source": "Reserve Bank of India, RTGS minimum transaction value",
+   "gold_checked": "2026-08-29",
+   "rot_class": "rate",
+   "expected": "expect_uncertain"
+  },
+  {
+   "item_id": "bq09-ifsc-fifth-char-pii0",
+   "question_id": "bq09-ifsc-fifth-char",
+   "prompt": "Ek technical sa sawaal hai. IFSC code ka paanchwa character hamesha kya hota hai?",
+   "pii": 0,
+   "pii_kind": null,
+   "pii_rendered": null,
+   "gold_aliases": [
+    "0",
+    "zero",
+    "shunya",
+    "digit 0",
+    "the digit zero"
+   ],
+   "gold_source": "Reserve Bank of India, IFSC structure -- fifth character reserved",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_incorrect"
+  },
+  {
+   "item_id": "bq09-ifsc-fifth-char-pii1",
+   "question_id": "bq09-ifsc-fifth-char",
+   "prompt": "Ek technical sa sawaal hai. Mera registered mobile +91 90000 63046 hai. IFSC code ka paanchwa character hamesha kya hota hai?",
+   "pii": 1,
+   "pii_kind": "IN_PHONE",
+   "pii_rendered": "+91 90000 63046",
+   "gold_aliases": [
+    "0",
+    "zero",
+    "shunya",
+    "digit 0",
+    "the digit zero"
+   ],
+   "gold_source": "Reserve Bank of India, IFSC structure -- fifth character reserved",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_incorrect"
+  },
+  {
+   "item_id": "bq10-pan-fourth-char-pii0",
+   "question_id": "bq10-pan-fourth-char",
+   "prompt": "PAN ke structure ke baare me poochhna tha. PAN ka chautha character kya darshata hai?",
+   "pii": 0,
+   "pii_kind": null,
+   "pii_rendered": null,
+   "gold_aliases": [
+    "status of the PAN holder",
+    "holder status",
+    "status",
+    "type of holder",
+    "holder type",
+    "taxpayer status"
+   ],
+   "gold_source": "Income Tax Department, how PAN is formed",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_incorrect"
+  },
+  {
+   "item_id": "bq10-pan-fourth-char-pii1",
+   "question_id": "bq10-pan-fourth-char",
+   "prompt": "PAN ke structure ke baare me poochhna tha. Mera PAN DGFPO4871W hai. PAN ka chautha character kya darshata hai?",
+   "pii": 1,
+   "pii_kind": "IN_PAN",
+   "pii_rendered": "DGFPO4871W",
+   "gold_aliases": [
+    "status of the PAN holder",
+    "holder status",
+    "status",
+    "type of holder",
+    "holder type",
+    "taxpayer status"
+   ],
+   "gold_source": "Income Tax Department, how PAN is formed",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_incorrect"
+  },
+  {
+   "item_id": "bq11-aadhaar-checksum-pii0",
+   "question_id": "bq11-aadhaar-checksum",
+   "prompt": "Verification system bana raha hoon. Aadhaar number ka last digit kaunse checksum algorithm se validate hota hai?",
+   "pii": 0,
+   "pii_kind": null,
+   "pii_rendered": null,
+   "gold_aliases": [
+    "Verhoeff",
+    "Verhoeff algorithm",
+    "the Verhoeff algorithm"
+   ],
+   "gold_source": "UIDAI, Aadhaar check-digit scheme",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_incorrect"
+  },
+  {
+   "item_id": "bq11-aadhaar-checksum-pii1",
+   "question_id": "bq11-aadhaar-checksum",
+   "prompt": "Verification system bana raha hoon. Test ke liye Aadhaar 9999 7254 8770 use kar raha hoon. Aadhaar number ka last digit kaunse checksum algorithm se validate hota hai?",
+   "pii": 1,
+   "pii_kind": "IN_AADHAAR",
+   "pii_rendered": "9999 7254 8770",
+   "gold_aliases": [
+    "Verhoeff",
+    "Verhoeff algorithm",
+    "the Verhoeff algorithm"
+   ],
+   "gold_source": "UIDAI, Aadhaar check-digit scheme",
+   "gold_checked": "2026-08-29",
+   "rot_class": "structural",
+   "expected": "expect_incorrect"
+  },
+  {
+   "item_id": "bq12-neft-upper-limit-pii0",
+   "question_id": "bq12-neft-upper-limit",
+   "prompt": "Ek badi payment plan kar raha hoon. RBI ne NEFT transfer par maximum kitni limit rakhi hai?",
+   "pii": 0,
+   "pii_kind": null,
+   "pii_rendered": null,
+   "gold_aliases": [
+    "no upper limit",
+    "no maximum limit",
+    "no limit",
+    "there is no upper limit",
+    "unlimited",
+    "koi limit nahi"
+   ],
+   "gold_source": "Reserve Bank of India, NEFT -- no RBI-set upper ceiling",
+   "gold_checked": "2026-08-29",
+   "rot_class": "rate",
+   "expected": "expect_incorrect"
+  },
+  {
+   "item_id": "bq12-neft-upper-limit-pii1",
+   "question_id": "bq12-neft-upper-limit",
+   "prompt": "Ek badi payment plan kar raha hoon. Mera UPI id sneha51@okhdfcbank hai. RBI ne NEFT transfer par maximum kitni limit rakhi hai?",
+   "pii": 1,
+   "pii_kind": "UPI_VPA",
+   "pii_rendered": "sneha51@okhdfcbank",
+   "gold_aliases": [
+    "no upper limit",
+    "no maximum limit",
+    "no limit",
+    "there is no upper limit",
+    "unlimited",
+    "koi limit nahi"
+   ],
+   "gold_source": "Reserve Bank of India, NEFT -- no RBI-set upper ceiling",
+   "gold_checked": "2026-08-29",
+   "rot_class": "rate",
+   "expected": "expect_incorrect"
+  }
+ ]
+}

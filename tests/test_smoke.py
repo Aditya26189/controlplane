@@ -528,6 +528,8 @@ def test_every_script_has_a_smoke_test() -> None:
         "09_detectors.py",
         # test_smoke_feasibility
         "11_feasibility.py",
+        # test_smoke_pilot_freeze
+        "12_pilot_freeze.py",
         # test_smoke_the_smoke_check_itself
         "smoke.py",
         # test_smoke_verify_claims_only, test_verify_exits_non_zero_on_drift
@@ -811,3 +813,38 @@ def test_smoke_feasibility(tmp_path: Path) -> None:
         assert 0.0 <= achieved["residual_risk"] <= 1.0
 
     assert "not built" in payload["not_derived_here"]
+
+
+def test_smoke_pilot_freeze(tmp_path: Path) -> None:
+    """`12_pilot_freeze.py` freezes prompts and measures surface distance.
+
+    CPU only and seconds long. Asserts the draft it writes carries NO labels,
+    because that is the property the corrected DECISIONS 090 turns on: on this
+    set correctness is measured, and a placeholder would be indistinguishable
+    from a measurement once it reached an artifact.
+    """
+    evalsets_out = tmp_path / "evalsets"
+    _run_bare(
+        "12_pilot_freeze.py",
+        "--config", str(PROJECT_ROOT / "config.yaml"),
+        "--evalsets-out", str(evalsets_out),
+        "--out", str(tmp_path / "pilot_envelope.json"),
+    )
+
+    draft = json.loads(
+        (evalsets_out / "banking-dual-24.draft.json").read_text(encoding="utf-8")
+    )
+    assert draft["n_items"] == 24
+    assert draft["n_questions"] == 12
+    assert "UNMEASURED" in draft["labels"]
+    for item in draft["items"]:
+        assert "label" not in item, "the frozen draft grew a correctness label"
+        assert item["gold_source"] and item["gold_checked"]
+        assert item["rot_class"] in ("structural", "rate")
+
+    envelope = json.loads((tmp_path / "pilot_envelope.json").read_text(encoding="utf-8"))
+    assert envelope["pilot"]["n"] == 24
+    assert envelope["draft_content_hash"] == draft["content_hash"]
+    # The artifact must say a small distance is not evidence the signal
+    # transfers, or someone will read it as though it were.
+    assert "NOT evidence" in envelope["interpretation"]
