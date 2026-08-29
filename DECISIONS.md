@@ -3986,3 +3986,114 @@ needs a serialised contract of some kind; this is the smallest one that
 truncation cannot break, and it is versioned with the code that emits it.
 
 
+---
+
+## 101 - Pre-registration: the pilot's base error rate, and two failure branches that must not be confused
+
+**Written before a single question is authored.** `090` and its correction
+settled what the pilot measures and how. This settles what makes the pilot
+*itself* valid, which the earlier text left implicit, and separates two
+failures that would otherwise both get routed into the one retry `090` allows.
+
+### The gap this closes
+
+The corrected design says correctness is **measured**, not authored: generate
+an answer, judge it against gold aliases. It then says the questions need
+checkable gold answers, so the set is banking factual lookup.
+
+Stable and checkable correlates with **easy**. IFSC prefix to bank name,
+regulatory acronym expansion -- a 7B instruct model gets most of those right.
+If the pilot returns two wrong answers out of twelve, AUROC is computed on two
+positives and means nothing. That is the same shape as the defect the
+correction to `090` just caught, one step further along: a well-formed set that
+cannot measure what it was built to measure, producing a number that looks
+fine.
+
+### The acceptance band, derived
+
+The probe was fitted where TriviaQA's base error rate is **0.4510** (measured,
+`triviaqa-2400-t960`). A banking lookup set at 0.05 is a different problem, not
+an easier version of the same one.
+
+Twelve questions cannot estimate an error rate -- the standard error is ~0.14
+at p=0.5. They can establish that **both ends exist**. Under Binomial(12,
+0.4510):
+
+| outcome | probability |
+|---|---|
+| <= 2 questions wrong | 0.0415 |
+| **3-9 wrong** | **0.9504** |
+| >= 10 questions wrong | 0.0080 |
+
+**The acceptance band is 3 to 9 questions wrong out of 12** -- a two-sided 5%
+band under the fitted regime, not a number anyone chose. Outside it, the set is
+declared a **construction defect** and rebuilt.
+
+### The two branches, with distinct criteria, declared now
+
+| observation | diagnosis | response | consumes the `090` retry? |
+|---|---|---|---|
+| wrong-count outside 3-9 | construction defect: the set is off-regime | re-author for difficulty, rebuild | **no** |
+| in band, IQR ratio < 0.439 | saturation: activations off-distribution | re-author register, one retry | **yes** |
+| in band, IQR ratio >= 0.439, AUROC lower CI < 0.55 | the probe does not transfer here | report the REFUSAL; composed pair stays unmeasured | **n/a -- a result** |
+
+The third must not be routed into the second. A probe that ranks with normal
+spread and still fails the issuance bar is a finding about discriminative
+power, and `090`'s clause `3` already commits to reporting it. Re-authoring in
+that case would be tuning the eval set until the detector passed -- the error
+`084` is about, committed in the direction that flatters us.
+
+Declared as a table because the first surprising result otherwise lands in
+whichever branch is nearest to hand.
+
+### Difficulty comes from specificity, not obscurity
+
+The questions are drawn from published, stable, precisely-specified banking and
+regulatory facts, chosen so the model must interpolate a precise value rather
+than retrieve a famous one -- structural rules (which character position of an
+IFSC is fixed, what a PAN's fourth character denotes), regulatory minimums,
+which checksum validates an Aadhaar. Not obscurity: a fact so rare that the
+gold answer is hard to verify moves the difficulty into the labelling, which is
+worse.
+
+**The twelve deliberately span both ends**, with some expected right and some
+expected wrong. At n=12 that is not an estimate, but it makes the band above a
+test of construction rather than of luck.
+
+### Gold answers carry their provenance
+
+Every gold answer records its **source and the date it was checked**, and is
+re-verified at freeze. This is the one artifact class in the repository with no
+provenance, which is not defensible in a project whose argument is that numbers
+without provenance are not evidence.
+
+Structural rules (IFSC composition, PAN character semantics, Aadhaar checksum)
+move on a scale of years. Fee schedules, transaction limits and rate ceilings
+move on a scale of months. **The set prefers the former and records which class
+each item is in**, so a later reader can tell what needs re-checking instead of
+discovering rot by being wrong in front of an audience.
+
+### One check deferred to full scale, recorded now so it is not lost
+
+Inserting an identifier into a prompt may itself change whether the model
+answers correctly. If it does, a composed decision on this envelope is partly
+measuring identifier presence rather than difficulty -- which is precisely the
+claim the set exists to support, so a confound there is not a detail.
+
+At twelve questions this is unmeasurable and no attempt is made. **At full
+scale, the error rate is computed in the identifier-present and
+identifier-absent strata separately, after generation and before scoring**, and
+reported whether or not it differs. Recorded here rather than in a working
+note, because a check remembered later is a check that was not run.
+
+### Committed before authoring
+
+- The wrong-count and the IQR ratio are reported for the first pilot whatever
+  they are, and before either branch is taken.
+- A construction-defect rebuild does not touch the register, and a saturation
+  re-author does not touch the difficulty. Changing both at once would make the
+  second pilot uninterpretable.
+- `090` clause `4` still governs: if the Kaggle run has not landed when the
+  submission is assembled, `phase-8` is tagged with the gap named, and no
+  placeholder number stands in for it.
+
