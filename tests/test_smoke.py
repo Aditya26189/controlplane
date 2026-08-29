@@ -526,6 +526,8 @@ def test_every_script_has_a_smoke_test() -> None:
         "08_paired.py",
         # test_smoke_detectors
         "09_detectors.py",
+        # test_smoke_feasibility
+        "11_feasibility.py",
         # test_smoke_the_smoke_check_itself
         "smoke.py",
         # test_smoke_verify_claims_only, test_verify_exits_non_zero_on_drift
@@ -770,3 +772,42 @@ def test_verify_exits_non_zero_on_drift(tmp_path: Path) -> None:
     result = _run_bare("verify.py", "--claims-only", "--readme", str(tampered), expect=1)
     assert "DRIFT" in result.stdout
     assert "0.9999" in result.stdout or "0.9999" in result.stderr
+
+
+def test_smoke_feasibility(tmp_path: Path) -> None:
+    """`11_feasibility.py` derives the bound and the distance from it.
+
+    CPU-only and seconds long, so it gets a real smoke test rather than an
+    exemption. Asserts the artifact it writes is internally consistent, not
+    merely that the script exited zero -- a stage that writes a plausible file
+    and exits cleanly is the failure mode this suite exists for.
+    """
+    result = _run_bare(
+        "11_feasibility.py",
+        "--config", str(PROJECT_ROOT / "config.yaml"),
+        "--out", str(tmp_path / "feasibility.json"),
+    )
+    assert "abstain on at least" in result.stdout or result.stdout == ""
+
+    payload = json.loads((tmp_path / "feasibility.json").read_text(encoding="utf-8"))
+    assert payload["measured"]["base_error_rate"] > 0
+    assert payload["measured"]["envelope_id"].startswith("sha256:")
+
+    floors = payload["abstention_floor"]
+    assert len(floors) >= 3
+    # Monotone in the target: a tighter risk ceiling can never need less
+    # abstention. If this inverts, the inequality was mis-transcribed.
+    by_target = sorted(floors, key=lambda f: -f["target_risk"])
+    values = [f["floor"] for f in by_target]
+    assert values == sorted(values), f"floor is not monotone in the target: {values}"
+
+    assert payload["profiles"], "no profile was derived"
+    for profile in payload["profiles"]:
+        achieved = profile["achieved_risk"]
+        assert achieved["efficiency"] >= 1.0, (
+            f"{profile['profile']} scored {achieved['efficiency']}, below the "
+            "theoretical floor -- which would mean the bound is wrong"
+        )
+        assert 0.0 <= achieved["residual_risk"] <= 1.0
+
+    assert "not built" in payload["not_derived_here"]
