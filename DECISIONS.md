@@ -3734,3 +3734,172 @@ this is exactly when a freeze is worth most; to the second, that `SPEC.md` and
 `TASKS.md` are the record of what was planned against what was built, and
 `096` is only legible because both are still there.
 
+
+---
+
+## 098 - `construction` records the inputs to generation, never the identity of the generator
+
+The mirror image of `092`, found from the other side, and the fourth instance of
+one boundary.
+
+`092` established where the content hash *ends*: facts learned after a set was
+frozen live beside it, because the hash's job is immutability rather than
+completeness. This is the same boundary violated in the opposite direction —
+something that was never a property of the data got written *into* the identity.
+
+### What was found
+
+`controlplane/validation/synthetic.py` writes, into the `construction` dict that
+feeds `EvalSet.content_hash`:
+
+```python
+"generator": "src.validation.synthetic.synthetic_evalset"
+```
+
+That string is a **module path**. The envelope id — and therefore the third
+element of every warrant key issued on a synthetic fixture — was coupled to the
+package layout. Renaming `src/` to `controlplane/` in `095` would have re-issued
+every synthetic fixture under a new envelope and orphaned the warrants in
+`results/fixtures/`, and nothing would have raised: a changed hash does not
+error, the numbers simply stop belonging to anything.
+
+Verified rather than assumed before the rename: the same construction dict
+hashes to `6b7654bb…` with `src.` and `a682d25f…` with `controlplane.`.
+
+### The principle
+
+**`construction` records the *inputs* to generation. It never records the code
+identity of the generator.**
+
+- **Inside:** seed, `n_items`, requested base rate, items per question, whether
+  the set is long-context, declared splits, the warning text. Every one is a
+  parameter someone chose, and changing any of them genuinely produces different
+  data that genuinely deserves a different identity.
+- **Never inside:** module paths, class names, function references, package
+  names, file paths, version strings of the generating code. None of them
+  changes the data. All of them change when the code is reorganised, which is
+  the one thing that must not move an envelope id.
+
+The generator's identity is not lost — it belongs in `provenance`, which every
+artifact already carries, alongside the git commit and the config hash. That is
+where "which code produced this" is answered, and provenance is deliberately
+outside the hash for exactly this reason.
+
+### Why this is an entry and not two comments
+
+The two known sites are frozen with comments in place, because correcting them
+now would do the damage the rule exists to prevent — the strings are stale, and
+that is strictly better than an orphaned fixture. `docs/PATHS.md` records both.
+
+But freezing two sites is a patch, and the failure is silent and general: any
+future `construction` dict capturing a dotted path has it, and nobody would
+notice until a rename. So `test_construction_records_inputs_not_code_identity`
+scans every `construction` and `extra` dict the builders produce for a string
+that looks like a dotted path and resolves to a real module in this package, and
+fails naming the key. The two frozen literals are allowlisted **by exact value**,
+with the reason, so the allowlist cannot silently absorb a third.
+
+That converts "we caught two" into "this class cannot recur".
+
+### A reviewer could fairly object
+
+That the frozen literals now lie — they name a module that no longer exists. They
+do, and the comment beside each says so. The alternative was to re-issue every
+synthetic fixture to fix a cosmetic inaccuracy in a string nothing reads at
+runtime. `092` made the same trade and for the same reason: an identity that
+moves when someone tidies is worse than an identity that is slightly ugly.
+
+
+---
+
+## 099 - Two of the proposal's numbers are derived, and the price list is still not built
+
+**Amends `096`**, which declared Phase 6 economics unbuilt and every cost figure
+a declared estimate. That remains true of every *money* figure. It was too
+strong about two quantities that need no new measurement.
+
+### What is now derived rather than declared
+
+**1. The abstention floor.** For traffic with measured base error rate `mu` and
+a declared risk ceiling `alpha` on what is kept, the minimum fraction any
+selector must abstain on is
+
+```
+a  >=  (mu - alpha) / (1 - alpha)
+```
+
+assuming a **perfect** selector — one that abstains only on errors and never on
+a correct response. Derivation in `controlplane/economics/feasibility.py`;
+checked against an exhaustively-searched optimal selector on a 1000-item
+population rather than against itself, because a closed form asserted by the
+test that computes it proves nothing.
+
+On `triviaqa-2400-t960`, base error rate **0.4510**:
+
+| declared target risk | minimum abstention | most that can be served |
+|---|---|---|
+| 0.20 | 0.3138 | 68.6% |
+| 0.10 | 0.3900 | 61.0% |
+| 0.05 | **0.4221** | 57.8% |
+| 0.02 | 0.4398 | 56.0% |
+| 0.01 | 0.4455 | 55.5% |
+
+This answers *"why not just tighten the threshold until the error rate is
+acceptable?"* with an impossibility result instead of an opinion. At this base
+rate, a 5% residual risk target requires abstaining on at least 42% of traffic
+**however good the detector is**. No threshold, ensemble or amount of tuning
+gets under it.
+
+**2. How far each operating point is from that floor.** Fully measured — base
+rate, recall and flag rate all from one envelope, no declared input anywhere:
+
+| profile | abstains on | ships residual risk | perfect selector would abstain on | cost |
+|---|---|---|---|---|
+| `customer_support` | 0.1062 | 0.3951 | 0.0925 | **1.15x** |
+| `internal_knowledge` | 0.1865 | 0.3547 | 0.1493 | **1.25x** |
+| `decision_support` | 0.4677 | 0.2231 | 0.2934 | **1.59x** |
+
+The right way to read this: the detector buys most of what is theoretically
+available at the loose end and less at the tight end. `decision_support` costs
+59% more review than its own residual risk strictly requires — which is a real
+number about a real gap, and far more useful than a claim of optimality.
+
+### A consistency check the sweep forced
+
+`test_efficiency_is_never_below_one_for_an_achievable_point` swept the
+(recall, flag rate) grid and produced an efficiency of **0.65** — an operating
+point apparently beating a bound no selector can beat.
+
+The combination was impossible. `mu * recall` is the share of all traffic that
+is a *caught error*, and it cannot exceed the share flagged. At `mu=0.4510`,
+`recall=0.3` implies catching 13.5% of traffic as errors while flagging 10%.
+`achieved_risk` now refuses that, naming it as rates that cannot describe one
+envelope — which is the scenario-mixing error `CLAUDE.md` names, surfacing in a
+new place. The three real operating points all satisfy it.
+
+### What is still not built
+
+`sizing.py`, the computed price list, the stratified estimator, the Neyman
+allocation schedule, the blinded label queue, Cohen's κ, and
+`test_no_scenario_mixing`. **Every cost, headcount and saving figure remains a
+hand-derived declared estimate and must be labelled one.**
+
+`controlplane/economics/` now exists, which means the `NOT BUILT` marker in
+`CLAUDE.md`'s layout block is no longer accurate as written and has been
+corrected to name the two modules that exist and the one that does not. The
+package docstring says the same thing in the place someone importing it will
+read.
+
+`review_volume` derives items per month from the measured flag rate and one
+declared workload, and labels every input by origin — so a figure computed from
+it carries "this half was measured, this half was declared" rather than losing
+it in a spreadsheet.
+
+**A reviewer could fairly object** that a floor computed at TriviaQA's 0.4510
+base error rate says nothing about production traffic, where the declared rate
+is 0.03. Correct, and the artifact carries the envelope id for exactly that
+reason. The floor is a statement about *this* distribution; what transfers is
+the shape of the argument, not the number. At `mu=0.03` and `alpha=0.01` the
+floor is 0.0202 — the same inequality, a far smaller consequence, and the
+honest thing is to say which one is being quoted.
+

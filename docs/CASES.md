@@ -164,5 +164,8 @@ look fine.
 |---|---|---|---|
 | the notebook is generated, never hand-edited | a hand-edited notebook fails the suite | `test_notebook_is_generated_from_its_script` | `notebooks/run_on_kaggle.ipynb` |
 | every README claim resolves | each number in the claim table matches a field in `results/` at the stated precision | `test_every_readme_claim_resolves` | `README.md` |
+| `construction` carries no code identity | a module path inside a content hash couples every warrant to the package layout | `test_construction_records_inputs_not_code_identity` | — |
+| the rule fires on a new occurrence | freezing two sites is a patch; this makes the class non-recurring | `test_a_new_generator_string_is_caught` | — |
+| the frozen literals have not moved | correcting one would orphan every fixture warrant | `test_the_frozen_literals_are_still_exactly_the_two_that_were_frozen` | `results/fixtures/` |
 | every case here has a covering test | this table cannot drift from the suite | `test_every_case_names_a_real_test` | — |
 | the scripts are wired together | each stage runs end to end in a subprocess | `test_every_script_has_a_smoke_test` | — |
