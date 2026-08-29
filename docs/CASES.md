@@ -171,5 +171,10 @@ look fine.
 | `construction` carries no code identity | a module path inside a content hash couples every warrant to the package layout | `test_construction_records_inputs_not_code_identity` | — |
 | the rule fires on a new occurrence | freezing two sites is a patch; this makes the class non-recurring | `test_a_new_generator_string_is_caught` | — |
 | the frozen literals have not moved | correcting one would orphan every fixture warrant | `test_the_frozen_literals_are_still_exactly_the_two_that_were_frozen` | `results/fixtures/` |
+| the abstention floor matches an optimal selector | the closed form is checked against an exhaustive simulation, not against itself | `test_the_floor_matches_an_exhaustive_perfect_selector` | `results/feasibility.json` |
+| no operating point beats the floor | an efficiency below 1.0 would mean the bound is wrong | `test_efficiency_is_never_below_one_for_an_achievable_point` | `results/feasibility.json` |
+| rates from different envelopes are refused | catching more errors than were flagged cannot describe one distribution | `test_catching_more_errors_than_were_flagged_is_refused` | — |
+| derived figures name their declared inputs | a number from a declared workload is not a measurement, and must say so | `test_review_volume_labels_which_inputs_were_declared` | `results/feasibility.json` |
+| the artifact states what it does not derive | the unbuilt price list travels with the numbers | `test_the_artifact_states_what_it_does_not_derive` | `results/feasibility.json` |
 | every case here has a covering test | this table cannot drift from the suite | `test_every_case_names_a_real_test` | — |
 | the scripts are wired together | each stage runs end to end in a subprocess | `test_every_script_has_a_smoke_test` | — |

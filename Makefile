@@ -1,8 +1,8 @@
 # ControlPlane — the four reproduction tiers. Block E, E.4.
 #
 #   make smoke     CPU, no network, < 60s   the clone works and the package imports
-#   make test      CPU, ~10 min             505 tests green
-#   make verify    CPU + cached activations every number in the claim table reproduces
+#   make test      CPU, ~10 min             549 tests green
+#   make verify    CPU (+cache for tier 3)  every claim reproduces and every metric recomputes
 #   make extract   GPU, ~1 h                activations regenerate from the source model
 #
 # Every target exits non-zero on failure. `verify` exits non-zero if any number

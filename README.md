@@ -27,9 +27,11 @@ pip install -r requirements.lock.txt
 make verify
 ```
 
-`make verify` re-runs the frozen-set evaluation from cached activations and
-prints every number in the claim table below beside the value measured on your
-machine. It exits non-zero if any of them drift.
+`make verify` prints every number in the claim table below beside the value
+measured on your machine, then recomputes every metrics block from the frozen
+per-item scores in `results/scores/`. It exits non-zero if any of them drift.
+Both of those run on a fresh clone; a third, deeper check re-derives the scores
+from cached activations and reports SKIPPED without them.
 
 ---
 
@@ -43,10 +45,13 @@ Stating the scope is worth more than having it inferred.
   Nothing here blocks, filters or gates a user-facing response.
 - **Not a general result.** Measured on 2,400 TriviaQA items and hand-built PII
   sets, one model family (Qwen2.5-7B-Instruct, NF4), no real production traffic.
-- **Not fully built.** Phase 6 economics and Phase 9's action gate were
+- **Not fully built.** Phase 9's action gate and Phase 6's price list were
   specified and never written; five contract documents still cite a
-  `controlplane/economics/sizing.py` that does not exist. Logged as
-  `DECISIONS.md` 096, declared in [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
+  `controlplane/economics/sizing.py` that does not exist. So **every cost,
+  headcount or ROI figure anywhere in this repository is a declared estimate**,
+  and says so. The feasibility bound below is the exception — it is derived from
+  measured rates and needs no cost model. `DECISIONS.md` 096 and 099, declared
+  in [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 - **Not a claim about truthfulness.** The probe is a correlational classifier
   over activations. It does not measure what a model believes.
 
@@ -89,12 +94,26 @@ All intervals are 95% bootstrap-percentile over questions, seed 1729.
 | Warrant matrix cells VALID | 13 | - | results/warrant_matrix.json | matrix.summary.VALID | make verify |
 | Warrant matrix cells REFUSED | 4 | - | results/warrant_matrix.json | matrix.summary.REFUSED | make verify |
 | Warrant matrix cells never measured | 39 | - | results/warrant_matrix.json | matrix.summary.UNVALIDATED | make verify |
+| Abstention floor at a 5% residual-risk target | 0.4221 | - | results/feasibility.json | abstention_floor[target_risk=0.05].floor | python scripts/11_feasibility.py |
+| ...at a 10% target | 0.3900 | - | results/feasibility.json | abstention_floor[target_risk=0.1].floor | python scripts/11_feasibility.py |
+| Residual risk `decision_support` actually ships | 0.2231 | - | results/feasibility.json | profiles[operating_point_id=P-decision-support].achieved_risk.residual_risk | python scripts/11_feasibility.py |
+| ...costing this multiple of the perfect-selector floor | 1.5941 | - | results/feasibility.json | profiles[operating_point_id=P-decision-support].achieved_risk.efficiency | python scripts/11_feasibility.py |
+| `customer_support` at the same measure | 1.1490 | - | results/feasibility.json | profiles[operating_point_id=P-customer-support].achieved_risk.efficiency | python scripts/11_feasibility.py |
 
 **How to read the last three rows.** 39 of 56 cells are UNVALIDATED. That is
 not a gap in the work — it is the expected shape of the thing. UNVALIDATED is
 the modal state in any real deployment, and a system that cannot say *"this
 detector has never been measured on this distribution"* will instead say
 something confident and wrong.
+
+**The last five rows are the feasibility bound**, and they are the one part of
+this table that is not about our detector. Given a measured base error rate,
+holding residual risk at 5% requires abstaining on at least 42.2% of traffic —
+for *any* selector, however good. That is an impossibility result, and it is why
+"just tighten the threshold" is not an available answer. The two efficiency rows
+say how far each operating point sits above that floor at the risk it actually
+ships: 1.15× at `customer_support`, 1.59× at `decision_support`. See
+[docs/PROPOSAL.md](docs/PROPOSAL.md) §1–2.
 
 **Read the probe recall with its base rate.** 0.0794 recall at a 4.2% flag rate
 is a `lift` of roughly 1.9x over random sampling at the same budget, and the
@@ -110,9 +129,9 @@ pointed at.
 | path | what is in it |
 |---|---|
 | `controlplane/` | the package — model, store, validation, matrix, drift, policy, detectors, report |
-| `evalsets/` `results/` | frozen content-hashed evaluation sets; every artifact behind the table above |
+| `evalsets/` `results/` | frozen content-hashed evaluation sets; every artifact behind the table above, and `results/scores/` — the per-item scores it all reduces to |
 | `scripts/` `demo/` `notebooks/` | thin CLI wrappers, the two-pane demo runner, the Kaggle GPU notebook |
-| `tests/` | 505 tests, including the ones that enforce this README |
+| `tests/` | 549 tests, including the ones that enforce this README |
 | `docs/` | spec, methods, limitations, the case matrix, and the move mapping |
 | `DECISIONS.md` `round1/` | 97 append-only decision entries; the Round 1 submission, moved whole |
 
@@ -123,27 +142,39 @@ pointed at.
 | target | without make | requires | time | proves |
 |---|---|---|---|---|
 | `make smoke` | `python scripts/smoke.py` | CPU, no network | < 60s | the clone works and the package imports |
-| `make test` | `python -m pytest tests/ -q` | CPU | ~10 min | 505 tests green |
-| `make verify` | `python scripts/verify.py` | CPU, cached activations | ~2 min | **every number in the claim table reproduces** |
+| `make test` | `python -m pytest tests/ -q` | CPU | ~10 min | 549 tests green |
+| `make verify` | `python scripts/verify.py` | CPU | ~3 min | **every claim reproduces, and every metric recomputes from frozen scores** |
+| `make verify` (tier 3) | `python scripts/verify.py` | CPU + cached activations | ~4 min | the frozen scores re-derive from the activations |
 | `make extract` | `python scripts/00_extract.py --config config.yaml` | GPU, 16 GB | ~1 h | activations regenerate from the source model |
 
 Every recipe in the Makefile is a single command with no shell logic in it, so
 the middle column is exact rather than approximate. If you are on Windows
 without make, use it directly.
 
-`make verify` is the "prove it" button as a command line, and it does two things:
+`make verify` is the "prove it" button as a command line. Three checks,
+weakest first, each proving something the one before it cannot:
 
 1. **The claim table against the committed artifacts.** Resolves every field
-   named above and compares at the quoted precision. Always runs.
-2. **The committed artifacts against a re-run from cached activations.** This is
-   the stronger check — step 1 would still pass if the artifacts and the README
-   were stale *together*. The extraction cache is ~78 MB and gitignored, so on a
-   fresh clone this step reports **SKIPPED**. It never reports a pass it did not
-   earn.
+   named above and compares at the quoted precision. Needs nothing but the
+   repository. Cannot detect a README and a set of artifacts that went stale
+   *together*.
+2. **Every metrics block recomputed from frozen per-item scores.** Catches
+   exactly that: an artifact whose numbers no longer follow from the data behind
+   them. `results/scores/` holds the labels, scores and question ids for all 24
+   measured (detector, envelope) blocks — about 200 KB, committed — and the
+   recomputation uses the same builder, bootstrap count and seed. **This runs on
+   a fresh clone**, which is the entire reason the scores are committed rather
+   than the activations.
+3. **The frozen scores against a re-run from cached activations.** The deepest
+   tier and the only one that closes the loop back to the model: check 2 proves
+   the metrics follow from the recorded scores, not that those scores came from
+   the model and probe the artifact names. The caches are ~100 MB and
+   gitignored, so on a fresh clone this reports **SKIPPED** — never a pass it
+   did not earn, and the final line names any tier that did not run.
 
-Both exit non-zero on drift. Nothing in `results/` is written by either: the
-re-run goes to a scratch directory, so a failed verification cannot damage the
-evidence it was checking.
+All three exit non-zero on drift. Nothing in `results/` is written by any of
+them: the re-run goes to a scratch directory, so a failed verification cannot
+damage the evidence it was checking.
 
 Nobody will run `make extract`. It is documented anyway, so the chain from raw
 model to published number has no gap in it. The tested GPU path is

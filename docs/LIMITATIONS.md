@@ -102,7 +102,15 @@ tier curve as a *measured* object covers T1 activations and T3 text detectors.
 
 ## 3. Specified and not built
 
-### 3.1 Phase 6 economics — and five contracts still cite it
+### 3.1 Phase 6 economics — the price list, and five contracts still citing it
+
+> **Amended 2026-08-29** (`DECISIONS.md` 099). Two quantities that needed no new
+> measurement are now derived rather than declared: the **abstention floor**,
+> and **how far each operating point sits above it**. See
+> [PROPOSAL.md](PROPOSAL.md) §1–2 and `results/feasibility.json`.
+> `controlplane/economics/` now holds `feasibility.py` and `review.py`.
+> Everything below still applies to the **price list**, which is what remains
+> unbuilt.
 
 `controlplane/economics/sizing.py` and `test_no_scenario_mixing` are cited as
 load-bearing in **five** documents — `config.yaml`, `CLAUDE.md`,
@@ -126,7 +134,12 @@ proposal or the deck.
 
 **Any cost, headcount or ROI figure in [PROPOSAL.md](PROPOSAL.md) or the deck
 is hand-derived and must be labelled a declared estimate, not a measured
-result** — the same treatment as the two carried-forward Round 1 numbers.
+result** — the same treatment as the two carried-forward Round 1 numbers. The
+feasibility bound and the efficiency ratios are exempt: they are derived from
+measured rates and carry no cost model. The review volumes are half-exempt —
+the flag rates are measured, the workload is declared, and the artifact labels
+every input by origin so a later conversion to money cannot lose which was
+which.
 
 The contracts keep their references rather than having them quietly deleted. A
 spec that describes an unbuilt module and says so is scoped; one edited to hide

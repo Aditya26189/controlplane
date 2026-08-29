@@ -103,7 +103,8 @@ controlplane/
   matrix/          the (detector × envelope) warrant matrix and routing
   drift/           envelope computation, PSI, MMD, revocation ladder
   sampling/        NOT BUILT — Phase 6; DECISIONS 096
-  economics/       NOT BUILT — Phase 6; DECISIONS 096. Five contracts cite it
+  economics/       feasibility.py, review.py. sizing.py — the price list —
+                   is NOT BUILT; DECISIONS 096, amended by 099
   policy/          bundle loading, load-time warrant resolution
   detectors/       adapters: probe, presidio (qwen3guard/judge not built)
   gate/            NOT BUILT — Phase 9
