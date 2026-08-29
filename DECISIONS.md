@@ -3903,3 +3903,86 @@ the shape of the argument, not the number. At `mu=0.03` and `alpha=0.01` the
 floor is 0.0202 — the same inequality, a far smaller consequence, and the
 honest thing is to say which one is being quoted.
 
+
+---
+
+## 100 - Absence is not a pass: a check that did not report is a check that did not run
+
+Named once here because it has now appeared four times in four different
+components, and the fix each time was local while the principle was not.
+
+**The rule.** When a verifier cannot see the outcome of a check, it reports
+that check as *not having run*. Never as passed. This applies whether the
+check was skipped deliberately, could not run for want of an input, crashed,
+or simply did not appear in whatever the verifier was reading.
+
+The four instances, in the order they surfaced:
+
+| where | what absence looked like | what it would have meant |
+|---|---|---|
+| `081` | an interval containing zero | "no difference", when the sample could not resolve one |
+| `086` | a holdout with 5 affected positives | "the fitting was harmless", when the set could not detect it |
+| `089` | a detector with no category declared | a warrant against labels meaning something else |
+| **this** | a tier missing from the gate's view | **a check reported green that never ran** |
+
+The fourth is the sharpest, because the component that failed is the one whose
+entire job is reporting accurately.
+
+### What happened
+
+The clean-clone gate detected verify's outcome by matching prose in the last
+25 lines of captured output: `if "SKIPPED" in verify.tail`. One string, one
+row, and a note reading *"the claim table was still checked against the
+committed artifacts."*
+
+That was true when verify had two tiers. When it grew a third (`results/scores/`,
+the score tier that lets a clean clone re-derive anything at all), the sentence
+became false in both directions at once: the score tier had reproduced 24
+comparisons **inside the clone** and was filed as not having run, while the
+note claimed the claim table was all that had been checked.
+
+Then the corrected version -- one row per tier, still matched on prose --
+immediately reported the *claim table* as skipped, because at three tiers its
+success line had scrolled off the 25-line tail. Conservative, and still wrong.
+
+Neither version ever reported a failing check as green. Both understated
+coverage, which is the safe direction. It is still a gate that cannot be
+trusted to say what it verified, and "wrong in the safe direction" is the
+excuse this project refuses everywhere else.
+
+### The fix, and why prose was the wrong mechanism
+
+`scripts/verify.py` now emits a machine-readable line per tier, last in its
+output so truncation cannot reach it:
+
+```
+TIER|1|claim_table|OK|31/31
+TIER|2|frozen_scores|OK|24/24
+TIER|3|activations|SKIPPED|0/0
+```
+
+The gate parses that. Prose is for people and moves whenever the wording
+improves; a contract does not. Three behaviours are fixed by it rather than
+by discipline:
+
+- a tier reporting `DRIFT` **fails** the gate;
+- a tier absent from the summary is reported **skipped**, never passed;
+- **no tier lines at all is a failure**, not an empty pass. That case would
+  otherwise be the worst one: a verifier whose output was lost entirely,
+  producing a gate with nothing to object to.
+
+`test_prose_alone_is_not_enough` feeds the gate output that says all the right
+things in words and asserts it is **rejected**. Without that test the fix
+decays the next time someone improves the wording.
+
+### A reviewer could fairly object
+
+That parsing a pipe-delimited line is fragile in its own way, and that the
+gate should call verify as a library rather than scraping a subprocess. Fair,
+and it is the better design. The gate runs verify **inside a fresh clone under
+that clone's interpreter**, which is the whole point -- it is testing the
+tree a judge receives, not this process's imports. Crossing that boundary
+needs a serialised contract of some kind; this is the smallest one that
+truncation cannot break, and it is versioned with the code that emits it.
+
+

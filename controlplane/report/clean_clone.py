@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -116,27 +117,85 @@ def _run(
     )
 
 
-#: How each verify tier announces its outcome. Matched against the captured
-#: output so the gate reports what actually happened rather than inferring it
-#: from an exit code, which only says "nothing drifted".
-_TIERS = (
-    ("claim table vs artifacts", "claims reproduce"),
-    ("metrics recomputed from frozen scores", "recomputed from frozen scores"),
-    ("scores re-derived from activations", "re-derived from cache"),
+#: Human-readable label per tier key, for the report. The keys themselves come
+#: from verify's machine-readable contract, not from this table.
+_TIER_LABELS = {
+    "claim_table": "claim table vs artifacts",
+    "frozen_scores": "metrics recomputed from frozen scores",
+    "activations": "scores re-derived from activations",
+}
+
+#: The contract verify emits, one line per tier, last in its output:
+#:     TIER|1|claim_table|OK|31/31
+_TIER_LINE = re.compile(
+    r"^TIER\|(?P<number>\d+)\|(?P<key>[a-z_]+)\|(?P<outcome>OK|DRIFT|SKIPPED)\|"
+    r"(?P<passed>\d+)/(?P<total>\d+)\s*$"
 )
 
 
 def _verify_tiers(tail: str) -> list[StepResult]:
-    """One row per verify tier, saying whether it ran or was skipped.
+    """One row per verify tier, parsed from its machine-readable summary.
 
-    A tier is counted as having RUN only when its own success line is present.
-    Absence is reported as skipped rather than assumed to have passed -- the
-    captured tail is truncated to its last lines, so a tier whose line fell off
-    the end is unknown, and unknown is not a pass.
+    **Why a contract and not prose.** The first version grepped the human output
+    for phrases like "claims reproduce". It worked until verify grew a third
+    tier, at which point the claim-table line scrolled off the captured 25-line
+    tail and the gate reported a check that had passed as not having run. The
+    conservative direction, and still wrong -- in the component whose whole job
+    is saying accurately what happened.
+
+    Prose moves whenever the wording improves. ``TIER|n|key|outcome|passed/total``
+    does not, and verify prints it last so truncation cannot reach it.
+
+    A tier absent from the summary is reported skipped, never passed: absence
+    means unknown, and unknown is not success. No tier lines at all is a
+    failure, not an empty pass -- that means verify did not emit its contract.
     """
+    seen: dict[str, StepResult] = {}
+    for line in tail.splitlines():
+        match = _TIER_LINE.match(line.strip())
+        if not match:
+            continue
+        key = match.group("key")
+        outcome = match.group("outcome")
+        passed, total = match.group("passed"), match.group("total")
+        label = _TIER_LABELS.get(key, key)
+        seen[key] = StepResult(
+            name=f"verify: {label}",
+            command=[],
+            returncode=None,
+            duration_seconds=0.0,
+            ok=outcome != "DRIFT",
+            skipped=outcome == "SKIPPED",
+            detail=(
+                f"{passed}/{total} reproduced" if outcome == "OK"
+                else "did not run" if outcome == "SKIPPED"
+                else f"DRIFT: only {passed}/{total} reproduced"
+            ),
+        )
+
+    if not seen:
+        return [
+            StepResult(
+                name="verify: tier summary",
+                command=[],
+                returncode=None,
+                duration_seconds=0.0,
+                ok=False,
+                skipped=False,
+                detail=(
+                    "verify emitted no TIER| lines. Either it is an older "
+                    "version without the machine-readable summary, or its "
+                    "output was lost. Which checks ran is unknown, and unknown "
+                    "is not a pass."
+                ),
+            )
+        ]
+
     rows: list[StepResult] = []
-    for label, marker in _TIERS:
-        ran = marker in tail
+    for key, label in _TIER_LABELS.items():
+        if key in seen:
+            rows.append(seen[key])
+            continue
         rows.append(
             StepResult(
                 name=f"verify: {label}",
@@ -144,17 +203,10 @@ def _verify_tiers(tail: str) -> list[StepResult]:
                 returncode=None,
                 duration_seconds=0.0,
                 ok=True,
-                skipped=not ran,
+                skipped=True,
                 detail=(
-                    ""
-                    if ran
-                    else (
-                        "not reported in the captured output. On a fresh clone "
-                        "the activation tier legitimately skips -- the caches "
-                        "are ~100 MB and gitignored. Any other tier missing "
-                        "here means the output was truncated, which is not a "
-                        "pass either."
-                    )
+                    "absent from verify's tier summary. Reported skipped rather "
+                    "than passed: absence means unknown."
                 ),
             )
         )

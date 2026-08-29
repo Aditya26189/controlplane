@@ -50,6 +50,13 @@ from controlplane.report.reproduce import (  # noqa: E402
 from controlplane.report.reproduce import render as render_reproduction  # noqa: E402
 
 
+def _count(report) -> str:
+    """``passed/total`` for a reproduction report, or ``0/0`` if it did not run."""
+    if report is None or not getattr(report, "ran", False):
+        return "0/0"
+    return f"{sum(d.ok for d in report.diffs)}/{len(report.diffs)}"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--readme", default=str(PROJECT_ROOT / "README.md"))
@@ -85,6 +92,7 @@ def main() -> int:
         "labels, scores and question ids -- with the same builder, bootstrap\n"
         "count and seed. Committed and ~200 KB, so this runs on a fresh clone.\n"
     )
+    score_report = None
     if args.claims_only:
         print("re-derivation SKIPPED\n  --claims-only was passed")
         scores_ok, scores_skipped = True, True
@@ -104,6 +112,7 @@ def main() -> int:
         "compares. The caches are ~100 MB and gitignored, so on a fresh clone\n"
         "this reports SKIPPED -- never a pass it did not earn.\n"
     )
+    act_report = None
     if args.claims_only or args.no_activations:
         flag = "--claims-only" if args.claims_only else "--no-activations"
         print(f"re-derivation SKIPPED\n  {flag} was passed")
@@ -112,6 +121,26 @@ def main() -> int:
         act_report = reproduce_frozen_set(PROJECT_ROOT, eval_set=args.eval_set)
         print(render_reproduction(act_report))
         activations_ok, activations_skipped = act_report.ok, not act_report.ran
+
+    # --- machine-readable summary, always last -------------------------- #
+    # One line per tier, emitted at the very end so a consumer reading only
+    # the tail of this output still sees all three. The clean-clone gate
+    # matched the prose above for phrases like "claims reproduce"; on its
+    # first run under three tiers the claim-table line had already scrolled
+    # off the captured 25-line tail, and the gate reported a check that had
+    # passed as not having run.
+    #
+    # Prose is for people and moves whenever the wording improves. This is
+    # the contract, and it is last so truncation cannot reach it.
+    print()
+    for number, key, ok, was_skipped, count in (
+        (1, "claim_table", claims_ok, False,
+         f"{sum(c.ok for c in claims)}/{len(claims)}"),
+        (2, "frozen_scores", scores_ok, scores_skipped, _count(score_report)),
+        (3, "activations", activations_ok, activations_skipped, _count(act_report)),
+    ):
+        outcome = "SKIPPED" if was_skipped else ("OK" if ok else "DRIFT")
+        print(f"TIER|{number}|{key}|{outcome}|{count}")
 
     print()
     print("=" * 78)

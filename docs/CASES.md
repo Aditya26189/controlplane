@@ -176,5 +176,10 @@ look fine.
 | rates from different envelopes are refused | catching more errors than were flagged cannot describe one distribution | `test_catching_more_errors_than_were_flagged_is_refused` | — |
 | derived figures name their declared inputs | a number from a declared workload is not a measurement, and must say so | `test_review_volume_labels_which_inputs_were_declared` | `results/feasibility.json` |
 | the artifact states what it does not derive | the unbuilt price list travels with the numbers | `test_the_artifact_states_what_it_does_not_derive` | `results/feasibility.json` |
+| verify emits a machine-readable tier summary | a gate parsing prose depends on output length; a contract does not | `test_each_verify_tier_gets_its_own_row` | `results/clean_clone.json` |
+| prose alone does not satisfy the gate | the regression guard: output saying the right thing in words is rejected without the contract line | `test_prose_alone_is_not_enough` | — |
+| a tier absent from the summary | reported skipped, never passed — absence means unknown | `test_a_tier_missing_from_the_summary_is_not_counted_as_a_pass` | — |
+| a drifted tier fails the gate | SKIPPED is tolerable, DRIFT is not | `test_a_drifted_tier_fails_the_gate` | — |
+| a failed cleanup is reported | an operation reporting success without completing is the same failure one level down | `test_a_failed_cleanup_is_reported_rather_than_swallowed` | `results/clean_clone.json` |
 | every case here has a covering test | this table cannot drift from the suite | `test_every_case_names_a_real_test` | — |
 | the scripts are wired together | each stage runs end to end in a subprocess | `test_every_script_has_a_smoke_test` | — |

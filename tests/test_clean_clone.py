@@ -109,19 +109,13 @@ def test_the_committed_gate_artifact_is_readable_and_passed() -> None:
 
 
 def test_each_verify_tier_gets_its_own_row() -> None:
-    """A green exit code says "nothing drifted", not "everything was checked".
-
-    The first version matched the literal string "SKIPPED" anywhere in verify's
-    output and filed one skip row saying the claim table was all that ran. Once
-    the score tier existed that was false: it reproduced 24 comparisons in the
-    clone and the gate reported it as not having run.
-    """
+    """Parsed from verify's contract, not from its prose."""
     from controlplane.report.clean_clone import _verify_tiers
 
     tail = (
-        "31/31 claims reproduce.\n"
-        "24 comparisons reproduced bit-identically (recomputed from frozen scores).\n"
-        "re-derivation SKIPPED\n  extraction cache not found\n"
+        "TIER|1|claim_table|OK|31/31\n"
+        "TIER|2|frozen_scores|OK|24/24\n"
+        "TIER|3|activations|SKIPPED|0/0\n"
         "VERIFIED (activations tier skipped)"
     )
     rows = {r.name: r for r in _verify_tiers(tail)}
@@ -129,31 +123,68 @@ def test_each_verify_tier_gets_its_own_row() -> None:
     assert not rows["verify: claim table vs artifacts"].skipped
     assert not rows["verify: metrics recomputed from frozen scores"].skipped
     assert rows["verify: scores re-derived from activations"].skipped
+    assert "31/31" in rows["verify: claim table vs artifacts"].detail
 
 
-def test_a_tier_whose_outcome_is_missing_is_not_counted_as_a_pass() -> None:
-    """Unknown is not success.
+def test_prose_alone_is_not_enough() -> None:
+    """The regression this contract exists for.
 
-    The captured tail is truncated to its last lines, so a tier's outcome can
-    fall off the end. Treating absence as a pass would let a truncated log
-    certify a check that may never have run.
+    The first version grepped the human output. It worked until verify grew a
+    third tier, at which point the claim-table line scrolled off the captured
+    25-line tail and the gate reported a passing check as not having run. Prose
+    that says the right thing must NOT be accepted without the contract line --
+    otherwise the failure returns the next time the wording moves.
     """
     from controlplane.report.clean_clone import _verify_tiers
 
-    rows = {r.name: r for r in _verify_tiers("VERIFIED")}
-    assert all(r.skipped for r in rows.values())
-    for row in rows.values():
-        assert "not a pass" in row.detail or "not reported" in row.detail
+    prose_only = (
+        "31/31 claims reproduce.\n"
+        "24 comparisons reproduced bit-identically (recomputed from frozen scores).\n"
+        "VERIFIED"
+    )
+    rows = _verify_tiers(prose_only)
+    assert len(rows) == 1
+    assert rows[0].ok is False
+    assert "no TIER| lines" in rows[0].detail
+
+
+def test_a_tier_missing_from_the_summary_is_not_counted_as_a_pass() -> None:
+    """Absence means unknown, and unknown is not success."""
+    from controlplane.report.clean_clone import _verify_tiers
+
+    rows = {r.name: r for r in _verify_tiers("TIER|1|claim_table|OK|31/31")}
+    assert not rows["verify: claim table vs artifacts"].skipped
+    assert rows["verify: metrics recomputed from frozen scores"].skipped
+    assert rows["verify: scores re-derived from activations"].skipped
+    assert "absence means unknown" in rows[
+        "verify: metrics recomputed from frozen scores"
+    ].detail
+
+
+def test_a_drifted_tier_fails_the_gate() -> None:
+    """SKIPPED is tolerable; DRIFT is not."""
+    from controlplane.report.clean_clone import _verify_tiers
+
+    rows = {
+        r.name: r
+        for r in _verify_tiers(
+            "TIER|1|claim_table|DRIFT|30/31\n"
+            "TIER|2|frozen_scores|OK|24/24\n"
+            "TIER|3|activations|SKIPPED|0/0"
+        )
+    }
+    drifted = rows["verify: claim table vs artifacts"]
+    assert drifted.ok is False
+    assert "30/31" in drifted.detail
 
 
 def test_all_three_tiers_running_is_reported_as_such() -> None:
     from controlplane.report.clean_clone import _verify_tiers
 
     tail = (
-        "31/31 claims reproduce.\n"
-        "24 comparisons reproduced bit-identically (recomputed from frozen scores).\n"
-        "3 comparisons reproduced bit-identically (re-derived from cache).\n"
-        "VERIFIED"
+        "TIER|1|claim_table|OK|31/31\n"
+        "TIER|2|frozen_scores|OK|24/24\n"
+        "TIER|3|activations|OK|3/3"
     )
     assert not any(r.skipped for r in _verify_tiers(tail))
 
@@ -161,8 +192,9 @@ def test_all_three_tiers_running_is_reported_as_such() -> None:
 def test_a_failed_cleanup_is_reported_rather_than_swallowed(tmp_path: Path) -> None:
     """Two earlier runs each left 26 MB behind and said nothing.
 
-    A cleanup that reports success without completing is a small version of
-    what this gate exists to catch.
+    A cleanup reporting success without completing is a small version of what
+    this gate exists to catch. The 2026-08-29 run surfaced a real
+    PermissionError on a git pack file instead of hiding it.
     """
     from controlplane.report.clean_clone import _remove_clone
 
@@ -172,5 +204,4 @@ def test_a_failed_cleanup_is_reported_rather_than_swallowed(tmp_path: Path) -> N
     assert _remove_clone(victim) == ""
     assert not victim.exists()
 
-    # A path that cannot be removed because it is not there is not an error.
     assert _remove_clone(tmp_path / "never-existed") == ""
