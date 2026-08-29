@@ -103,6 +103,29 @@ Every artifact embeds the git commit it was generated from. Committing the artif
 
 Sequence: commit code → run script → commit artifacts as a separate `exp:` commit. **Never run a script against a dirty tree** — the recorded hash would be a lie. `provenance()` runs `git status --porcelain` and records `dirty: true` when the tree isn't clean.
 
+If an artifact does get generated from a dirty tree, regenerate it on a clean
+one and commit that as its own `exp:` commit stating that only the provenance
+block moved — verified field by field, not asserted. That happened on
+2026-08-29 to the score sets and `results/feasibility.json`, and it is what
+the dirty flag is for: it was visible, so it got fixed.
+
+---
+
+## Do not use `sed -i` on tracked files
+
+The markdown in this repository is stored with **CRLF** line endings. `sed -i`
+under Git Bash rewrites the whole file with LF, so a two-line edit lands as a
+several-hundred-line diff and the actual change becomes unreviewable — in
+`README.md` and `docs/LIMITATIONS.md`, which are the two files a reader is
+most likely to inspect. It happened twice in one session; `e440d55` carries
+the result, and `git show -w e440d55` is what recovers the real change there.
+
+Edit through Python (`pathlib.Path.write_text`, preserving the existing
+endings) or an editor that respects them. No `.gitattributes` is added,
+deliberately: `text=auto` would renormalise every tracked file on the next
+checkout, which trades one large diff for a repository-wide one days before
+submission.
+
 ---
 
 ## Documentation
