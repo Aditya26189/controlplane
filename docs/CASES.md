@@ -164,6 +164,10 @@ look fine.
 |---|---|---|---|
 | the notebook is generated, never hand-edited | a hand-edited notebook fails the suite | `test_notebook_is_generated_from_its_script` | `notebooks/run_on_kaggle.ipynb` |
 | every README claim resolves | each number in the claim table matches a field in `results/` at the stated precision | `test_every_readme_claim_resolves` | `README.md` |
+| every metric recomputes from frozen scores | the committed numbers follow from the committed per-item scores, on a clone with no activation cache | `test_every_committed_metrics_block_recomputes` | `results/scores/` |
+| an edited score file is refused | the arrays are content-hashed, so tampering cannot pass as evidence | `test_an_edited_score_file_is_refused_on_load` | `results/scores/` |
+| a flipped label fails verification | the check compares what it claims to compare | `test_a_tampered_score_set_fails_verification` | — |
+| missing scores are a defect, not a skip | unlike the activation cache, they are committed evidence | `test_an_absent_scores_directory_is_a_defect_not_a_skip` | — |
 | `construction` carries no code identity | a module path inside a content hash couples every warrant to the package layout | `test_construction_records_inputs_not_code_identity` | — |
 | the rule fires on a new occurrence | freezing two sites is a patch; this makes the class non-recurring | `test_a_new_generator_string_is_caught` | — |
 | the frozen literals have not moved | correcting one would orphan every fixture warrant | `test_the_frozen_literals_are_still_exactly_the_two_that_were_frozen` | `results/fixtures/` |

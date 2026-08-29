@@ -536,6 +536,12 @@ def test_every_script_has_a_smoke_test() -> None:
         # and by tests/test_extraction.py for everything that runs on CPU.
         "00_extract.py",
         "build_notebooks.py",
+        # Needs the extraction caches, which are gitignored, so it cannot run
+        # on a clean clone by construction -- the same reason 00_extract.py is
+        # exempt. What it PRODUCES is covered end to end by tests/test_scores.py,
+        # which is the stronger check anyway: the frozen scores are the evidence,
+        # and they are verified rather than the freezer being smoke-tested.
+        "10_freeze_scores.py",
         # RECURSION. The clean-clone gate clones the repository and runs this
         # suite inside the clone. A smoke test that invoked it would clone,
         # run the suite, reach this test, clone again, and not stop. Its pure

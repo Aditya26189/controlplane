@@ -48,6 +48,7 @@ from .evalsets import TEST, TRAIN, VALIDATION, ExtractionCache, split_by_questio
 from .evalsets import EvalSet
 from .issuance import issue_or_refuse
 from .metrics_builder import build_warrant_metrics
+from .scores import Scoring
 from .stats import flag_rate_at, threshold_for_flag_rate
 
 __all__ = ["ValidationRun", "build_envelope", "validate", "validate_transferred"]
@@ -116,6 +117,13 @@ class ValidationRun:
     data_source: str
     test_scored: int
     provenance: dict[str, Any]
+    #: The arrays this run scored, carried in memory and deliberately NOT
+    #: written into ``to_payload()``. A 600-element array in every warrant
+    #: record would bury the thing a reader opens one for. They are frozen
+    #: separately under ``results/scores/`` by ``scripts/10_freeze_scores.py``,
+    #: which is what lets a clean clone re-derive these metrics without the
+    #: gitignored extraction cache. See ``controlplane/validation/scores.py``.
+    scoring: Optional["Scoring"] = None
 
     @property
     def issued(self) -> bool:
@@ -440,6 +448,13 @@ def validate(
         data_source=cache.data_source,
         test_scored=1,
         provenance=provenance(config),
+        scoring=Scoring(
+            labels=test_labels,
+            scores=test_scores,
+            question_ids=test_groups,
+            threshold=float(threshold),
+            is_hard_negative_set=is_hard_negative_set,
+        ),
     )
 
 
@@ -603,4 +618,11 @@ def validate_transferred(
         data_source=cache.data_source,
         test_scored=1,
         provenance=provenance(config),
+        scoring=Scoring(
+            labels=labels,
+            scores=scores,
+            question_ids=groups,
+            threshold=float(threshold),
+            is_hard_negative_set=is_hard_negative_set,
+        ),
     )

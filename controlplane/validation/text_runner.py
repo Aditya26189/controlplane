@@ -49,6 +49,7 @@ from .controls import canary_control, determinism_control
 from .evalsets import EvalSet
 from .issuance import issue_or_refuse
 from .metrics_builder import build_warrant_metrics
+from .scores import Scoring
 from .runner import ValidationRun, build_envelope
 
 
@@ -272,6 +273,13 @@ def validate_text_detector(
         data_source=evalset.data_source,
         test_scored=1,
         provenance=provenance(config),
+        scoring=Scoring(
+            labels=labels,
+            scores=scores,
+            question_ids=groups,
+            threshold=float(threshold),
+            is_hard_negative_set=is_hard_negative_set,
+        ),
     )
 
 
