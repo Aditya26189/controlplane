@@ -1,16 +1,10 @@
 {
  "provenance": {
-  "timestamp_utc": "2026-08-29T06:05:59+00:00",
-  "git_commit": "749da53f9eab89416d114ee0a4ef676dda4c2a32",
+  "timestamp_utc": "2026-08-29T06:49:36+00:00",
+  "git_commit": "e440d557ca652c9596a0816ccea6432eaf1b1f2d",
   "git_branch": "main",
-  "dirty": true,
-  "dirty_paths": [
-   "controlplane/report/reproduce.py",
-   "controlplane/validation/runner.py",
-   "controlplane/validation/scores.py",
-   "controlplane/validation/text_runner.py",
-   "scripts/10_freeze_scores.py"
-  ],
+  "dirty": false,
+  "dirty_paths": [],
   "dirty_excludes": "results",
   "python": "3.12.10",
   "libraries": {
