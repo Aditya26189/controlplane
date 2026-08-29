@@ -1,7 +1,7 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-29T11:41:47+00:00",
-    "git_commit": "7861f70f4cac7a02d5bc4a9e9e27daed5f3756d7",
+    "timestamp_utc": "2026-08-29T16:37:36+00:00",
+    "git_commit": "39baef7918460a361d254f3c55aef49778afea70",
     "git_branch": "main",
     "dirty": false,
     "dirty_paths": [],
@@ -202,9 +202,9 @@
     }
   },
   "ok": true,
-  "commit": "7861f70f4cac7a02d5bc4a9e9e27daed5f3756d7",
-  "clone_path": "C:\\Users\\LawLight\\AppData\\Local\\Temp\\controlplane-clean-clone-kgzv_egw\\controlplane",
-  "tracked_files": 299,
+  "commit": "39baef7918460a361d254f3c55aef49778afea70",
+  "clone_path": "C:\\Users\\LawLight\\AppData\\Local\\Temp\\controlplane-clean-clone-gv1zb84k\\controlplane",
+  "tracked_files": 305,
   "steps": [
     {
       "name": "git clone",
@@ -213,10 +213,10 @@
         "clone",
         "--quiet",
         "C:\\Users\\LawLight\\Desktop\\accenture",
-        "C:\\Users\\LawLight\\AppData\\Local\\Temp\\controlplane-clean-clone-kgzv_egw\\controlplane"
+        "C:\\Users\\LawLight\\AppData\\Local\\Temp\\controlplane-clean-clone-gv1zb84k\\controlplane"
       ],
       "returncode": 0,
-      "duration_seconds": 6.27,
+      "duration_seconds": 5.3,
       "ok": true,
       "skipped": false,
       "detail": "",
@@ -231,7 +231,7 @@
         "refs/notes/*:refs/notes/*"
       ],
       "returncode": 0,
-      "duration_seconds": 0.37,
+      "duration_seconds": 0.29,
       "ok": true,
       "skipped": false,
       "detail": "",
@@ -244,11 +244,11 @@
         "scripts/smoke.py"
       ],
       "returncode": 0,
-      "duration_seconds": 7.93,
+      "duration_seconds": 6.79,
       "ok": true,
       "skipped": false,
       "detail": "",
-      "tail": "ControlPlane smoke check\n============================================================\n  OK    python version: 3.12.10\n  OK    package imports: controlplane, and its model, policy and validation subpackages\n  OK    config loads: config hash ae6eec9d1f8897af, seed 1729\n  OK    provenance resolves: commit 7861f70f4cac, dirty=False\n  OK    artifacts readable: validation-T1-last_token.json -> AUROC 0.8256, VALID\n  OK    eval sets frozen: 4 frozen eval sets, content-hashed\n  OK    claim table parses: 31 claims, each naming an artifact and a field\n============================================================\nSMOKE OK: 7/7"
+      "tail": "ControlPlane smoke check\n============================================================\n  OK    python version: 3.12.10\n  OK    package imports: controlplane, and its model, policy and validation subpackages\n  OK    config loads: config hash ae6eec9d1f8897af, seed 1729\n  OK    provenance resolves: commit 39baef791846, dirty=False\n  OK    artifacts readable: validation-T1-last_token.json -> AUROC 0.8256, VALID\n  OK    eval sets frozen: 4 frozen eval sets, content-hashed\n  OK    claim table parses: 31 claims, each naming an artifact and a field\n============================================================\nSMOKE OK: 7/7"
     },
     {
       "name": "make test",
@@ -260,11 +260,11 @@
         "-q"
       ],
       "returncode": 0,
-      "duration_seconds": 756.88,
+      "duration_seconds": 609.3,
       "ok": true,
       "skipped": false,
       "detail": "",
-      "tail": "........................................................................ [ 12%]\n........................................................................ [ 25%]\n........................................................................ [ 38%]\n........................................................................ [ 51%]\n........................................................................ [ 64%]\n........................................................................ [ 77%]\n........................................................................ [ 90%]\n..................................................                       [100%]\n============================== warnings summary ===============================\n<frozen importlib._bootstrap>:488\n  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute\n\n<frozen importlib._bootstrap>:488\n  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\nsys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute"
+      "tail": "........................................................................ [ 12%]\n........................................................................ [ 24%]\n........................................................................ [ 36%]\n........................................................................ [ 49%]\n........................................................................ [ 61%]\n........................................................................ [ 73%]\n........................................................................ [ 86%]\n........................................................................ [ 98%]\n........                                                                 [100%]\n============================== warnings summary ===============================\n<frozen importlib._bootstrap>:488\n  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute\n\n<frozen importlib._bootstrap>:488\n  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\nsys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute"
     },
     {
       "name": "make verify",
@@ -273,11 +273,11 @@
         "scripts/verify.py"
       ],
       "returncode": 0,
-      "duration_seconds": 76.71,
+      "duration_seconds": 61.12,
       "ok": true,
       "skipped": false,
       "detail": "",
-      "tail": "  text-presidio-stock-hinglish-pii-200b -> detectors.json         OK\n  transfer-T1-last_token -> transfer-T1-last_token.json           OK\n  transfer-T1-max_rolling_means -> transfer-T1-max_rolling_means  OK\n  transfer-T1-mean_pool -> transfer-T1-mean_pool.json             OK\n  validation-T1-last_token -> validation-T1-last_token.json       OK\n  validation-T1-max_rolling_means -> validation-T1-max_rolling_m  OK\n  validation-T1-mean_pool -> validation-T1-mean_pool.json         OK\n\n24 comparisons reproduced bit-identically (recomputed from frozen scores).\n\n==============================================================================\n3. Frozen scores vs a re-run from cached activations\n==============================================================================\nThe deeper tier. Check 2 proves the metrics follow from the recorded\nscores; it cannot prove those scores came from the model and probe the\nartifact names. This re-runs the extraction-tier validation and\ncompares. The caches are ~100 MB and gitignored, so on a fresh clone\nthis reports SKIPPED -- never a pass it did not earn.\n\nre-derivation SKIPPED\n  extraction cache not found at results\\cache-triviaqa-600.npz. It is ~78 MB and gitignored, so a fresh clone does not have it. Regenerate it on a GPU with `make extract`, or copy it in.\n  What DID run: the claim table against the artifacts, and every metrics block recomputed from the frozen scores. What this tier would add is the only link those cannot make -- that the scores came from the model and probe the artifact names.\n\n==============================================================================\nVERIFIED (activations tier skipped)"
+      "tail": "  validation-T1-last_token -> validation-T1-last_token.json       OK\n  validation-T1-max_rolling_means -> validation-T1-max_rolling_m  OK\n  validation-T1-mean_pool -> validation-T1-mean_pool.json         OK\n\n24 comparisons reproduced bit-identically (recomputed from frozen scores).\n\n==============================================================================\n3. Frozen scores vs a re-run from cached activations\n==============================================================================\nThe deeper tier. Check 2 proves the metrics follow from the recorded\nscores; it cannot prove those scores came from the model and probe the\nartifact names. This re-runs the extraction-tier validation and\ncompares. The caches are ~100 MB and gitignored, so on a fresh clone\nthis reports SKIPPED -- never a pass it did not earn.\n\nre-derivation SKIPPED\n  extraction cache not found at results\\cache-triviaqa-600.npz. It is ~78 MB and gitignored, so a fresh clone does not have it. Regenerate it on a GPU with `make extract`, or copy it in.\n  What DID run: the claim table against the artifacts, and every metrics block recomputed from the frozen scores. What this tier would add is the only link those cannot make -- that the scores came from the model and probe the artifact names.\n\nTIER|1|claim_table|OK|31/31\nTIER|2|frozen_scores|OK|24/24\nTIER|3|activations|SKIPPED|0/0\n\n==============================================================================\nVERIFIED (activations tier skipped)"
     },
     {
       "name": "verify: claim table vs artifacts",
@@ -285,8 +285,8 @@
       "returncode": null,
       "duration_seconds": 0.0,
       "ok": true,
-      "skipped": true,
-      "detail": "not reported in the captured output. On a fresh clone the activation tier legitimately skips -- the caches are ~100 MB and gitignored. Any other tier missing here means the output was truncated, which is not a pass either.",
+      "skipped": false,
+      "detail": "31/31 reproduced",
       "tail": ""
     },
     {
@@ -296,7 +296,7 @@
       "duration_seconds": 0.0,
       "ok": true,
       "skipped": false,
-      "detail": "",
+      "detail": "24/24 reproduced",
       "tail": ""
     },
     {
@@ -306,13 +306,13 @@
       "duration_seconds": 0.0,
       "ok": true,
       "skipped": true,
-      "detail": "not reported in the captured output. On a fresh clone the activation tier legitimately skips -- the caches are ~100 MB and gitignored. Any other tier missing here means the output was truncated, which is not a pass either.",
+      "detail": "did not run",
       "tail": ""
     }
   ],
   "notes": [
-    "299 tracked files in the clone; no gitignored caches, databases or long-context eval sets came with it.",
-    "verify tiers that ran in the clone: metrics recomputed from frozen scores. Skipped: claim table vs artifacts, scores re-derived from activations.",
-    "could not fully remove the clone at C:\\Users\\LawLight\\AppData\\Local\\Temp\\controlplane-clean-clone-kgzv_egw: PermissionError: [WinError 5] Access is denied: 'C:\\\\Users\\\\LawLight\\\\AppData\\\\Local\\\\Temp\\\\controlplane-clean-clone-kgzv_egw\\\\controlplane\\\\.git\\\\objects\\\\4d\\\\4a3ba11cc1a1a201a51b527396d5d7bab8f5ee'. Not a gate failure -- the checks above all ran -- but it leaves ~26 MB behind, and earlier runs did so silently."
+    "305 tracked files in the clone; no gitignored caches, databases or long-context eval sets came with it.",
+    "verify tiers that ran in the clone: claim table vs artifacts, metrics recomputed from frozen scores. Skipped: scores re-derived from activations.",
+    "could not fully remove the clone at C:\\Users\\LawLight\\AppData\\Local\\Temp\\controlplane-clean-clone-gv1zb84k: PermissionError: [WinError 5] Access is denied: 'C:\\\\Users\\\\LawLight\\\\AppData\\\\Local\\\\Temp\\\\controlplane-clean-clone-gv1zb84k\\\\controlplane\\\\.git\\\\objects\\\\01\\\\4c9ed036ce64463f18c1131ccb12cece068dfe'. Not a gate failure -- the checks above all ran -- but it leaves ~26 MB behind, and earlier runs did so silently."
   ]
 }
