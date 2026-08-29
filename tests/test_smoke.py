@@ -540,6 +540,12 @@ def test_every_script_has_a_smoke_test() -> None:
         # and by tests/test_extraction.py for everything that runs on CPU.
         "00_extract.py",
         "build_notebooks.py",
+        # Needs a GPU: it generates 24 answers and extracts activations.
+        # The one piece of it that is a DECISION rather than a measurement --
+        # which of the three branches in DECISIONS 101 a result lands in --
+        # was moved into controlplane/evalsets/banking.py precisely so it
+        # could be tested here without one. See test_banking_pilot.py.
+        "13_pilot_run.py",
         # Needs the extraction caches, which are gitignored, so it cannot run
         # on a clean clone by construction -- the same reason 00_extract.py is
         # exempt. What it PRODUCES is covered end to end by tests/test_scores.py,

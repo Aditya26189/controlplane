@@ -203,3 +203,8 @@ pass and nothing here reports a number about the probe.
 | the wrong-count is over questions, not items | 101's band is derived for 12 clusters, so it is counted on 12 | `test_the_wrong_count_is_over_questions_not_items` | — |
 | the labelled set carries the draft hash | the prompts scored are provably the prompts frozen | `test_the_labelled_set_carries_the_draft_hash` | — |
 | the draft is reproducible at a seed | and the questions themselves do not depend on it | `test_the_draft_is_reproducible_at_a_seed` | `results/pilot_envelope.json` |
+| a set outside the band is a construction defect | too easy and too hard both mean off-regime | `test_a_set_outside_the_band_is_a_construction_defect` | — |
+| saturation is the only branch that costs the retry | the separation 101 exists to enforce | `test_saturation_is_the_only_branch_that_costs_the_retry` | — |
+| healthy spread + low AUROC is a result, not a retry | re-authoring there is tuning the set until the detector passes | `test_a_healthy_spread_with_a_low_auroc_is_a_result_not_a_retry` | — |
+| the band is checked before the spread | a saturated IQR on an off-regime set is not saturation | `test_the_band_is_checked_before_the_spread` | — |
+| the spread is checked before the AUROC | a low AUROC on off-distribution activations is not a probe finding | `test_the_spread_is_checked_before_the_auroc` | — |

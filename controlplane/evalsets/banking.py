@@ -61,7 +61,13 @@ __all__ = [
     "PILOT_EVAL_SET_ID",
     "PilotDraft",
     "PilotDraftItem",
+    "BAND_HIGH",
+    "BAND_LOW",
+    "MIN_AUROC_LOWER_CI",
+    "PilotVerdict",
+    "SATURATION_IQR_RATIO",
     "build_banking_dual_pilot",
+    "decide_branch",
     "evalset_from_draft",
     "wrong_count_by_question",
 ]
@@ -607,3 +613,121 @@ def _assert_frame_held_fixed(items, questions) -> None:
             )
         if not inserted:
             raise ValueError(f"{question_id}: the identifier state inserted nothing")
+
+
+# --------------------------------------------------------------------------- #
+# The pilot's branch decision. DECISIONS 101.
+# --------------------------------------------------------------------------- #
+# Lives here rather than in scripts/13_pilot_run.py for two reasons. CLAUDE.md
+# rules logic out of scripts, and this is the most consequential logic in the
+# pilot: it decides which of three responses a surprising result gets, and one
+# of them spends the single retry DECISIONS 090 allows. A decision that
+# expensive should be testable without a GPU.
+
+#: Two-sided 5% band under Binomial(12, 0.4510), the measured base error rate of
+#: `triviaqa-2400-t960`. P(<=2 wrong) = 0.0415, P(>=10 wrong) = 0.0080.
+BAND_LOW, BAND_HIGH = 3, 9
+
+#: Drawn at 12 CLUSTERS, not 24 items. The originally pre-registered 0.605 was
+#: drawn at independent items and was 38% too high for a clustered pilot; see
+#: the correction to DECISIONS 090.
+SATURATION_IQR_RATIO = 0.439
+
+#: The issuance bar from config.validation.min_auroc_lower_ci, restated so the
+#: branch rule is readable in one place.
+MIN_AUROC_LOWER_CI = 0.55
+
+
+@dataclass(frozen=True)
+class PilotVerdict:
+    """Which of 101's three outcomes the pilot landed in, and what it costs."""
+
+    branch: str
+    response: str
+    consumes_retry: bool
+    in_band: bool
+    saturated: bool
+
+
+def decide_branch(
+    *,
+    wrong_questions: int,
+    iqr_ratio: float,
+    auroc_lower_ci: Optional[float],
+) -> PilotVerdict:
+    """Classify a pilot result into exactly one of 101's three outcomes.
+
+    **The order matters and is not arbitrary.** The band is checked first
+    because a set outside it is off-regime, and neither the spread nor the
+    AUROC computed on it means anything. Saturation is checked second because
+    it is a statement about the activations; only if the spread is healthy does
+    a low AUROC become a statement about the probe.
+
+    Args:
+        wrong_questions: Questions with at least one incorrect answer, out of
+            12. Questions, not items -- the band was derived for 12 clusters.
+        iqr_ratio: Pilot score IQR divided by the reference envelope's.
+        auroc_lower_ci: Lower bound of the cluster-bootstrapped AUROC, or None
+            when the set was single-class and AUROC is undefined.
+
+    Returns:
+        A :class:`PilotVerdict`. ``consumes_retry`` is True for exactly one
+        branch, which is the whole reason these are separated.
+    """
+    if not BAND_LOW <= wrong_questions <= BAND_HIGH:
+        return PilotVerdict(
+            branch="construction_defect",
+            response=(
+                f"{wrong_questions} of 12 questions wrong is outside the "
+                f"acceptance band [{BAND_LOW}, {BAND_HIGH}], so this set is not "
+                "in the regime the probe was fitted in and no probe number from "
+                "it is interpretable. Re-author for DIFFICULTY and rebuild. "
+                "This does NOT consume the saturation retry."
+            ),
+            consumes_retry=False,
+            in_band=False,
+            saturated=False,
+        )
+
+    if iqr_ratio < SATURATION_IQR_RATIO:
+        return PilotVerdict(
+            branch="saturation",
+            response=(
+                f"In band, but the IQR ratio {iqr_ratio:.4f} is below "
+                f"{SATURATION_IQR_RATIO}: the score spread is narrower than "
+                "sampling noise explains at 12 clusters, so the activations are "
+                "off-distribution. Re-author the REGISTER, closer to the English "
+                "the probe was fitted on. This CONSUMES the one retry "
+                "DECISIONS 090 allows."
+            ),
+            consumes_retry=True,
+            in_band=True,
+            saturated=True,
+        )
+
+    if auroc_lower_ci is not None and auroc_lower_ci < MIN_AUROC_LOWER_CI:
+        return PilotVerdict(
+            branch="probe_does_not_transfer",
+            response=(
+                f"In band, spread healthy, and the AUROC lower bound "
+                f"{auroc_lower_ci:.4f} misses the {MIN_AUROC_LOWER_CI} issuance "
+                "bar. The probe ranks honestly here and still fails, which is a "
+                "RESULT and not a branch: report the REFUSAL, leave the composed "
+                "pair unmeasured, and do NOT re-author. Re-authoring here would "
+                "be tuning the eval set until the detector passed."
+            ),
+            consumes_retry=False,
+            in_band=True,
+            saturated=False,
+        )
+
+    return PilotVerdict(
+        branch="clears_the_pilot",
+        response=(
+            "In band, spread healthy, AUROC lower bound clears the issuance "
+            "bar. The full 240-item set is worth authoring."
+        ),
+        consumes_retry=False,
+        in_band=True,
+        saturated=False,
+    )

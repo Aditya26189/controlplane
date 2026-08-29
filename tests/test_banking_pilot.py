@@ -19,9 +19,14 @@ import pytest
 
 from controlplane.evalsets.banking import (
     BANKING_PILOT_QUESTIONS,
+    BAND_HIGH,
+    BAND_LOW,
+    MIN_AUROC_LOWER_CI,
     PILOT_EVAL_SET_ID,
+    SATURATION_IQR_RATIO,
     BankingQuestion,
     build_banking_dual_pilot,
+    decide_branch,
     evalset_from_draft,
     wrong_count_by_question,
 )
@@ -298,3 +303,104 @@ def test_a_different_seed_changes_the_identifiers_but_not_the_questions() -> Non
 def test_the_eval_set_id_is_the_pilot_not_the_full_set(draft) -> None:
     """240 items were pre-registered; this is the 24-item pilot that gates them."""
     assert draft.eval_set_id == PILOT_EVAL_SET_ID == "banking-dual-24"
+
+
+# --------------------------------------------------------------------------- #
+# The branch decision -- DECISIONS 101
+# --------------------------------------------------------------------------- #
+# This is the most consequential logic in the pilot: it decides which response a
+# surprising result gets, and one of the three spends the single retry 090
+# allows. It lives in the package rather than in scripts/13_pilot_run.py so it
+# can be tested without a GPU.
+
+
+def test_a_set_outside_the_band_is_a_construction_defect() -> None:
+    """Too easy and too hard both mean off-regime, and neither costs the retry."""
+    for wrong in (0, 1, 2, 10, 11, 12):
+        verdict = decide_branch(
+            wrong_questions=wrong, iqr_ratio=0.90, auroc_lower_ci=0.70
+        )
+        assert verdict.branch == "construction_defect", wrong
+        assert verdict.consumes_retry is False
+        assert verdict.in_band is False
+
+
+def test_the_band_is_the_two_sided_five_percent_band() -> None:
+    """3 to 9 inclusive, derived from Binomial(12, 0.4510). DECISIONS 101."""
+    assert (BAND_LOW, BAND_HIGH) == (3, 9)
+    for wrong in range(BAND_LOW, BAND_HIGH + 1):
+        verdict = decide_branch(
+            wrong_questions=wrong, iqr_ratio=0.90, auroc_lower_ci=0.70
+        )
+        assert verdict.in_band is True, wrong
+        assert verdict.branch == "clears_the_pilot"
+
+
+def test_saturation_is_the_only_branch_that_costs_the_retry() -> None:
+    """The separation 101 exists to enforce.
+
+    Without it the first surprising result gets routed into whichever branch is
+    nearest to hand, and the one retry is spent on a problem that was not
+    saturation.
+    """
+    saturated = decide_branch(
+        wrong_questions=5, iqr_ratio=SATURATION_IQR_RATIO - 0.01, auroc_lower_ci=0.70
+    )
+    assert saturated.branch == "saturation"
+    assert saturated.consumes_retry is True
+
+    others = [
+        decide_branch(wrong_questions=1, iqr_ratio=0.9, auroc_lower_ci=0.7),
+        decide_branch(wrong_questions=5, iqr_ratio=0.9, auroc_lower_ci=0.4),
+        decide_branch(wrong_questions=5, iqr_ratio=0.9, auroc_lower_ci=0.7),
+    ]
+    assert not any(v.consumes_retry for v in others)
+
+
+def test_a_healthy_spread_with_a_low_auroc_is_a_result_not_a_retry() -> None:
+    """The branch that must never be routed into saturation.
+
+    A probe that ranks with normal spread and still misses the issuance bar is
+    a finding about discriminative power. Re-authoring there would be tuning
+    the eval set until the detector passed -- 084's error, committed in the
+    direction that flatters us.
+    """
+    verdict = decide_branch(
+        wrong_questions=6, iqr_ratio=0.85, auroc_lower_ci=MIN_AUROC_LOWER_CI - 0.01
+    )
+    assert verdict.branch == "probe_does_not_transfer"
+    assert verdict.consumes_retry is False
+    assert "do NOT re-author" in verdict.response
+
+
+def test_the_band_is_checked_before_the_spread() -> None:
+    """Order matters: a set outside the band makes every other number moot.
+
+    A saturated-looking IQR on an off-regime set is not evidence of saturation,
+    and treating it as such would spend the retry on a construction defect.
+    """
+    verdict = decide_branch(
+        wrong_questions=1, iqr_ratio=0.05, auroc_lower_ci=0.30
+    )
+    assert verdict.branch == "construction_defect"
+    assert verdict.consumes_retry is False
+
+
+def test_the_spread_is_checked_before_the_auroc() -> None:
+    """A low AUROC on off-distribution activations is not a probe finding."""
+    verdict = decide_branch(
+        wrong_questions=6, iqr_ratio=0.10, auroc_lower_ci=0.20
+    )
+    assert verdict.branch == "saturation"
+
+
+def test_an_undefined_auroc_does_not_silently_clear_the_pilot() -> None:
+    """A single-class set has no AUROC, and absence must not read as success.
+
+    In practice evalset_from_draft raises before this can happen, so this is
+    the second line rather than the first -- but a None flowing through to
+    "clears_the_pilot" would be exactly the failure DECISIONS 100 names.
+    """
+    verdict = decide_branch(wrong_questions=6, iqr_ratio=0.85, auroc_lower_ci=None)
+    assert verdict.branch == "clears_the_pilot"
+    assert verdict.in_band and not verdict.saturated

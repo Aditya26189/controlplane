@@ -610,7 +610,7 @@ if result.long_evalset is not None:
         ),
         markdown(
             """
-## 6 — Validate, and build the warrant matrix
+## 6 — Validate, build the warrant matrix, and run the banking pilot
 
 The measured numbers. Each script is a thin wrapper over `controlplane/`; they are run
 as subprocesses with `check=True` so a failure stops the notebook rather than
@@ -619,6 +619,17 @@ leaving a run that looks successful and is missing artifacts.
 Two eval sets, two envelopes. `triviaqa-600` is the anchor; `triviaqa-longctx-600`
 is the same questions padded to 4–16k tokens, and the difference between them is
 the envelope shift the drift story rests on.
+
+**The last stage is the banking pilot** (`DECISIONS.md` 090 corrected, 101). It
+is different in kind from everything above it: the others produce measured
+artifacts, and this one produces a *decision* about whether a 240-item set is
+worth authoring. It runs last so a failure there cannot cost the TriviaQA
+numbers, and it reports its branch rather than taking one — one of the three
+outcomes consumes the single retry `090` allows, and that is a person's call.
+
+Its correctness labels are **measured here**, not authored: the 24 prompts were
+frozen on CPU with gold answers and no labels, and this pass generates, judges,
+and only then scores.
 """
         ),
         code(
@@ -647,6 +658,16 @@ STAGES = [
      "--cache", "results/cache-triviaqa-600.npz",
      "--eval-set", "triviaqa-600"],
     ["scripts/03_matrix.py", "--config", "config.yaml"],
+    # The banking pilot. Runs LAST because it is the only stage whose outcome
+    # is a decision rather than an artifact, and because a failure here must
+    # not cost the measured TriviaQA numbers above.
+    #
+    # It generates 24 answers, judges them against gold aliases, checks the
+    # acceptance band BEFORE scoring anything, extracts question-time
+    # activations, and computes the IQR ratio against the envelope the probe
+    # was fitted on. It reports a branch; it does not take one.
+    ["scripts/13_pilot_run.py", "--config", "config.yaml",
+     "--cache", "results/cache-triviaqa-600.npz"],
 ]
 for stage in STAGES:
     print("=" * 70)
