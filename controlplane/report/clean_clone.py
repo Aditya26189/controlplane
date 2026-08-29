@@ -13,11 +13,17 @@ Lives under ``report`` rather than in the script because it writes an artifact
 and because ``CLAUDE.md`` rules logic out of scripts. It is repo-level QA
 rather than a measurement, and the artifact says so.
 
-**On the re-derivation step.** The extraction caches are gitignored, so a clean
-clone does not have them and ``verify`` reports its second check SKIPPED. That
-is correct and is recorded as SKIPPED in the artifact, never as a pass. A gate
-that reported success for a check it could not run would be the failure this
-project is about, one level up.
+**On the verify tiers.** ``verify`` runs three checks and they do not stand or
+fall together, so each gets its own row: a green exit code says *nothing
+drifted*, not *everything was checked*. On a fresh clone the first two run --
+the claim table against the artifacts, and every metrics block recomputed from
+the frozen scores in ``results/scores/`` -- and the third skips, because the
+extraction caches are ~100 MB and gitignored.
+
+A skipped tier is recorded as skipped, never as a pass. So is a tier whose
+outcome line is missing from the captured output: unknown is not success. A
+gate reporting a check it could not run as green would be this project's own
+failure mode, one level up.
 """
 
 from __future__ import annotations
@@ -110,6 +116,80 @@ def _run(
     )
 
 
+#: How each verify tier announces its outcome. Matched against the captured
+#: output so the gate reports what actually happened rather than inferring it
+#: from an exit code, which only says "nothing drifted".
+_TIERS = (
+    ("claim table vs artifacts", "claims reproduce"),
+    ("metrics recomputed from frozen scores", "recomputed from frozen scores"),
+    ("scores re-derived from activations", "re-derived from cache"),
+)
+
+
+def _verify_tiers(tail: str) -> list[StepResult]:
+    """One row per verify tier, saying whether it ran or was skipped.
+
+    A tier is counted as having RUN only when its own success line is present.
+    Absence is reported as skipped rather than assumed to have passed -- the
+    captured tail is truncated to its last lines, so a tier whose line fell off
+    the end is unknown, and unknown is not a pass.
+    """
+    rows: list[StepResult] = []
+    for label, marker in _TIERS:
+        ran = marker in tail
+        rows.append(
+            StepResult(
+                name=f"verify: {label}",
+                command=[],
+                returncode=None,
+                duration_seconds=0.0,
+                ok=True,
+                skipped=not ran,
+                detail=(
+                    ""
+                    if ran
+                    else (
+                        "not reported in the captured output. On a fresh clone "
+                        "the activation tier legitimately skips -- the caches "
+                        "are ~100 MB and gitignored. Any other tier missing "
+                        "here means the output was truncated, which is not a "
+                        "pass either."
+                    )
+                ),
+            )
+        )
+    return rows
+
+
+def _remove_clone(path: Path, attempts: int = 3) -> str:
+    """Delete the clone, and say so when it cannot rather than swallowing it.
+
+    ``shutil.rmtree(ignore_errors=True)`` silently leaves the tree behind when
+    Windows still holds a handle on a file -- git's pack files, most often,
+    just after a subprocess exits. Two earlier gate runs each left 26 MB in the
+    temp directory and reported nothing.
+
+    Retries briefly, then returns what went wrong so the caller can put it in
+    the report. A cleanup that reports success without completing is a small
+    version of exactly what this gate exists to catch.
+
+    Returns:
+        An empty string on success, or a short description of the failure.
+    """
+    last = ""
+    for attempt in range(attempts):
+        shutil.rmtree(path, ignore_errors=True)
+        if not path.exists():
+            return ""
+        last = f"still present after attempt {attempt + 1}"
+        time.sleep(0.5)
+    try:
+        shutil.rmtree(path)
+    except OSError as exc:
+        return f"{type(exc).__name__}: {exc}"
+    return "" if not path.exists() else last
+
+
 def run_clean_clone_gate(
     root: Path,
     *,
@@ -185,38 +265,43 @@ def run_clean_clone_gate(
             step = _run(name, command, cwd=target, timeout=timeout)
             result.steps.append(step)
 
-        # verify's second check cannot run without the caches. Record that as a
-        # skip in its own right rather than letting a green exit code imply it
-        # ran.
+        # verify runs three tiers and they do not stand or fall together. A
+        # green exit code says "nothing drifted", not "everything was checked",
+        # so each tier is recorded on its own row.
+        #
+        # The first version of this matched the literal string "SKIPPED"
+        # anywhere in verify's output and filed ONE skip row saying the claim
+        # table was all that ran. Once the score tier existed that was simply
+        # false -- tier 2 reproduced 24 comparisons in the clone and the gate
+        # reported it as not having run. Understating what was verified is the
+        # safe direction to be wrong in, and it is still wrong, in a gate whose
+        # whole job is saying accurately what happened.
         verify = next((s for s in result.steps if s.name == "make verify"), None)
-        if verify is not None and "SKIPPED" in verify.tail:
-            result.steps.append(
-                StepResult(
-                    name="verify: re-derivation from cache",
-                    command=[],
-                    returncode=None,
-                    duration_seconds=0.0,
-                    ok=True,
-                    skipped=True,
-                    detail=(
-                        "the extraction cache is gitignored, so a clean clone "
-                        "cannot re-derive. The claim table was still checked "
-                        "against the committed artifacts."
-                    ),
-                )
-            )
+        if verify is not None:
+            result.steps.extend(_verify_tiers(verify.tail))
+            ran = [s.name for s in result.steps if s.name.startswith("verify:") and not s.skipped]
+            skipped = [s.name for s in result.steps if s.name.startswith("verify:") and s.skipped]
             result.notes.append(
-                "verify ran its claim check and reported its re-derivation "
-                "SKIPPED, which is the designed behaviour on a fresh clone."
+                "verify tiers that ran in the clone: "
+                + (", ".join(n.split(": ", 1)[1] for n in ran) or "none")
+                + ". Skipped: "
+                + (", ".join(n.split(": ", 1)[1] for n in skipped) or "none")
+                + "."
             )
 
         result.ok = all(s.ok for s in result.steps)
         return result
     finally:
-        if not keep:
-            shutil.rmtree(clone, ignore_errors=True)
-        else:
+        if keep:
             result.notes.append(f"clone kept at {target}")
+        else:
+            leftover = _remove_clone(clone)
+            if leftover:
+                result.notes.append(
+                    f"could not fully remove the clone at {clone}: {leftover}. "
+                    "Not a gate failure -- the checks above all ran -- but it "
+                    "leaves ~26 MB behind, and earlier runs did so silently."
+                )
 
 
 def render(result: GateResult) -> str:

@@ -126,9 +126,11 @@ def reproduce_frozen_set(
             reason=(
                 f"extraction cache not found at {cache.relative_to(root) if cache.is_relative_to(root) else cache}. "
                 "It is ~78 MB and gitignored, so a fresh clone does not have it. "
-                "Regenerate it on a GPU with `make extract`, or copy it in. The "
-                "claim check above still ran against the committed artifacts; "
-                "this step, which proves those artifacts match the code, did not."
+                "Regenerate it on a GPU with `make extract`, or copy it in.\n"
+                "  What DID run: the claim table against the artifacts, and "
+                "every metrics block recomputed from the frozen scores. What "
+                "this tier would add is the only link those cannot make -- that "
+                "the scores came from the model and probe the artifact names."
             ),
         )
 

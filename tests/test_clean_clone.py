@@ -101,3 +101,76 @@ def test_the_committed_gate_artifact_is_readable_and_passed() -> None:
     names = [s["name"] for s in payload["steps"]]
     for required in ("git clone", "make smoke", "make verify"):
         assert required in names, f"the recorded gate did not run {required!r}"
+
+
+# --------------------------------------------------------------------------- #
+# Tier reporting -- the gate must say which checks actually ran
+# --------------------------------------------------------------------------- #
+
+
+def test_each_verify_tier_gets_its_own_row() -> None:
+    """A green exit code says "nothing drifted", not "everything was checked".
+
+    The first version matched the literal string "SKIPPED" anywhere in verify's
+    output and filed one skip row saying the claim table was all that ran. Once
+    the score tier existed that was false: it reproduced 24 comparisons in the
+    clone and the gate reported it as not having run.
+    """
+    from controlplane.report.clean_clone import _verify_tiers
+
+    tail = (
+        "31/31 claims reproduce.\n"
+        "24 comparisons reproduced bit-identically (recomputed from frozen scores).\n"
+        "re-derivation SKIPPED\n  extraction cache not found\n"
+        "VERIFIED (activations tier skipped)"
+    )
+    rows = {r.name: r for r in _verify_tiers(tail)}
+    assert len(rows) == 3
+    assert not rows["verify: claim table vs artifacts"].skipped
+    assert not rows["verify: metrics recomputed from frozen scores"].skipped
+    assert rows["verify: scores re-derived from activations"].skipped
+
+
+def test_a_tier_whose_outcome_is_missing_is_not_counted_as_a_pass() -> None:
+    """Unknown is not success.
+
+    The captured tail is truncated to its last lines, so a tier's outcome can
+    fall off the end. Treating absence as a pass would let a truncated log
+    certify a check that may never have run.
+    """
+    from controlplane.report.clean_clone import _verify_tiers
+
+    rows = {r.name: r for r in _verify_tiers("VERIFIED")}
+    assert all(r.skipped for r in rows.values())
+    for row in rows.values():
+        assert "not a pass" in row.detail or "not reported" in row.detail
+
+
+def test_all_three_tiers_running_is_reported_as_such() -> None:
+    from controlplane.report.clean_clone import _verify_tiers
+
+    tail = (
+        "31/31 claims reproduce.\n"
+        "24 comparisons reproduced bit-identically (recomputed from frozen scores).\n"
+        "3 comparisons reproduced bit-identically (re-derived from cache).\n"
+        "VERIFIED"
+    )
+    assert not any(r.skipped for r in _verify_tiers(tail))
+
+
+def test_a_failed_cleanup_is_reported_rather_than_swallowed(tmp_path: Path) -> None:
+    """Two earlier runs each left 26 MB behind and said nothing.
+
+    A cleanup that reports success without completing is a small version of
+    what this gate exists to catch.
+    """
+    from controlplane.report.clean_clone import _remove_clone
+
+    victim = tmp_path / "clone"
+    (victim / "inner").mkdir(parents=True)
+    (victim / "inner" / "f.txt").write_text("x", encoding="utf-8")
+    assert _remove_clone(victim) == ""
+    assert not victim.exists()
+
+    # A path that cannot be removed because it is not there is not an error.
+    assert _remove_clone(tmp_path / "never-existed") == ""

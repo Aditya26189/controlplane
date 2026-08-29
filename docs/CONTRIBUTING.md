@@ -111,20 +111,36 @@ the dirty flag is for: it was visible, so it got fixed.
 
 ---
 
-## Do not use `sed -i` on tracked files
+## Do not let a tool rewrite line endings
 
-The markdown in this repository is stored with **CRLF** line endings. `sed -i`
-under Git Bash rewrites the whole file with LF, so a two-line edit lands as a
-several-hundred-line diff and the actual change becomes unreviewable — in
-`README.md` and `docs/LIMITATIONS.md`, which are the two files a reader is
-most likely to inspect. It happened twice in one session; `e440d55` carries
-the result, and `git show -w e440d55` is what recovers the real change there.
+This tree has **mixed** line endings: most markdown is stored CRLF, most
+Python LF. Neither is wrong, but a tool that rewrites the whole file turns a
+two-line edit into a several-hundred-line diff, and the actual change becomes
+unreviewable. Two different tools do it, in opposite directions:
 
-Edit through Python (`pathlib.Path.write_text`, preserving the existing
-endings) or an editor that respects them. No `.gitattributes` is added,
-deliberately: `text=auto` would renormalise every tracked file on the next
-checkout, which trades one large diff for a repository-wide one days before
-submission.
+- **`sed -i` under Git Bash** rewrites CRLF → LF. It hit `README.md` and
+  `docs/LIMITATIONS.md` in `e440d55`, which is pushed and will not be
+  rewritten; `git show -w e440d55` recovers the real 52-line change.
+- **Python text-mode writes on Windows** rewrite LF → CRLF.
+  `pathlib.Path.write_text` translates `
+` to `os.linesep`, so a
+  `read_text` / `write_text` round-trip silently converts an LF file. It hit
+  `controlplane/report/clean_clone.py` while the first version of *this
+  section* was being written, which is why the section now names both.
+
+**The safe form is bytes:**
+
+```python
+raw = path.read_bytes()
+path.write_bytes(raw.decode("utf-8").replace(old, new).encode("utf-8"))
+```
+
+Check `git diff --stat` against `git diff --stat --ignore-all-space` after any
+scripted edit. If they disagree by an order of magnitude, the endings moved.
+
+No `.gitattributes` is added, deliberately: `text=auto` would renormalise every
+tracked file on the next checkout, trading one large diff for a
+repository-wide one days before submission.
 
 ---
 
