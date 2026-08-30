@@ -4923,3 +4923,55 @@ guards the authoring.** The escape trap alone fired four times in one session,
 twice inside code written to prevent it. Reading is not a control -- which is
 `050`'s conclusion about `cmd | tail`, arrived at again from a different
 direction. Worth stating as a category rather than fixing three times.
+
+## 112 - The monitor watches the promise, not the operating point
+
+**Declared before the monitor is wired**, which `110` said was the condition
+for wiring it. This is also the first line of the demo harness: Beat 5 cannot
+run the revocation path without a `p0`.
+
+### The choice
+
+**`FPRMonitor.p0` is the profile's declared `max_fpr_hard_negatives`, and the
+stream is labelled true negatives drawn from the hard-negative distribution.**
+
+| profile | p0 | `lam_hi * p0` at the default grid |
+|---|---|---|
+| customer_support | 0.02 | 0.20 |
+| internal_knowledge | 0.05 | 0.50 |
+| decision_support | 0.10 | 1.00 |
+
+### Why not the envelope FPR
+
+The achieved FPR at `P-decision-support` on `triviaqa-2400-t960` is `0.24668`.
+It is a real measurement and it is **not a promise**. Nothing in the warrant
+claims it, nothing in `routing.py` compares against it, and the policy artifact
+says on every row that no hard-negative ceiling is declared on that envelope.
+
+A monitor exists to detect that a **claim** has stopped holding. Pointing it at
+a quantity nobody claimed would revoke warrants for drifting away from a number
+they never asserted -- and, at `lam_hi = 10`, would do so by going silently NaN
+rather than by revoking at all.
+
+The rule generalises: **the monitor's estimand is whatever the warrant's FPR
+clause names.** If a warrant ever claims an envelope FPR, that becomes its
+`p0`, and the clamp stops being prophylactic on the same day.
+
+### What this does not settle
+
+The false-revocation guarantee was validated on **i.i.d.** negatives. On
+session-correlated traffic with no breach at all it runs far over budget,
+because Ville's inequality needs `E[X_t | F_{t-1}] <= p0` and one negative
+firing in a session makes the next likelier. That gap is recorded and **not
+fixed**; the monitor must not be described as validated under session
+correlation, and Beat 5 runs on a frozen i.i.d. sequence, which the demo says
+aloud.
+
+### The demo consequence
+
+Beat 5 needs no production wiring. It replays a frozen sequence of labelled
+negatives through the monitor and shows the wealth crossing `1/alpha`, which is
+what *"reproducible from frozen artifacts, no GPU, no network"* already
+requires. The injected-drift disclosure stands: at 500 interactions/week and a
+2% audit rate the monitor could not fire organically, and saying so costs
+nothing.
