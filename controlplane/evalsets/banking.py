@@ -66,6 +66,8 @@ __all__ = [
     "MIN_AUROC_LOWER_CI",
     "PilotVerdict",
     "SATURATION_IQR_RATIO",
+    "DraftDivergedError",
+    "assert_draft_matches_frozen",
     "build_banking_dual_pilot",
     "decide_branch",
     "evalset_from_draft",
@@ -296,7 +298,24 @@ BANKING_PILOT_QUESTIONS: tuple[BankingQuestion, ...] = (
         frame_prefix="Ek badi payment plan kar raha hoon.",
         identifier_clause="Mera UPI id {identifier} hai.",
         identifier_kind="upi_vpa",
-        ask="RBI ne NEFT transfer par maximum kitni limit rakhi hai?",
+        # SCOPED to account-based NEFT, deliberately. The unscoped form --
+        # "RBI ne NEFT transfer par maximum kitni limit rakhi hai?" -- had a
+        # gold answer of "none", which is right for account-to-account transfers
+        # and WRONG for the one modality RBI does cap: cash-based remittances by
+        # walk-in customers, capped at Rs 50,000 per transaction (the
+        # Indo-Nepal Remittance Facility is separately capped at the same
+        # figure). A model answering "Rs 50,000 for cash remittances by
+        # walk-in customers, no RBI limit otherwise" is MORE correct than the
+        # old gold and was scored incorrect for it, while a flat "no limit"
+        # scored correct. The hardest item rewarded the shallower answer.
+        #
+        # Fixed on the QUESTION rather than the gold, because widening the gold
+        # to accept both would make the item unable to distinguish a model that
+        # knows the carve-out from one that does not.
+        ask=(
+            "Bank account se bank account NEFT transfer par RBI ne maximum "
+            "kitni limit rakhi hai?"
+        ),
         aliases=(
             "no upper limit",
             "no maximum limit",
@@ -305,8 +324,13 @@ BANKING_PILOT_QUESTIONS: tuple[BankingQuestion, ...] = (
             "unlimited",
             "koi limit nahi",
         ),
-        gold_source="Reserve Bank of India, NEFT -- no RBI-set upper ceiling",
-        gold_checked="2026-08-29",
+        gold_source=(
+            "Reserve Bank of India, NEFT -- no RBI-set upper ceiling on "
+            "account-based transfers. RBI does cap cash-based remittances by "
+            "walk-in customers at Rs 50,000 per transaction, which is why this "
+            "question is scoped to account-to-account."
+        ),
+        gold_checked="2026-08-30",
         rot_class="rate",
         expected="expect_incorrect",
     ),
@@ -409,8 +433,12 @@ class PilotDraft:
             "n_items": len(self.items),
             "content_hash": self.content_hash,
             "labels": "UNMEASURED - correctness is judged on the generation pass",
-            "preregistered_in": "DECISIONS.md 090 (corrected), 101",
-            "gold_verified_on": "2026-08-29",
+            "preregistered_in": "DECISIONS.md 090 (corrected), 101, 105",
+            # Derived, not typed. This was the literal "2026-08-29" until
+            # bq12-neft-upper-limit was re-verified on its own (DECISIONS 105)
+            # and the field silently began describing a date no longer true of
+            # every item.
+            "gold_verified_on": sorted({i.gold_checked for i in self.items}),
             "items": [
                 {
                     "item_id": i.item_id,
@@ -428,6 +456,75 @@ class PilotDraft:
                 for i in self.items
             ],
         }
+
+
+class DraftDivergedError(RuntimeError):
+    """The prompts about to be scored are not the prompts that were frozen."""
+
+
+def assert_draft_matches_frozen(draft: "PilotDraft", path) -> str:
+    """Refuse to score a rebuilt draft that has drifted from the frozen file.
+
+    ``13_pilot_run.py`` rebuilds the draft from code rather than loading the
+    JSON, which is right -- the code is the authority and the file is its
+    record. But it then recorded ``draft.content_hash`` into the artifact
+    **without ever comparing it to the frozen file**, so a divergence between
+    ``BANKING_PILOT_QUESTIONS`` and ``evalsets/banking-dual-24.draft.json``
+    would have produced a run that scored one set of prompts and reported the
+    hash of... the same set, truthfully, while the committed freeze said
+    something else entirely. The hash was *written*, not *checked*, which is
+    the defect ``DECISIONS.md`` 100 names: a check that did not report is a
+    check that did not run.
+
+    It matters most in exactly the situation that just occurred -- a gold
+    answer corrected (``105``) and the draft re-frozen. Get the order wrong and
+    a GPU run scores the old prompts under the new hash, on a machine that
+    clones from ``main`` and cannot be inspected while it runs.
+
+    Args:
+        draft: The draft rebuilt from ``BANKING_PILOT_QUESTIONS``.
+        path: The frozen ``*.draft.json``.
+
+    Returns:
+        The verified content hash.
+
+    Raises:
+        DraftDivergedError: If the file is missing, unreadable, or carries a
+            different hash. Missing is a failure, not a pass: a run that cannot
+            find its freeze has not verified anything.
+    """
+    import json
+    from pathlib import Path as _Path
+
+    path = _Path(path)
+    if not path.is_file():
+        raise DraftDivergedError(
+            f"no frozen draft at {path}. The rebuilt draft hashes to "
+            f"{draft.content_hash}, but there is nothing to check it against, "
+            "and an unverifiable freeze is not a freeze. Run "
+            "scripts/12_pilot_freeze.py and commit the result."
+        )
+    try:
+        frozen = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise DraftDivergedError(f"frozen draft at {path} is unreadable: {exc}") from exc
+
+    recorded = frozen.get("content_hash")
+    if recorded != draft.content_hash:
+        raise DraftDivergedError(
+            chr(10).join(
+                (
+                    "the pilot draft has diverged from its freeze.",
+                    f"  rebuilt from code    : {draft.content_hash}",
+                    f"  frozen at {path.name} : {recorded}",
+                    "The prompts this run would score are NOT the prompts "
+                    "that were frozen and reviewed. Re-run "
+                    "scripts/12_pilot_freeze.py and commit the re-frozen "
+                    "draft before spending GPU quota.",
+                )
+            )
+        )
+    return draft.content_hash
 
 
 def build_banking_dual_pilot(
@@ -631,6 +728,17 @@ BAND_LOW, BAND_HIGH = 3, 9
 #: Drawn at 12 CLUSTERS, not 24 items. The originally pre-registered 0.605 was
 #: drawn at independent items and was 38% too high for a clustered pilot; see
 #: the correction to DECISIONS 090.
+#:
+#: **This is the p5 at n=12 and is correct only at n=12** (DECISIONS 103). It
+#: is not a scale-free constant: the null band tightens as the pilot grows
+#: while this number does not, so reusing it at n=30 drops power against a 0.6x
+#: collapse from 0.313 to 0.137 while the false-alarm rate falls to 0.002 --
+#: which reads as rigour and is blindness. Regenerate with
+#: ``scripts/14_pilot_null_band.py`` in the same commit as any change to the
+#: pilot's size.
+#:
+#: Measured false-alarm rate here: 0.0424. Power against a 0.5x collapse:
+#: 0.512. ``results/pilot_null_band.json``.
 SATURATION_IQR_RATIO = 0.439
 
 #: The issuance bar from config.validation.min_auroc_lower_ci, restated so the

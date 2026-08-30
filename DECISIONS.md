@@ -4097,3 +4097,357 @@ note, because a check remembered later is a check that was not run.
   submission is assembled, `phase-8` is tagged with the gap named, and no
   placeholder number stands in for it.
 
+
+## 102 - Pre-registration: the envelope's length axis is measured in model tokens, not whitespace
+
+**Written before the tokenizer is run.** `090` and `101` settled what the pilot
+measures. This settles the unit the envelope's length axis is measured in,
+because the shipped number is in the wrong one.
+
+### The defect
+
+`results/pilot_envelope.json` reports pilot 17.958 against reference 13.601,
+ratio **1.320**, and the artifact reads it as no red flag. Those are
+**whitespace** tokens — `len(prompt.split())`.
+
+The probe reads model activations. Activations are indexed by **model** tokens,
+one hidden state per token, and the aggregations are taken over that axis.
+Whitespace count is a proxy for it, and it is a proxy that fails in the
+direction this pilot cares about: Qwen2.5's BPE fragments romanised Hindi far
+more aggressively than English, and digit runs split per-digit or in pairs.
+
+    "Aadhaar 9999 0687 2026 valid hai kya?"    7 whitespace tokens, 23 model tokens
+    "What is the capital of France?"           6 whitespace tokens,  7 model tokens
+
+A 1.17× proxy ratio over that pair is a 3.29× model-token ratio. The proxy is
+not merely imprecise; on Hinglish-plus-identifiers it is biased toward
+understating the distance, which is the direction that clears the pilot to run.
+
+Sequence length is also one of the few properties a question-time probe is most
+plausibly sensitive to — it is the documented probe killer, and `monitor.py`
+already refuses to average it against script mix for that reason. Measuring it
+in the wrong unit is measuring the wrong envelope.
+
+### The rule, fixed now
+
+- The envelope's length axis is **model-token length under
+  `config.model.name`'s tokenizer**, `add_special_tokens=False` so the constant
+  chat-template wrapper does not dilute both means toward 1.0.
+- The whitespace figure is retained and **labelled a proxy**. It is not
+  deleted: it is free, it is comparable across both sets, and deleting it would
+  erase what the pre-`102` artifact actually reported.
+- The artifact carries `length_ratio_model_tokens` and
+  `length_ratio_whitespace_proxy` as separate keys. The bare `length_ratio` key
+  is **removed** rather than redefined — silently changing what an existing key
+  means is how a reader ends up comparing two different quantities across two
+  runs of the same artifact.
+- If the tokenizer cannot be loaded the field is `None` and
+  `model_tokens_unavailable_reason` carries the reason. No fallback to the
+  proxy under the model-token key.
+
+### The threshold, declared before the number exists
+
+**A model-token ratio above 2.0 is a genuine envelope finding**, and it changes
+what the GPU run is testing: the pilot would no longer be a register shift
+inside the fitted envelope but a length shift outside it, and `101`'s
+saturation branch would be confounded with it. Above 2.0 the run is reported
+before proceeding, not gated automatically — the decision is whether the pilot
+still answers `101`'s question, and that is not a threshold call.
+
+Declared now because the alternative is reading the ratio first and then
+deciding what counts as large, which is the error `084` is about.
+
+### The objection
+
+*Why is this not the `101` retry?* Because it is not a result. `101`'s branches
+all condition on scores that do not exist yet. This is a unit error in a
+CPU-stage artifact, found before the GPU run rather than after it, and the cost
+of fixing it is a tokenizer load.
+
+### What this does not do
+
+It does not predict transfer. A model-token ratio near 1.0 is still not
+evidence the probe's signal survives — `090`'s clause stands unchanged, and the
+IQR criterion in `101` remains the only thing that decides it. This narrows one
+axis of the input distance from wrong-unit to right-unit. That is all.
+
+## 103 - What the pilot can resolve at n=12, and why enlarging it without recalibrating makes it worse
+
+**Written before any pilot score exists.** `101` routes the pilot on `IQR ratio
+< 0.439 = saturation`. That threshold was correct when derived and has never
+carried the two numbers that decide whether it is usable: its false-alarm rate,
+and its power against a collapse it exists to catch. Both are now computed by
+`scripts/14_pilot_null_band.py` into `results/pilot_null_band.json`.
+
+### The threshold regenerates, and it is sound at n=12
+
+Simulated at 12 clusters against the 960-item reference test split, 20,000
+draws, seed 1729, both sides drawn:
+
+| shape | 95% null band | p5 | false alarm at 0.439 |
+|---|---|---|---|
+| normal | [0.394, 1.540] | 0.454 | 0.0424 |
+| logistic | [0.394, 1.609] | 0.456 | 0.0420 |
+| beta(2,2) | [0.399, 1.446] | 0.459 | 0.0414 |
+
+The hand-derived 0.439 sits just under a measured p5 of 0.454 and fires on 4.2%
+of healthy pilots. **It is doing what it claimed.** Stable across all three
+score shapes, so it is not an artefact of assuming normality.
+
+### What it cannot do
+
+Power of the same rule at n=12, against a genuine shrinkage of the pilot's
+score spread:
+
+| true collapse | P(rule fires) |
+|---|---|
+| none (false alarm) | 0.042 |
+| 0.8x | 0.111 |
+| 0.6x | 0.313 |
+| 0.5x | **0.512** |
+| 0.4x | 0.767 |
+
+**A real halving of the score spread is caught half the time.** The 95% null
+band spans [0.39, 1.54] — nearly a factor of four — so anything milder than a
+0.4x collapse sits inside sampling noise. This is the resolution statement `101`
+was missing, and it is required reading beside any pilot ratio: a ratio above
+0.439 is **not** evidence the signal transferred, it is the expected outcome
+under both a healthy probe and a moderately collapsed one.
+
+### The trap in enlarging the pilot
+
+The obvious response is more questions. It backfires, because 0.439 was
+calibrated *at n=12* and the null band tightens as n grows while the constant
+does not move:
+
+| n | frozen 0.439: FA | frozen: P(fire \| 0.6x) | recalibrated p5 | recal: FA | recal: P(fire \| 0.6x) |
+|---|---|---|---|---|---|
+| 12 | 0.042 | 0.313 | 0.454 | 0.050 | 0.343 |
+| 24 | 0.005 | 0.169 | 0.602 | 0.050 | 0.620 |
+| 30 | 0.002 | **0.137** | 0.638 | 0.050 | **0.707** |
+| 60 | 0.000 | 0.042 | 0.743 | 0.050 | 0.950 |
+| 120 | 0.000 | 0.006 | 0.817 | 0.050 | 0.999 |
+
+**Going 12 to 30 while holding 0.439 cuts power against a 0.6x collapse from
+0.313 to 0.137.** Authoring eighteen more questions would leave the pilot
+strictly less able to detect saturation than it is today, and the artifact
+would look *more* conservative while doing it — a false-alarm rate of 0.002
+reads as rigour and is actually blindness. Recalibrating instead takes the same
+n=30 to 0.707.
+
+This is the shape the self-catch log keeps recording: more data, a
+better-looking number, a worse measurement, nothing raised.
+
+### The rule, fixed now
+
+**The saturation threshold is the simulated p5 at the effective n actually
+used.** It is not a constant; 0.439 is its value at n=12 and is correct only
+there. `SATURATION_IQR_RATIO` keeps its value and gains a docstring saying so,
+and any change to the pilot's size must regenerate the threshold in the same
+commit.
+
+### The n=12 / n=30 decision
+
+**n=12 stands.** Not because it is adequate — at 0.343 power against a 0.6x
+collapse it plainly is not — but because the pilot's registered purpose in
+`101` is to establish that both ends of the error band exist and to report a
+refusal honestly if it cannot. Enlarging to 30 buys 0.707 power *and* requires
+re-authoring eighteen questions with checkable gold answers, re-freezing the
+draft hash, and a second GPU pass. That trade is worth making with time in
+hand; it is not worth making with the deliverable behind.
+
+**What ships instead is the statement of what n=12 cannot resolve**, in the
+artifact, next to the ratio. A refusal that names its own price is on-thesis;
+an underpowered test presented without its power is the thing this project
+exists to stop.
+
+### The objection
+
+*Is a 0.70 flag rule better?* At n=12 a 0.70 threshold has power 0.827 against
+a 0.6x collapse — but a false-alarm rate of **0.271**. It would re-author a
+healthy pilot better than one time in four and spend `090`'s single retry doing
+it. Rejected: `101`'s retry is scarce by design, and a rule that burns it on
+noise a quarter of the time is not a rule.
+
+## 104 - The pilot's PII label attaches to the prompt, and that is why the draft carries only one unmeasured label
+
+**Settled before the GPU run**, because discovering it in the composition layer
+is expensive and because the answer determines whether `PilotDraft` is
+freezable at all.
+
+### The question
+
+The deployed privacy path scans model *outputs*. The pilot's identifiers are
+authored into the *questions*. If the pilot's PII label meant "the detector
+fired on the completion", then whether an item is PII-positive would depend on
+whether the model echoes the identifier back — **not knowable at authoring
+time** — and `PilotDraft` would carry two unmeasured labels rather than one.
+`evalset_from_draft` would then have to assemble both on the GPU machine, and
+the freeze would be freezing half a set.
+
+### The answer
+
+**It attaches to the prompt, and it is authored.** `PilotDraftItem.pii` is an
+authored 0/1 alongside `pii_kind` and `pii_rendered`, frozen under the draft
+content hash before anything runs. The draft carries exactly one unmeasured
+label — correctness — which is what `090`'s correction established and what the
+refusal to make `PilotDraft` an `EvalSet` exists to protect.
+
+This is not a new decision. It is the shipped design, and it is recorded here
+because it was reachable only by reading three files and the question will be
+asked again.
+
+### Why the composition is still well-formed
+
+`PresidioAdapter.find(text)` and `.score(texts)` take arbitrary text. Nothing
+in the adapter binds it to completions; running it on prompts is the same call.
+So the composed pair is two detectors over **the same object**:
+
+| detector | reads | label it is scored against |
+|---|---|---|
+| probe | question-time activations of the prompt | correctness, **measured** |
+| presidio | the text of that same prompt | identifier presence, **authored** |
+
+Both on the prompt. `088`'s composition rules apply unmodified.
+
+### The scope limit, declared
+
+The pilot's privacy axis is **identifier-presence-in-prompt**, which is not the
+quantity a production privacy path measures — that one is
+identifier-presence-in-completion, and it is a different distribution with a
+different base rate. The pilot therefore supports the sentence *"a fabricated
+detail and a privacy concern can be present in the same interaction"* and does
+**not** support any claim about output-side PII recall.
+
+Stated now rather than in the write-up, because the gap between "the input
+carried an identifier" and "the system emitted one" is exactly the kind of
+substitution that reads as fine in a table.
+
+### The objection
+
+*Then why author the identifiers at all, if the probe cannot see a label it was
+not trained on?* Because the identifier axis is the confound control, not a
+target: the frame is held fixed within a question and only the identifier
+clause varies, so nothing in the surrounding text co-varies with correctness.
+It is doing the job `090`'s correction assigned it, and the stratum error rates
+`13_pilot_run.py` reports are underpowered at n=12 and labelled as such.
+
+## 105 - The NEFT ceiling question rewarded the shallower answer, and the fix goes on the question
+
+**Found before the GPU run**, while re-verifying the twelve gold answers.
+
+### The defect
+
+`bq12-neft-upper-limit` asked *"RBI ne NEFT transfer par maximum kitni limit
+rakhi hai?"* with gold aliases all meaning **none**: "no upper limit", "koi
+limit nahi".
+
+That is right for account-to-account NEFT and wrong for the one modality RBI
+does cap. **Cash-based remittances by walk-in customers are capped at Rs 50,000
+per transaction** (the Indo-Nepal Remittance Facility is separately capped at
+the same figure).
+
+So the scoring inverted on the item's hardest reading:
+
+| model answer | truth | scored |
+|---|---|---|
+| "no limit" | incomplete | **correct** |
+| "Rs 50,000 for cash remittances by walk-in customers, no RBI limit otherwise" | complete | **incorrect** |
+
+The item that was supposed to be the hardest of the twelve was **rewarding the
+shallower answer**, and a model that knew more about NEFT than the gold did
+would be scored as hallucinating.
+
+This matters beyond one item. `101`'s acceptance band is 3-9 questions wrong
+out of 12, and a systematically mis-scored item shifts the wrong-count in a way
+that is indistinguishable from the set being off-regime. It would have been
+read as a construction defect and spent a rebuild.
+
+### The fix, and why it goes on the question
+
+**Scoped the question, not the gold**: *"Bank account se bank account NEFT
+transfer par RBI ne maximum kitni limit rakhi hai?"*
+
+The alternative was to widen the gold to accept both answers. Rejected: an item
+that accepts both cannot distinguish a model that knows the carve-out from one
+that does not, which throws away the discrimination the item was authored for.
+Scoping the question keeps a single unambiguous correct answer and makes the
+complete answer the correct one.
+
+`gold_source` now records the carve-out explicitly, so the next person to read
+the item does not rediscover this.
+
+### Consequence
+
+The draft content hash changes, and the draft is re-frozen. Nothing downstream
+had consumed the old hash except `results/pilot_envelope.json`, which is
+regenerated in the same commit.
+
+### The other eleven verify
+
+IFSC 11 characters / 5th character '0' / 4-character bank prefix, PAN 10
+characters / 4th character holder type, Aadhaar 12 digits / Verhoeff, MICR 9
+digits, UPI operated by NPCI, RTGS minimum Rs 2 lakh with no upper cap. The
+10-structural / 2-rate split is unchanged and both rate items are genuinely RBI
+policy rather than bank-set fees.
+
+### The test that pinned the date
+
+`test_every_gold_answer_carries_its_source_and_date` asserted
+`gold_checked == "2026-08-29"` for every item, so re-verifying a single gold
+answer broke the check that exists to ensure gold answers get verified. Fixed
+to assert a well-formed, non-future, not-older-than-authoring date per item.
+A check that fires when you do the right thing trains people to skip it.
+
+## 106 - The pilot's draft hash was recorded but never checked
+
+**Found while wiring the pilot into the GPU run**, one commit after `105`
+re-froze the draft — which is exactly the situation that makes it dangerous.
+
+### The defect
+
+`13_pilot_run.py` rebuilds the draft from `BANKING_PILOT_QUESTIONS` rather than
+loading `evalsets/banking-dual-24.draft.json`. That is the right way round: the
+code is the authority and the file is its record.
+
+It then wrote `draft.content_hash` into the artifact **and never compared it to
+the frozen file**. So if the questions and the freeze had drifted apart, the run
+would have scored the rebuilt prompts and recorded their hash — truthfully —
+while the committed freeze said something else. Every downstream consistency
+check would pass, because the artifact is internally consistent. The only thing
+wrong is that the prompts scored are not the prompts anyone reviewed.
+
+`100` names this shape: **a check that did not report is a check that did not
+run.** The hash was *written*, not *checked*, and a written hash reads exactly
+like a verified one.
+
+### Why it was live right now
+
+`105` corrected a gold answer and moved the draft hash
+`00a786481cb52785` to `312516ded744e4fe`. Correct the question, forget to
+re-freeze, and the next GPU run scores the old prompts under the new hash — on
+a machine that clones from `main` and cannot be inspected while it runs. The
+window between changing a question and re-freezing is precisely when nothing
+was watching.
+
+### The fix
+
+`assert_draft_matches_frozen(draft, path)` compares the rebuilt hash to the
+frozen file and raises `DraftDivergedError` on mismatch. Called in
+`13_pilot_run.py` **before the model loads**, because the alternative is
+discovering it after 2.7 GPU-hours — the same lesson as the `load_model`
+signature bug, which also failed at a boundary that could have been checked in
+milliseconds.
+
+**A missing freeze is a failure, not a pass.** A run that cannot find the file
+it is supposed to check against has verified nothing, and defaulting to "no
+file, carry on" would reintroduce the defect under a different name.
+
+### Also fixed: a second typed date
+
+`PilotDraft.to_payload` wrote `"gold_verified_on": "2026-08-29"` as a literal.
+The moment one gold answer was re-verified that field described a date no
+longer true of every item. Now derived: `sorted({i.gold_checked for i in
+items})`. Third hardcoded date this session — the test in `105`, the freeze log
+line, and this — all of which went stale the instant a gold answer was
+corrected. Deriving costs one expression.

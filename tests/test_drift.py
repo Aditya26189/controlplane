@@ -245,3 +245,113 @@ def test_a_feature_the_traffic_does_not_carry_is_not_scored_as_stable() -> None:
     assert "script_mix" in verdict.unobserved
     assert verdict.state is not EnvelopeState.INSUFFICIENT_DATA
     assert "Not scored: script_mix" in verdict.reason
+
+
+# --------------------------------------------------------------------------
+# The IQR-ratio null band -- the rule DECISIONS 101 routes the banking pilot on
+# --------------------------------------------------------------------------
+
+
+def test_the_saturation_threshold_regenerates_at_the_size_it_was_derived_for() -> None:
+    """0.439 must keep landing just under the simulated p5 at 12 clusters.
+
+    The constant was derived by hand. If the simulation and the constant ever
+    come apart, the pilot's routing rule stops being the one DECISIONS 090's
+    correction justified, and nothing else in the suite would notice.
+    """
+    from controlplane.drift.null_band import simulate_null_iqr_ratio
+    from controlplane.evalsets.banking import SATURATION_IQR_RATIO
+
+    band = simulate_null_iqr_ratio(
+        n_pilot=12, n_reference=960, threshold=SATURATION_IQR_RATIO, repeats=8000
+    )
+    assert band.p5 == pytest.approx(0.45, abs=0.04)
+    assert SATURATION_IQR_RATIO < band.p5, (
+        f"the frozen threshold {SATURATION_IQR_RATIO} is above the simulated p5 "
+        f"{band.p5:.4f}; it would alarm on more than 5% of healthy pilots"
+    )
+    assert band.false_alarm_rate == pytest.approx(0.05, abs=0.02)
+
+
+def test_the_null_band_is_stable_across_score_shapes() -> None:
+    """A band that only holds under normality is a band that holds by luck."""
+    from controlplane.drift.null_band import simulate_null_iqr_ratio
+
+    p5s = [
+        simulate_null_iqr_ratio(
+            n_pilot=12, n_reference=960, threshold=0.439, shape=shape, repeats=8000
+        ).p5
+        for shape in ("normal", "logistic", "beta2_2")
+    ]
+    assert max(p5s) - min(p5s) < 0.05, f"p5 moves with the score shape: {p5s}"
+
+
+def test_holding_the_threshold_while_n_grows_loses_power() -> None:
+    """The DECISIONS 103 finding, as a test.
+
+    This is counter-intuitive enough that someone will 'fix' the pilot by
+    authoring more questions. The null band tightens with n while a frozen
+    constant does not, so the rule grows more conservative and less able to
+    catch the collapse it exists for -- and the falling false-alarm rate reads
+    as rigour while it happens.
+    """
+    from controlplane.drift.null_band import iqr_ratio_power, simulate_null_iqr_ratio
+
+    frozen = {
+        n: iqr_ratio_power(
+            n_pilot=n, n_reference=960, threshold=0.439, collapse=0.6, repeats=8000
+        )
+        for n in (12, 30, 60)
+    }
+    assert frozen[60] < frozen[30] < frozen[12], (
+        f"frozen 0.439 did not lose power as n grew: {frozen}"
+    )
+
+    # Recalibrating to the p5 at each n reverses it, which is the point.
+    recalibrated = {}
+    for n in (12, 30, 60):
+        p5 = simulate_null_iqr_ratio(
+            n_pilot=n, n_reference=960, threshold=0.439, repeats=8000
+        ).p5
+        recalibrated[n] = iqr_ratio_power(
+            n_pilot=n, n_reference=960, threshold=p5, collapse=0.6, repeats=8000
+        )
+    assert recalibrated[60] > recalibrated[30] > recalibrated[12], (
+        f"recalibrating did not gain power as n grew: {recalibrated}"
+    )
+
+
+def test_the_pilot_cannot_resolve_a_mild_collapse_at_twelve() -> None:
+    """The resolution statement in DECISIONS 103, asserted rather than asserted-in-prose.
+
+    A ratio above the threshold is the expected outcome under BOTH a healthy
+    probe and a moderately collapsed one, which is exactly why the artifact has
+    to say so next to the number.
+    """
+    from controlplane.drift.null_band import iqr_ratio_power
+
+    half = iqr_ratio_power(
+        n_pilot=12, n_reference=960, threshold=0.439, collapse=0.5, repeats=8000
+    )
+    assert 0.40 < half < 0.65, (
+        f"P(detect a halved spread at n=12) = {half}; DECISIONS 103 reports ~0.51 "
+        "and the claim that the pilot is underpowered rests on it"
+    )
+
+
+def test_a_pilot_too_small_for_an_iqr_is_refused() -> None:
+    """Three points have no interquartile range worth the name."""
+    from controlplane.drift.null_band import simulate_null_iqr_ratio
+
+    with pytest.raises(ValueError, match="at least 4"):
+        simulate_null_iqr_ratio(n_pilot=3, n_reference=960, threshold=0.439)
+
+
+def test_an_unknown_score_shape_is_refused_rather_than_defaulted() -> None:
+    """Silently falling back to normal would make the stability check vacuous."""
+    from controlplane.drift.null_band import simulate_null_iqr_ratio
+
+    with pytest.raises(ValueError, match="unknown score shape"):
+        simulate_null_iqr_ratio(
+            n_pilot=12, n_reference=960, threshold=0.439, shape="cauchy"
+        )

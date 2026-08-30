@@ -55,6 +55,7 @@ from controlplane.evalsets.banking import (  # noqa: E402
     SATURATION_IQR_RATIO,
     build_banking_dual_pilot,
     decide_branch,
+    assert_draft_matches_frozen,
     evalset_from_draft,
     wrong_count_by_question,
 )
@@ -92,6 +93,14 @@ def main() -> int:
     parser.add_argument(
         "--out", default=str(PROJECT_ROOT / "results" / "pilot_run.json")
     )
+    parser.add_argument(
+        "--draft",
+        default=str(PROJECT_ROOT / "evalsets" / "banking-dual-24.draft.json"),
+        help=(
+            "the frozen draft this run must match. The draft is rebuilt "
+            "from code; this is what proves the rebuild equals the freeze."
+        ),
+    )
     parser.add_argument("--batch-size", type=int, default=8)
     args = parser.parse_args()
 
@@ -100,14 +109,23 @@ def main() -> int:
     set_seeds(config.seed)
 
     draft = build_banking_dual_pilot(seed=config.seed)
+    # BEFORE the model loads. The draft is rebuilt from code, so nothing else
+    # in this run would notice if BANKING_PILOT_QUESTIONS and the committed
+    # freeze had drifted apart -- the artifact would truthfully record the hash
+    # of prompts nobody reviewed. Checked first because the alternative is
+    # finding out after 2.7 GPU-hours.
+    verified = assert_draft_matches_frozen(draft, args.draft)
     _LOG.info(
-        "pilot draft %s: %d items over %d questions, hash %s",
+        "pilot draft %s: %d items over %d questions, hash %s (matches %s)",
         draft.eval_set_id, len(draft.items),
-        len({i.question_id for i in draft.items}), draft.content_hash[:16],
+        len({i.question_id for i in draft.items}), verified[:16],
+        Path(args.draft).name,
     )
 
     # ---------------------------------------------------------------- model
-    loaded = load_model(config)
+    loaded = load_model(
+        config.model.name, quantization=config.model.quantization
+    )
     prompts = [
         build_prompt(loaded.tokenizer, item.prompt, SYSTEM_PROMPT)
         for item in draft.items

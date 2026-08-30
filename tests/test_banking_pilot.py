@@ -14,6 +14,7 @@ Both are asserted here rather than left to inspection.
 from __future__ import annotations
 
 import dataclasses
+from pathlib import Path
 
 import pytest
 
@@ -31,6 +32,7 @@ from controlplane.evalsets.banking import (
     wrong_count_by_question,
 )
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SEED = 1729
 
 
@@ -151,11 +153,31 @@ def test_a_frame_that_moves_with_the_identifier_is_refused() -> None:
 
 
 def test_every_gold_answer_carries_its_source_and_date(draft) -> None:
+    """A date per gold answer, not one date for the set.
+
+    This asserted a single literal until ``bq12-neft-upper-limit`` was
+    rescoped and re-verified on its own (DECISIONS 105). Pinning the whole set
+    to one string made the *check* fail when a gold answer was corrected --
+    exactly backwards, since correcting one is the thing the field exists to
+    record. What matters is that every item carries a real, well-formed date,
+    and that none of them claims to have been checked in the future.
+    """
+    import datetime as _dt
+
+    today = _dt.date.today()
     for item in draft.items:
         assert item.gold_source, f"{item.item_id} has no gold source"
-        assert item.gold_checked == "2026-08-29", item.item_id
         assert item.rot_class in ("structural", "rate"), item.item_id
         assert item.gold_aliases, f"{item.item_id} has no gold answer"
+        checked = _dt.date.fromisoformat(item.gold_checked)
+        assert checked <= today, (
+            f"{item.item_id} claims a gold_checked of {item.gold_checked}, "
+            "which is in the future"
+        )
+        assert checked >= _dt.date(2026, 8, 29), (
+            f"{item.item_id} carries {item.gold_checked}, older than the set's "
+            "authoring date -- a copied date rather than a checked one"
+        )
 
 
 def test_slow_moving_facts_are_preferred_over_fast_ones() -> None:
@@ -404,3 +426,64 @@ def test_an_undefined_auroc_does_not_silently_clear_the_pilot() -> None:
     verdict = decide_branch(wrong_questions=6, iqr_ratio=0.85, auroc_lower_ci=None)
     assert verdict.branch == "clears_the_pilot"
     assert verdict.in_band and not verdict.saturated
+
+
+# --------------------------------------------------------------------------- #
+# The rebuilt draft must equal the frozen one -- DECISIONS 106
+# --------------------------------------------------------------------------- #
+
+
+def test_the_rebuilt_draft_matches_the_committed_freeze() -> None:
+    """The committed freeze and BANKING_PILOT_QUESTIONS must not drift apart.
+
+    13_pilot_run.py rebuilds the draft from code. Before this guard existed it
+    recorded the rebuilt hash into the artifact without ever comparing it to
+    evalsets/banking-dual-24.draft.json, so a divergence would have produced a
+    truthful hash of prompts nobody reviewed.
+    """
+    from controlplane.evalsets.banking import assert_draft_matches_frozen
+
+    frozen = PROJECT_ROOT / "evalsets" / "banking-dual-24.draft.json"
+    rebuilt = build_banking_dual_pilot(seed=SEED)
+    assert assert_draft_matches_frozen(rebuilt, frozen) == rebuilt.content_hash
+
+
+def test_a_diverged_draft_is_refused(tmp_path) -> None:
+    """A changed question with a stale freeze must stop the run, not annotate it."""
+    import json as _json
+
+    from controlplane.evalsets.banking import (
+        DraftDivergedError,
+        assert_draft_matches_frozen,
+    )
+
+    rebuilt = build_banking_dual_pilot(seed=SEED)
+    payload = rebuilt.to_payload()
+    payload["content_hash"] = "0" * 64
+    stale = tmp_path / "stale.draft.json"
+    stale.write_text(_json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(DraftDivergedError, match="diverged from its freeze"):
+        assert_draft_matches_frozen(rebuilt, stale)
+
+
+def test_a_missing_freeze_is_a_failure_not_a_pass(tmp_path) -> None:
+    """DECISIONS 100: a check that did not report is a check that did not run."""
+    from controlplane.evalsets.banking import (
+        DraftDivergedError,
+        assert_draft_matches_frozen,
+    )
+
+    with pytest.raises(DraftDivergedError, match="no frozen draft"):
+        assert_draft_matches_frozen(
+            build_banking_dual_pilot(seed=SEED), tmp_path / "absent.json"
+        )
+
+
+def test_gold_verified_on_is_derived_from_the_items() -> None:
+    """A typed date goes stale silently; a derived one cannot."""
+    payload = build_banking_dual_pilot(seed=SEED).to_payload()
+    assert isinstance(payload["gold_verified_on"], list)
+    assert payload["gold_verified_on"] == sorted(
+        {i["gold_checked"] for i in payload["items"]}
+    )

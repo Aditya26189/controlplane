@@ -17,9 +17,17 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-from typing import Any, Optional
+import statistics
+from typing import Any, Optional, Sequence
 
-__all__ = ["LoadedModel", "assert_left_padding", "load_model"]
+__all__ = [
+    "LoadedModel",
+    "assert_left_padding",
+    "build_prompt",
+    "load_model",
+    "load_tokenizer",
+    "token_length_summary",
+]
 
 _LOG = logging.getLogger(__name__)
 
@@ -255,3 +263,98 @@ def build_prompt(tokenizer: Any, question: str, system: Optional[str] = None) ->
     return tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
     )
+
+
+def load_tokenizer(name: str, *, trust_remote_code: bool = False) -> Any:
+    """Load a tokenizer on its own, without the weights it usually arrives with.
+
+    The envelope stage needs to count model tokens and nothing else. Going
+    through :func:`load_model` to get there would pull a 7B checkpoint onto a
+    CPU box to answer a question the vocabulary already answers, so this is the
+    tokenizer-only door.
+
+    No left-padding assertion here, deliberately. That assertion protects
+    *activation extraction*, where a right-padded batch makes position ``-1`` a
+    pad token and the measurement meaningless. Counting the tokens in a single
+    prompt reads no activations and pads nothing, and asserting a property this
+    caller does not depend on would only teach the next reader that the
+    assertion is ceremonial.
+
+    Args:
+        name: HuggingFace model id, from ``config.model.name``.
+        trust_remote_code: Left False for the reason given in
+            :func:`load_model` -- a tokenizer load is still a code path a hub
+            repository can reach.
+
+    Returns:
+        The tokenizer.
+    """
+    from transformers import AutoTokenizer
+
+    _LOG.info("loading tokenizer %s (no weights)", name)
+    return AutoTokenizer.from_pretrained(name, trust_remote_code=trust_remote_code)
+
+
+def token_length_summary(prompts: Sequence[str], tokenizer: Any) -> dict:
+    """Model-token length of each prompt: mean, median, IQR, and the extremes.
+
+    **Why this is not a nicety.** The probe reads activations, and activations
+    are indexed by model tokens. A whitespace count is a proxy for that, and it
+    is a proxy that fails in exactly the direction this project cares about:
+    Qwen2.5 fragments romanised Hindi far more aggressively than English, and a
+    digit run like ``9999 0687 2026`` can split per-digit. Three whitespace
+    tokens can be twenty model tokens. Sequence length is also one of the few
+    things a question-time probe is most plausibly sensitive to, so measuring
+    the wrong length is measuring the wrong envelope.
+
+    ``add_special_tokens=False`` because the chat template's wrapper is constant
+    across every item in both sets. Including it would add the same offset to
+    both means and pull the ratio toward 1.0 -- flattering the comparison by
+    diluting the difference with boilerplate.
+
+    Args:
+        prompts: The raw prompts, before chat templating.
+        tokenizer: A tokenizer from :func:`load_tokenizer` or
+            :func:`load_model`.
+
+    Returns:
+        A dict with ``n``, ``mean``, ``median``, ``p25``, ``p75``, ``iqr``,
+        ``min`` and ``max``. Quantiles are linear-interpolated, matching numpy's
+        default, so they are comparable against the score quantiles used
+        elsewhere.
+
+    Raises:
+        ValueError: If ``prompts`` is empty. An envelope over nothing is not an
+            envelope, and returning zeros would look like a measurement.
+    """
+    if not prompts:
+        raise ValueError("token_length_summary needs at least one prompt")
+
+    lengths = [
+        len(tokenizer.encode(prompt, add_special_tokens=False)) for prompt in prompts
+    ]
+    ordered = sorted(lengths)
+
+    def _quantile(q: float) -> float:
+        """Linear-interpolated quantile, numpy's default convention."""
+        if len(ordered) == 1:
+            return float(ordered[0])
+        position = q * (len(ordered) - 1)
+        lower = int(position)
+        upper = min(lower + 1, len(ordered) - 1)
+        weight = position - lower
+        return float(ordered[lower] * (1.0 - weight) + ordered[upper] * weight)
+
+    p25 = _quantile(0.25)
+    p75 = _quantile(0.75)
+    return {
+        "n": len(lengths),
+        "mean": statistics.fmean(lengths),
+        "median": statistics.median(lengths),
+        "p25": p25,
+        "p75": p75,
+        "iqr": p75 - p25,
+        "min": min(lengths),
+        "max": max(lengths),
+        "stdev": statistics.stdev(lengths) if len(lengths) > 1 else 0.0,
+    }

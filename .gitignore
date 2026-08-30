@@ -75,3 +75,11 @@ results/*.npz
 # records dirty: true. Those flags are accurate but they point at a file
 # unrelated to the work that produced them.
 results_bundle (3)/
+
+# Working plans handed to the agent for a session. Not deliverables and not
+# documentation: they describe what to build, and the build's record is
+# DECISIONS.md plus git log. Ignored rather than committed for the same reason
+# as the entry above -- provenance() flags an artifact dirty from ANY untracked
+# path, so a plan file sitting here would stamp dirty: true on every number
+# generated while it does.
+implementation.md

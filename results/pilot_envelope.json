@@ -1,15 +1,10 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-29T15:22:44+00:00",
-    "git_commit": "4563fa480d0ee6b35ce6cbbfeaf3f83e18751f33",
-    "git_branch": "main",
-    "dirty": true,
-    "dirty_paths": [
-      "controlplane/evalsets/banking.py",
-      "evalsets/banking-dual-24.draft.json",
-      "scripts/12_pilot_freeze.py",
-      "tests/test_banking_pilot.py"
-    ],
+    "timestamp_utc": "2026-08-30T01:52:08+00:00",
+    "git_commit": "ed6ad78d63770130cad109c0742f55ddccea6853",
+    "git_branch": "fix/envelope-units-and-null-band",
+    "dirty": false,
+    "dirty_paths": [],
     "dirty_excludes": "results",
     "python": "3.12.10",
     "libraries": {
@@ -207,25 +202,36 @@
     }
   },
   "eval_set_id": "banking-dual-24",
-  "draft_content_hash": "00a786481cb52785351502ac7541b8c760adba0ee2af0aa8703b0b438558b3bf",
+  "draft_content_hash": "312516ded744e4fe12a20f6192d0dd9bab8dd61911b9f62dbe8b63825fa389c2",
   "reference_eval_set_id": "triviaqa-2400-t960",
   "pilot": {
     "n": 24,
     "whitespace_tokens": {
-      "mean": 17.958333333333332,
-      "median": 17.0,
+      "mean": 18.375,
+      "median": 18.0,
       "min": 12,
       "max": 28,
-      "stdev": 4.005204946899306
+      "stdev": 4.401704215414752
     },
     "characters": {
-      "mean": 103.41666666666667,
-      "median": 103.5
+      "mean": 105.83333333333333,
+      "median": 104.5
     },
     "script_mix_mean": {
       "latin": 1.0,
       "devanagari": 0.0,
       "other": 0.0
+    },
+    "model_tokens": {
+      "n": 24,
+      "mean": 34.5,
+      "median": 34.0,
+      "p25": 25.5,
+      "p75": 43.0,
+      "iqr": 17.5,
+      "min": 21,
+      "max": 54,
+      "stdev": 10.49637618625963
     }
   },
   "reference": {
@@ -245,10 +251,24 @@
       "latin": 1.0,
       "devanagari": 0.0,
       "other": 0.0
+    },
+    "model_tokens": {
+      "n": 2400,
+      "mean": 18.817083333333333,
+      "median": 17.0,
+      "p25": 13.0,
+      "p75": 22.0,
+      "iqr": 9.0,
+      "min": 6,
+      "max": 141,
+      "stdev": 9.65906303862935
     }
   },
-  "length_ratio": 1.3203847803443416,
+  "length_ratio_model_tokens": 1.8334403578308718,
+  "length_ratio_whitespace_proxy": 1.351020158078549,
+  "model_tokens_unavailable_reason": null,
   "labels": "UNMEASURED - correctness is judged on the generation pass",
-  "interpretation": "Surface distance only, in whitespace tokens rather than model tokens, because this stage runs on CPU without loading the model. DECISIONS 090 calls this cheap de-risking: it does not predict whether the probe's signal transfers, and a small distance here is NOT evidence that it does. The saturation criterion in 101 (IQR ratio below 0.439) is what decides that, and it needs the GPU pass.",
-  "preregistered_in": "DECISIONS.md 090 (corrected), 101"
+  "units": "length_ratio_model_tokens is THE envelope length measurement: the probe reads activations and activations are indexed by model tokens. length_ratio_whitespace_proxy is a PROXY for it, retained because it is free and because it is what the pre-B1 artifact reported. The two differ because Qwen2.5 fragments romanised Hindi and digit runs far more aggressively than English, so the proxy understates the distance on exactly the traffic this pilot is built from.",
+  "interpretation": "Surface distance only. DECISIONS 090 calls this cheap de-risking: it does not predict whether the probe's signal transfers, and a small distance here is NOT evidence that it does. The saturation criterion in 101 (IQR ratio below 0.439) is what decides that, and it needs the GPU pass.",
+  "preregistered_in": "DECISIONS.md 090 (corrected), 101, 102"
 }
