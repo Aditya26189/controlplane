@@ -105,13 +105,14 @@ exists rather than the rule.
 
 ## The tests that guard documents
 
-Four suites read the prose and fail when it drifts. They exist because **reading
+Five suites read the prose and fail when it drifts. They exist because **reading
 is not a control** — a register nobody checks is a register nobody consults.
 
 | Suite | Enforces |
 |---|---|
 | `test_claims.py` | Every number in `README.md` resolves to a field in `results/`, at the precision quoted. The negative cases matter more than the positive one: a wrong value, a wrong interval, a missing artifact and a dead field are all tested to fail |
 | `test_cases_matrix.py` | [CASES.md](CASES.md) cannot drift from the suite — every row names a test that exists and an artifact that exists, and every row is covered |
+| `test_docs_index.py` | `docs/README.md` cannot drift from `docs/` — every docs page is indexed and every relative link resolves |
 | `test_external_figures.py` | The external-figure register gates the proposal: figures marked dropped or unverified must not appear there, and the register may not claim a provenance tier nobody reached |
 | `test_fixture_guards.py` | Synthetic fixtures cannot be rendered as measurements |
 

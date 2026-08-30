@@ -54,9 +54,9 @@ def test_every_docs_page_is_indexed(page: Path) -> None:
     exactly the failure the index exists to prevent.
     """
     index_text = INDEX.read_text(encoding="utf-8")
-    assert page.name in index_text, (
-        f"docs/{page.name} exists but docs/README.md does not mention it. "
-        "Add a row naming what it answers, or delete the page."
+    assert re.search(rf"\]\((?:\./)?{re.escape(page.name)}(?:#[^)]+)?\)", index_text), (
+        f"docs/{page.name} exists but docs/README.md does not link to it. "
+        "Add a row with a working link naming what it answers, or delete the page."
     )
 
 
@@ -75,6 +75,9 @@ def test_every_relative_link_resolves(source: Path) -> None:
     broken = []
     for target in _link_targets(source):
         resolved = (source.parent / target.split("#")[0]).resolve()
+        if not resolved.is_relative_to(PROJECT_ROOT):
+            broken.append(target)
+            continue
         if not resolved.exists():
             broken.append(target)
     assert not broken, (

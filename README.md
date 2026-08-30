@@ -133,7 +133,7 @@ pointed at.
 | `scripts/` `demo/` `notebooks/` | thin CLI wrappers, the two-pane demo runner, the Kaggle GPU notebook |
 | `tests/` | 771 tests, including the ones that enforce this README |
 | `docs/` | spec, methods, limitations, the case matrix, and the move mapping |
-| `DECISIONS.md` `round1/` | 97 append-only decision entries; the Round 1 submission, moved whole |
+| `DECISIONS.md` `round1/` | 118 append-only decision entries; the Round 1 submission, moved whole |
 
 ### How it fits together
 
@@ -297,7 +297,7 @@ for. The ones most readers want first:
 
 | document | what it answers |
 |---|---|
-| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | the system in ten diagrams — objects, pipeline, warrant lifecycle, controls, policy, drift, verification |
+| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | the system in eleven diagrams — objects, pipeline, warrant lifecycle, controls, policy, drift, verification |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | what the system is and how the pieces fit |
 | [docs/ONBOARDING.md](docs/ONBOARDING.md) | your first hour in this repository, in order |
 | [docs/SETUP.md](docs/SETUP.md) · [docs/RUNBOOK.md](docs/RUNBOOK.md) | getting it running; what every script reads and writes |

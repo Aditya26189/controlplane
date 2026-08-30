@@ -25,7 +25,7 @@ the row that matches why you are here.
 
 | Document | Answers |
 |---|---|
-| [DIAGRAMS.md](DIAGRAMS.md) | What does the system look like? Ten diagrams: the three objects, the pipeline, the warrant lifecycle, the controls, policy, composition, drift, verification, and the Round 1 → Round 2 journey |
+| [DIAGRAMS.md](DIAGRAMS.md) | What does the system look like? Eleven diagrams: the three objects, the pipeline, the warrant lifecycle, the controls, policy, composition, drift, verification, and the Round 1 → Round 2 journey |
 | [ONBOARDING.md](ONBOARDING.md) | I have one hour. What do I read, run, and look at, in what order? |
 | [CODE_TOUR.md](CODE_TOUR.md) | What is in each of the packages under `controlplane/`, and which file do I open for X? |
 | [SETUP.md](SETUP.md) | How do I get this running — laptop, GPU notebook, offline machine? |
