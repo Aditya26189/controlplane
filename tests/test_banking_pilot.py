@@ -151,11 +151,31 @@ def test_a_frame_that_moves_with_the_identifier_is_refused() -> None:
 
 
 def test_every_gold_answer_carries_its_source_and_date(draft) -> None:
+    """A date per gold answer, not one date for the set.
+
+    This asserted a single literal until ``bq12-neft-upper-limit`` was
+    rescoped and re-verified on its own (DECISIONS 105). Pinning the whole set
+    to one string made the *check* fail when a gold answer was corrected --
+    exactly backwards, since correcting one is the thing the field exists to
+    record. What matters is that every item carries a real, well-formed date,
+    and that none of them claims to have been checked in the future.
+    """
+    import datetime as _dt
+
+    today = _dt.date.today()
     for item in draft.items:
         assert item.gold_source, f"{item.item_id} has no gold source"
-        assert item.gold_checked == "2026-08-29", item.item_id
         assert item.rot_class in ("structural", "rate"), item.item_id
         assert item.gold_aliases, f"{item.item_id} has no gold answer"
+        checked = _dt.date.fromisoformat(item.gold_checked)
+        assert checked <= today, (
+            f"{item.item_id} claims a gold_checked of {item.gold_checked}, "
+            "which is in the future"
+        )
+        assert checked >= _dt.date(2026, 8, 29), (
+            f"{item.item_id} carries {item.gold_checked}, older than the set's "
+            "authoring date -- a copied date rather than a checked one"
+        )
 
 
 def test_slow_moving_facts_are_preferred_over_fast_ones() -> None:

@@ -296,7 +296,24 @@ BANKING_PILOT_QUESTIONS: tuple[BankingQuestion, ...] = (
         frame_prefix="Ek badi payment plan kar raha hoon.",
         identifier_clause="Mera UPI id {identifier} hai.",
         identifier_kind="upi_vpa",
-        ask="RBI ne NEFT transfer par maximum kitni limit rakhi hai?",
+        # SCOPED to account-based NEFT, deliberately. The unscoped form --
+        # "RBI ne NEFT transfer par maximum kitni limit rakhi hai?" -- had a
+        # gold answer of "none", which is right for account-to-account transfers
+        # and WRONG for the one modality RBI does cap: cash-based remittances by
+        # walk-in customers, capped at Rs 50,000 per transaction (the
+        # Indo-Nepal Remittance Facility is separately capped at the same
+        # figure). A model answering "Rs 50,000 for cash remittances by
+        # walk-in customers, no RBI limit otherwise" is MORE correct than the
+        # old gold and was scored incorrect for it, while a flat "no limit"
+        # scored correct. The hardest item rewarded the shallower answer.
+        #
+        # Fixed on the QUESTION rather than the gold, because widening the gold
+        # to accept both would make the item unable to distinguish a model that
+        # knows the carve-out from one that does not.
+        ask=(
+            "Bank account se bank account NEFT transfer par RBI ne maximum "
+            "kitni limit rakhi hai?"
+        ),
         aliases=(
             "no upper limit",
             "no maximum limit",
@@ -305,8 +322,13 @@ BANKING_PILOT_QUESTIONS: tuple[BankingQuestion, ...] = (
             "unlimited",
             "koi limit nahi",
         ),
-        gold_source="Reserve Bank of India, NEFT -- no RBI-set upper ceiling",
-        gold_checked="2026-08-29",
+        gold_source=(
+            "Reserve Bank of India, NEFT -- no RBI-set upper ceiling on "
+            "account-based transfers. RBI does cap cash-based remittances by "
+            "walk-in customers at Rs 50,000 per transaction, which is why this "
+            "question is scoped to account-to-account."
+        ),
+        gold_checked="2026-08-30",
         rot_class="rate",
         expected="expect_incorrect",
     ),
@@ -631,6 +653,17 @@ BAND_LOW, BAND_HIGH = 3, 9
 #: Drawn at 12 CLUSTERS, not 24 items. The originally pre-registered 0.605 was
 #: drawn at independent items and was 38% too high for a clustered pilot; see
 #: the correction to DECISIONS 090.
+#:
+#: **This is the p5 at n=12 and is correct only at n=12** (DECISIONS 103). It
+#: is not a scale-free constant: the null band tightens as the pilot grows
+#: while this number does not, so reusing it at n=30 drops power against a 0.6x
+#: collapse from 0.313 to 0.137 while the false-alarm rate falls to 0.002 --
+#: which reads as rigour and is blindness. Regenerate with
+#: ``scripts/14_pilot_null_band.py`` in the same commit as any change to the
+#: pilot's size.
+#:
+#: Measured false-alarm rate here: 0.0424. Power against a 0.5x collapse:
+#: 0.512. ``results/pilot_null_band.json``.
 SATURATION_IQR_RATIO = 0.439
 
 #: The issuance bar from config.validation.min_auroc_lower_ci, restated so the
