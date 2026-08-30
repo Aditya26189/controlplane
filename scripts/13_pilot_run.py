@@ -107,7 +107,9 @@ def main() -> int:
     )
 
     # ---------------------------------------------------------------- model
-    loaded = load_model(config)
+    loaded = load_model(
+        config.model.name, quantization=config.model.quantization
+    )
     prompts = [
         build_prompt(loaded.tokenizer, item.prompt, SYSTEM_PROMPT)
         for item in draft.items
