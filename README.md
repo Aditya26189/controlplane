@@ -232,13 +232,23 @@ The ones that would change how you read the table:
 
 ## Documents
 
+[docs/README.md](docs/README.md) indexes all of them and routes by what you came
+for. The ones most readers want first:
+
 | document | what it answers |
 |---|---|
+| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | the system in ten diagrams — objects, pipeline, warrant lifecycle, controls, policy, drift, verification |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | what the system is and how the pieces fit |
+| [docs/ONBOARDING.md](docs/ONBOARDING.md) | your first hour in this repository, in order |
+| [docs/SETUP.md](docs/SETUP.md) · [docs/RUNBOOK.md](docs/RUNBOOK.md) | getting it running; what every script reads and writes |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | what a crash or a refusal actually means |
 | [docs/METHODS.md](docs/METHODS.md) | estimators, bootstraps, null bands and their derivations |
 | [docs/CASES.md](docs/CASES.md) | every case, the test covering it, the artifact demonstrating it |
 | [docs/LIMITATIONS.md](docs/LIMITATIONS.md) | scope, declared gaps, open items |
 | [DECISIONS.md](DECISIONS.md) | 118 append-only entries — "why did you do it that way?" |
+| [docs/ARTIFACTS.md](docs/ARTIFACTS.md) · [docs/TESTING.md](docs/TESTING.md) | every output file and its fields; what the suite defends |
+| [docs/CODE_TOUR.md](docs/CODE_TOUR.md) · [docs/GLOSSARY.md](docs/GLOSSARY.md) | the packages, file by file; the vocabulary, defined once |
+| [docs/FAQ.md](docs/FAQ.md) · [docs/JOURNEY.md](docs/JOURNEY.md) | reviewer questions; what the project did, phase by phase |
 | [docs/PATHS.md](docs/PATHS.md) | what moved on 2026-08-29 and where it went |
 | [docs/SPEC.md](docs/SPEC.md) | the technical specification |
 | [docs/PROPOSAL.md](docs/PROPOSAL.md) | the business proposal |
