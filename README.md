@@ -417,9 +417,9 @@ for. The ones most readers want first:
   <tr>
     <td align="center" width="33%">
       <a href="https://github.com/Aditya26189">
-        <img src="https://github.com/Aditya26189.png" width="130px;" alt="Aditya Singh" style="border-radius:50%"/><br /><br />
-        <b>Aditya Singh</b>
-      </a><br />
+        <img src="https://github.com/Aditya26189.png" width="130px;" alt="Aditya Singh" style="border-radius:50%"/>
+      </a><br /><br />
+      <a href="https://github.com/Aditya26189"><b>Aditya Singh</b></a><br />
       <sub>🔧 Mechanical Engineering, 2028</sub><br /><br />
       <a href="https://github.com/Aditya26189">
         <img src="https://img.shields.io/badge/GitHub-Aditya26189-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"/>
@@ -427,9 +427,9 @@ for. The ones most readers want first:
     </td>
     <td align="center" width="33%">
       <a href="https://github.com/kksahu444">
-        <img src="https://github.com/kksahu444.png" width="130px;" alt="Krishnakant Sahu" style="border-radius:50%"/><br /><br />
-        <b>Krishnakant Sahu</b>
-      </a><br />
+        <img src="https://github.com/kksahu444.png" width="130px;" alt="Krishnakant Sahu" style="border-radius:50%"/>
+      </a><br /><br />
+      <a href="https://github.com/kksahu444"><b>Krishnakant Sahu</b></a><br />
       <sub>💻 Computer Science & Engineering, 2027</sub><br /><br />
       <a href="https://github.com/kksahu444">
         <img src="https://img.shields.io/badge/GitHub-kksahu444-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"/>
@@ -437,9 +437,9 @@ for. The ones most readers want first:
     </td>
     <td align="center" width="33%">
       <a href="https://github.com/upendra512">
-        <img src="https://github.com/upendra512.png" width="130px;" alt="Upendra Singh" style="border-radius:50%"/><br /><br />
-        <b>Upendra Singh</b>
-      </a><br />
+        <img src="https://github.com/upendra512.png" width="130px;" alt="Upendra Singh" style="border-radius:50%"/>
+      </a><br /><br />
+      <a href="https://github.com/upendra512"><b>Upendra Singh</b></a><br />
       <sub>🔧 Mechanical Engineering, 2028</sub><br /><br />
       <a href="https://github.com/upendra512">
         <img src="https://img.shields.io/badge/GitHub-upendra512-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"/>
