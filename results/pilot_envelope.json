@@ -1,7 +1,7 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-30T01:13:37+00:00",
-    "git_commit": "f10302d740f89b64f3d03df2397883621a07b380",
+    "timestamp_utc": "2026-08-30T01:52:08+00:00",
+    "git_commit": "ed6ad78d63770130cad109c0742f55ddccea6853",
     "git_branch": "fix/envelope-units-and-null-band",
     "dirty": false,
     "dirty_paths": [],
