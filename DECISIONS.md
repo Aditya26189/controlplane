@@ -5130,3 +5130,69 @@ same family: an interval conditioned on something nobody priced.
 
 Every gate in this project that compares a bound to a threshold now has a
 question attached to it that has been asked exactly once.
+
+## 115 - How the pilot result is stated, and a fourth class of number
+
+### The composite, stated so a reader cannot find a gap in it
+
+"The pilot cleared" is not what happened. Three gates, three different
+epistemic standings:
+
+| gate | result | what it supports |
+|---|---|---|
+| acceptance band | 7 of 12 wrong, in [3, 9] | **deterministic** — a count, no resampling in it |
+| saturation | IQR ratio 0.7360 vs 0.439 | inside the band a healthy probe produces — **and `103` pre-registered that a moderately collapsed one produces the same band** |
+| issuance | AUROC low 0.5554 vs 0.55 | clears on **38% of bootstrap seeds**, mean 0.5478 |
+
+**"Its spread is healthy" is a claim gate 2 cannot support.** `103` established
+before the number existed that at 12 clusters the null band is [0.394, 1.540]
+and power against a halved spread is 0.512. A ratio of 0.7360 reads identically
+under a healthy probe and a moderately collapsed one. The honest form names the
+band and its non-discrimination in the same breath.
+
+So: **the pilot's decision rule returned pass on this draw**, and how much of
+that was the draw is now measured rather than guessed.
+
+### The same defect, arriving in the third gate
+
+The seed carries no information about the probe. A verdict that moves with it
+is, at that margin, not measuring the world -- it is reporting which resample
+happened. `103` said this about gate 2 from theory; `114`'s sweep says it about
+gate 3 from measurement. Two gates out of three are, at n=12, answering
+"what did this draw produce" more than "does the probe transfer".
+
+### The guard that should exist and does not
+
+`bootstrap_seed_stability` is a **report**. Its natural form is a **guard**: a
+gate comparing against a bootstrap bound should refuse to return a verdict when
+the margin is thinner than that bound's own seed sd, the way `estimated()` now
+refuses a one-sided bound without binomial counts. Measurement makes the defect
+visible; refusal makes it uninstantiable.
+
+**Declared gap, not built.** Recorded so it is a known absence rather than a
+later discovery.
+
+### A fourth class of number, because the proposal's three do not cover it
+
+`PROPOSAL.md` admits three kinds: **measured** (claim table, artifact, checked
+by `make verify`), **derived** (a script and the artifact it lands in), and
+**declared estimate** (says so on the page).
+
+A court award, a regulatory fine, a standard's clause number is **none of
+these**. It is not measured here, not derived here, and calling it a declared
+estimate would be false -- it is a fact about the world with a citable source.
+With no class to put it in, it enters the document as ordinary prose, which is
+precisely the unguarded import path `113` describes and the route that brought
+`DEFF 1.60` and `prEN 18284`.
+
+**Fourth class: `external`.** It carries a source, a verification state
+(`verified+primary`, `verified+secondary`, `unverified`, `dropped`), **who
+verified it and when**, and any caveat that must travel with it. Registered in
+`docs/EXTERNAL_FIGURES.md`; a figure not in the register does not go in the
+proposal.
+
+The attribution matters and is not ceremony. The external figures in that
+register were verified by the **project author against primary sources**, not
+by this repository and not by me. Recording that is the difference between a
+provenance chain and a laundering step -- and a register that claimed repo
+authority for a fact it cannot check would be the same defect one level up.

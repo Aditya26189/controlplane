@@ -133,6 +133,17 @@ order of magnitude, not as commitments.
 - Scope and what deployment would need, bounded by
   [LIMITATIONS.md](LIMITATIONS.md).
 - Costs, if any, each labelled a declared estimate with its assumptions.
+- **The regulatory argument**, led by the Digital Omnibus rather than by the
+  Uber fine: a right generates a fine when breached, a permission list
+  generates a standing evidence obligation, and a demonstrated, time-bounded,
+  revocable condition is what a warrant is. Every figure from
+  [EXTERNAL_FIGURES.md](EXTERNAL_FIGURES.md).
+- **The risk section, built on the self-catch log.** Fifteen errors found
+  internally before external review, several flattering. The strongest is not a
+  code bug: a hypothetical design effect crossed a document boundary, lost the
+  context that made it hypothetical, and reached a sentence about this
+  project's costs. That is the failure this product exists to prevent,
+  occurring in the medium a customer reads.
 
 ## Rules for anything added here
 
@@ -142,3 +153,15 @@ order of magnitude, not as commitments.
    it lands in.
 3. A number that is neither is a **declared estimate** and says so on the page,
    not in a footnote.
+4. A number **about the world** — a court award, a regulatory fine, a standard's
+   clause number — is an **external figure**, and none of the three rules above
+   fits it. It is not measured here, not derived here, and calling it a declared
+   estimate would be false. It goes in
+   [EXTERNAL_FIGURES.md](EXTERNAL_FIGURES.md) with its source, its verification
+   state, who verified it and when, and any caveat that must travel with it.
+
+   **A figure not in that register does not go in this document**, and no
+   section is written until every external figure in it is verified. A figure
+   still unverified when its section is written is **dropped, not softened** —
+   softening is how a hypothetical `DEFF 1.60` from a planning document reached
+   a sentence about this project's certification cost (`DECISIONS.md` 113, 115).
