@@ -309,13 +309,16 @@ def test_precision_is_absent_not_zero_when_nothing_is_flagged() -> None:
     metrics = build_warrant_metrics(
         labels=labels, scores=scores, threshold=2.0, config=config  # flags nothing
     )
-    assert metrics.precision is None, (
-        f"precision reported as {metrics.precision} with nothing flagged; it is "
-        "undefined and must be absent"
+    assert metrics.precision is not None
+    assert (metrics.precision.ci_low, metrics.precision.ci_high) == (0.0, 1.0), (
+        f"precision interval is [{metrics.precision.ci_low}, "
+        f"{metrics.precision.ci_high}]; with nothing flagged we know NOTHING "
+        "about precision and the honest interval is the vacuous [0, 1]"
     )
-    # The whole ranking triple, not precision alone: CLAUDE.md invariant 5 says
-    # precision and recall travel together, and the model layer enforces it.
-    assert metrics.recall is None and metrics.auroc is None
+    assert "undefined" in metrics.precision.estimator
+    # AUROC and recall are NOT sacrificed to fix precision. On the artifact this
+    # was found in, AUROC is 0.5015 -- the mean-pool collapse itself.
+    assert metrics.auroc is not None and metrics.recall is not None
     # The quantities that ARE defined still carry exact intervals.
     assert metrics.flag_rate is not None and metrics.flag_rate.ci_high > 0.0
     assert "Clopper-Pearson" in metrics.flag_rate.estimator

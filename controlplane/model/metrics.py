@@ -258,6 +258,14 @@ class WarrantMetrics:
             achievable lift is ``1 / max(base_rate, flag_rate)``, so a detector
             on an enriched set sits near a low ceiling however good it is
             (``DECISIONS.md`` 047).
+        ranking_absent_reason: Why ``auroc``/``recall``/``precision`` are
+            absent, when they are. Carried because **the metrics alone cannot
+            distinguish the two causes**: a single-class envelope and a
+            threshold that flagged nothing both leave the ranking triple empty
+            with a present ``flag_rate`` and ``fpr``. Issuance used to infer
+            "single class" from an absent AUROC and wrote "measured no
+            positives in this eval set" into a refusal for a 600-item set that
+            had plenty (``DECISIONS.md`` 108).
         extra: Any additional metrics, each carrying its own kind.
     """
 
@@ -268,6 +276,7 @@ class WarrantMetrics:
     confirmed_errors: Metric
     fpr_hard_negatives: Optional[Metric] = None
     base_rate: Optional[float] = None
+    ranking_absent_reason: Optional[str] = None
     extra: tuple[Metric, ...] = ()
 
     def __post_init__(self) -> None:

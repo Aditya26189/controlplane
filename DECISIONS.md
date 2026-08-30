@@ -4637,3 +4637,67 @@ Note the scope: that conjunction guards **warrants**. `certify_fpr` is not in
 that path, so a `Certification` cannot yet reach a policy decision at all. The
 rename is sufficient today because the object is unwired, and the conjunction
 must be extended to it before it ever is.
+
+## 109 - Correcting 108: the vacuous interval, not the absent metric
+
+`108` diagnosed the zero-width precision interval correctly and then fixed it
+wrongly. This records the correction, because the wrong fix was committed and
+`git log` should show why it moved.
+
+### What 108 did
+
+When nothing is flagged, precision is `0/0`. `108` reported **all three**
+ranking metrics absent, on the reasoning that invariant 5 makes precision and
+recall travel together and the model layer enforces it. That reasoning is
+sound and the conclusion was still wrong.
+
+### What it cost, and what caught it
+
+`test_every_readme_claim_resolves` failed on exactly one row:
+
+    Mean-pool probe collapses to chance under it    0.5015    -    DRIFT
+
+**AUROC 0.5015 is the finding.** It is the mean-pool long-context collapse --
+a README claim, a `CLAUDE.md` documented failure mode, and the reason
+max-of-rolling-means exists. `108` deleted a measured result to avoid
+reporting an undefined one, and only the claim table noticed.
+
+That is the same trade in the opposite direction from the defect it was
+fixing: `108` refused to let a fake number reach a user and then let a real one
+vanish. Both are the metric answering the wrong question.
+
+### The fix that keeps both
+
+**Precision carries `[0.0, 1.0]`, not absence.** Zero flagged items tell us
+*nothing* about precision, and the vacuous interval is exactly that statement:
+
+| | value | interval | estimator |
+|---|---|---|---|
+| before | 0.0 | **[0.0, 0.0]** | `bootstrap-percentile-1000` |
+| 108 | absent | absent | absent |
+| **now** | 0.0 | **[0.0, 1.0]** | `undefined: 0 of 600 items flagged ... 0/0` |
+
+The triple stays present, so invariant 5 holds structurally. Invariant 4 holds
+because `[0, 1]` claims nothing. And `transfer-T1-mean_pool.json` keeps
+`auroc 0.5015 [0.4546, 0.5479]`, `recall 0.0 [0.0, 0.0132]` and `flag_rate 0.0
+[0.0, 0.0061]` -- every defined quantity measured, the one undefined quantity
+labelled as such in its own estimator string.
+
+The Beat 4 table reads better for it: **0.813 / 0.555 / 0.502** across
+last-token, max-rolling-means and mean-pool, which is the transfer story in one
+line.
+
+### What stands from 108
+
+The sweep (631 intervals, 580 bootstrap, 51 Clopper-Pearson), the finding that
+one zero-event quantity used bootstrap, the `MeasurementError` guard in
+`estimated()`, the artifact sweep test, and the `ranking_absent_reason` field
+that stopped issuance inferring "single class" from an absent AUROC. Only the
+choice of remedy changed.
+
+### The lesson worth keeping
+
+The claim table is the control that works. Two invariants were reasoned about
+carefully and the reasoning still produced a regression; what caught it was a
+mechanical check that every README number still resolves to an artifact. That
+is the argument for `CLAUDE.md`'s eighth invariant in a single incident.

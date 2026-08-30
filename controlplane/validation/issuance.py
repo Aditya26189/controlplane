@@ -175,18 +175,32 @@ def issue_or_refuse(
         )
 
     if metrics.auroc is None:
-        # A single-class envelope supports no ranking claim, so the AUROC bar
-        # cannot be applied. The warrant is then a claim about FPR alone, and
-        # max_fpr_hard_negatives becomes the criterion that must be supplied --
-        # without it there would be no bar at all, which is worse than refusing.
+        # No ranking claim, so the AUROC bar cannot be applied. The warrant is
+        # then a claim about FPR alone, and max_fpr_hard_negatives becomes the
+        # criterion that must be supplied -- without it there would be no bar
+        # at all, which is worse than refusing.
+        #
+        # The CAUSE is read from the metrics, never inferred. An absent AUROC
+        # meant "single class" until DECISIONS 108 made a threshold that flags
+        # nothing produce the same shape, at which point this branch wrote
+        # "measured no positives in this eval set" into a refusal for a
+        # 600-item set that had plenty.
         if max_fpr_hard_negatives is None:
             reasons.append(
                 RefusalReason(
-                    criterion="single_class_envelope",
-                    measured="no positives in this eval set, so AUROC is undefined",
+                    criterion=(
+                        "single_class_envelope"
+                        if metrics.ranking_absent_reason is None
+                        or "single-class" in metrics.ranking_absent_reason
+                        else "no_ranking_claim"
+                    ),
+                    measured=(
+                        metrics.ranking_absent_reason
+                        or "no positives in this eval set, so AUROC is undefined"
+                    ),
                     required=(
                         "a declared max_fpr_hard_negatives, since FPR is the only "
-                        "claim a single-class envelope can support"
+                        "claim an envelope without a ranking can support"
                     ),
                 )
             )

@@ -632,6 +632,54 @@ frozen on CPU with gold answers and no labels, and this pass generates, judges,
 and only then scores.
 """
         ),
+        markdown(
+            """
+### First, give the GPU back
+
+The extraction above holds a 7B model **in this kernel process**. Every stage
+below runs as a *subprocess*, so they do not inherit that allocation -- they
+compete with it. `13_pilot_run.py` is the only stage that loads a model of its
+own, and on the 2026-08-30 run it died with `CUDA out of memory: GPU 1 has
+14.56 GiB of which 46.81 MiB is free. Process 23 has 11.00 GiB in use` after
+the other five stages had already succeeded. Process 23 was this notebook.
+
+That is the second time the pilot has killed a three-hour run at the last
+stage, the first being a wrong argument list. Both were cheap to check and
+expensive to discover, so this cell frees the memory **and refuses to continue
+without it** rather than letting the stages start and find out at the end.
+"""
+        ),
+        code(
+            """
+import gc
+
+import torch
+
+# The extraction is finished and its caches are on disk; nothing below reads
+# `loaded`. Dropping every reference is what actually frees the weights --
+# empty_cache() alone only returns already-unreferenced blocks to the driver.
+for name in ("loaded", "probe", "source", "transferred"):
+    if name in dir():
+        del globals()[name]
+gc.collect()
+torch.cuda.empty_cache()
+
+free = {i: torch.cuda.mem_get_info(i)[0] / 2**30 for i in range(torch.cuda.device_count())}
+print({i: f"{g:.1f} GiB free" for i, g in free.items()})
+
+# The pilot loads Qwen2.5-7B in NF4 (~5 GiB) plus an activation workspace. If
+# the largest card cannot offer that, the five cheap stages below would run for
+# minutes and the expensive one would fail at the end -- which is exactly the
+# failure this cell exists to convert into an immediate one.
+NEEDED_GIB = 6.0
+if free and max(free.values()) < NEEDED_GIB:
+    raise SystemExit(
+        f"only {max(free.values()):.1f} GiB free on the largest GPU; the pilot "
+        f"needs about {NEEDED_GIB} GiB. Something still holds the weights -- "
+        "restart the kernel and re-run rather than spending the stages below."
+    )
+"""
+        ),
         code(
             """
 import subprocess, sys
