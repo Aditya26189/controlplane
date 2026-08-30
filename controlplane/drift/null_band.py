@@ -36,7 +36,13 @@ from typing import Sequence
 
 import numpy as np
 
-__all__ = ["NullBand", "simulate_null_psi"]
+__all__ = [
+    "IqrRatioNull",
+    "NullBand",
+    "iqr_ratio_power",
+    "simulate_null_iqr_ratio",
+    "simulate_null_psi",
+]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -131,3 +137,164 @@ def simulate_null_psi(
         p99=float(np.percentile(psi, 99)),
         false_alarm_rate=float((psi > stable_band).mean()),
     )
+
+
+@dataclasses.dataclass(frozen=True)
+class IqrRatioNull:
+    """Where the pilot/reference IQR ratio lands when nothing has collapsed.
+
+    Args:
+        n_pilot: Effective pilot size simulated. For a clustered pilot this is
+            the number of **clusters**, not items (``DECISIONS.md`` 090).
+        n_reference: Reference test-split size the ratio is taken against.
+        shape: Score-shape family the null was drawn from.
+        repeats: Simulation draws.
+        p2_5, p5, p50, p95, p97_5: Percentiles of the null ratio.
+        false_alarm_rate: Share of null draws falling below ``threshold`` — the
+            rate at which a perfectly healthy probe is called saturated.
+        threshold: The saturation rule the false-alarm rate was measured at.
+    """
+
+    n_pilot: int
+    n_reference: int
+    shape: str
+    repeats: int
+    p2_5: float
+    p5: float
+    p50: float
+    p95: float
+    p97_5: float
+    false_alarm_rate: float
+    threshold: float
+
+    def to_payload(self) -> dict:
+        return dataclasses.asdict(self)
+
+
+#: Score shapes the null is checked across. The probe emits a decision-function
+#: value whose shape is not known a priori, so a band that only holds under one
+#: of these is a band that holds by luck.
+_SHAPES = ("normal", "logistic", "beta2_2")
+
+
+def _draw_scores(
+    rng: np.random.Generator, shape: str, size: tuple[int, ...]
+) -> np.ndarray:
+    """Draw scores of a given shape, standardised so IQRs are comparable."""
+    if shape == "normal":
+        return rng.normal(0.0, 1.0, size=size)
+    if shape == "logistic":
+        return rng.logistic(0.0, 1.0, size=size)
+    if shape == "beta2_2":
+        return rng.beta(2.0, 2.0, size=size)
+    raise ValueError(f"unknown score shape {shape!r}; expected one of {_SHAPES}")
+
+
+def _iqr(values: np.ndarray, axis: int = -1) -> np.ndarray:
+    """Interquartile range, linear interpolation, along one axis."""
+    return np.percentile(values, 75, axis=axis) - np.percentile(values, 25, axis=axis)
+
+
+def simulate_null_iqr_ratio(
+    *,
+    n_pilot: int,
+    n_reference: int,
+    threshold: float,
+    shape: str = "normal",
+    repeats: int = 20000,
+    seed: int = 1729,
+) -> IqrRatioNull:
+    """The IQR ratio's null band, drawing the pilot from the reference's own law.
+
+    **What this is for.** ``101`` routes the pilot on ``IQR ratio < 0.439 =
+    saturation``. That threshold was derived once, by hand, and lives as a
+    hardcoded constant. A rule that decides whether a GPU run gets re-authored
+    has to be regenerable, and its false-alarm rate has to be stated next to it
+    — otherwise the pilot's most likely outcomes are "passes because the band is
+    enormous" and "fails because the band is enormous", and the ratio alone does
+    not distinguish them.
+
+    **Both sides are drawn**, for the reason ``simulate_null_psi`` gives: the
+    reference IQR is itself estimated from a finite test split, and holding it
+    exact would report a band narrower than the one a real comparison faces.
+
+    Args:
+        n_pilot: Effective pilot size. Pass the **cluster** count for a
+            clustered pilot — two items per question share a question, so
+            twenty-four items carry twelve questions' worth of independent
+            information and their IQR runs narrow for reasons that have nothing
+            to do with saturation.
+        n_reference: Reference test-split size.
+        threshold: The saturation rule, for the false-alarm rate.
+        shape: One of ``_SHAPES``.
+        repeats: Draws. 20,000 puts the p5 inside about +-0.01.
+        seed: Fixed, so the band does not move between runs.
+
+    Returns:
+        An :class:`IqrRatioNull`.
+    """
+    if n_pilot < 4:
+        raise ValueError(f"n_pilot must be at least 4 to have an IQR, got {n_pilot}")
+    rng = np.random.default_rng(seed)
+
+    pilot = _draw_scores(rng, shape, (repeats, n_pilot))
+    reference = _draw_scores(rng, shape, (repeats, n_reference))
+    ratio = _iqr(pilot) / _iqr(reference)
+
+    return IqrRatioNull(
+        n_pilot=int(n_pilot),
+        n_reference=int(n_reference),
+        shape=shape,
+        repeats=int(repeats),
+        p2_5=float(np.percentile(ratio, 2.5)),
+        p5=float(np.percentile(ratio, 5)),
+        p50=float(np.percentile(ratio, 50)),
+        p95=float(np.percentile(ratio, 95)),
+        p97_5=float(np.percentile(ratio, 97.5)),
+        false_alarm_rate=float((ratio < threshold).mean()),
+        threshold=float(threshold),
+    )
+
+
+def iqr_ratio_power(
+    *,
+    n_pilot: int,
+    n_reference: int,
+    threshold: float,
+    collapse: float,
+    shape: str = "normal",
+    repeats: int = 20000,
+    seed: int = 1729,
+) -> float:
+    """P(the saturation rule fires) when the pilot's spread really is ``collapse``x.
+
+    ``collapse=1.0`` is the null, and the value returned there is the
+    false-alarm rate rather than power. Reported in the same table as the
+    genuine alternatives, because the distance between the two is the whole
+    question of whether the pilot can answer anything at this size.
+
+    Args:
+        n_pilot: Effective pilot size — clusters, not items.
+        n_reference: Reference test-split size.
+        threshold: The saturation rule.
+        collapse: True multiplicative shrinkage of the pilot's score spread.
+        shape: One of ``_SHAPES``.
+        repeats: Draws.
+        seed: Fixed.
+
+    Returns:
+        The probability the rule fires, in [0, 1].
+    """
+    if collapse <= 0.0:
+        raise ValueError(f"collapse must be positive, got {collapse}")
+    rng = np.random.default_rng(seed)
+
+    pilot = _draw_scores(rng, shape, (repeats, n_pilot))
+    # Shrink about the sample median: a collapse narrows the spread without
+    # moving the operating point, which is what saturation looks like.
+    pilot = np.median(pilot, axis=-1, keepdims=True) + collapse * (
+        pilot - np.median(pilot, axis=-1, keepdims=True)
+    )
+    reference = _draw_scores(rng, shape, (repeats, n_reference))
+    ratio = _iqr(pilot) / _iqr(reference)
+    return float((ratio < threshold).mean())

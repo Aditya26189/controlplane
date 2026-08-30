@@ -530,6 +530,8 @@ def test_every_script_has_a_smoke_test() -> None:
         "11_feasibility.py",
         # test_smoke_pilot_freeze
         "12_pilot_freeze.py",
+        # test_smoke_pilot_null_band
+        "14_pilot_null_band.py",
         # test_smoke_the_smoke_check_itself
         "smoke.py",
         # test_smoke_verify_claims_only, test_verify_exits_non_zero_on_drift
@@ -854,3 +856,57 @@ def test_smoke_pilot_freeze(tmp_path: Path) -> None:
     # The artifact must say a small distance is not evidence the signal
     # transfers, or someone will read it as though it were.
     assert "NOT evidence" in envelope["interpretation"]
+
+
+def test_smoke_pilot_null_band(tmp_path: Path) -> None:
+    """`14_pilot_null_band.py` regenerates the threshold `101` routes on.
+
+    The point of the script is that ``SATURATION_IQR_RATIO`` stops being a
+    constant nobody can reproduce, so the assertions are that the artifact
+    actually contains the regenerated band and both power tables -- and that
+    the frozen threshold's false-alarm rate is where DECISIONS 103 says it is.
+
+    ``--repeats`` is dropped to keep the smoke test seconds long. The committed
+    artifact is built at the 20,000 default.
+    """
+    out = tmp_path / "pilot_null_band.json"
+    _run_bare(
+        "14_pilot_null_band.py",
+        "--config", str(PROJECT_ROOT / "config.yaml"),
+        "--n-reference", "960",
+        "--repeats", "4000",
+        "--out", str(out),
+    )
+    payload = json.loads(out.read_text(encoding="utf-8"))
+
+    assert payload["n_reference"] == 960
+    assert payload["frozen_threshold"] == 0.439
+
+    # All three score shapes at all five sizes, or the stability claim in 103
+    # rests on a table that was never built.
+    for shape in ("normal", "logistic", "beta2_2"):
+        for n in (12, 24, 30, 60, 120):
+            assert f"{shape}/n{n}" in payload["null_band"]
+
+    band = payload["null_band"]["normal/n12"]
+    # The hand-derived 0.439 must keep landing just under the simulated p5.
+    # If this drifts, the threshold and the null have come apart and the
+    # pilot's routing rule is no longer the one 103 justified.
+    assert 0.42 <= band["p5"] <= 0.49, band["p5"]
+    assert 0.02 <= band["false_alarm_rate"] <= 0.07, band["false_alarm_rate"]
+
+    # The finding: holding 0.439 while n grows LOSES power. If this inverts,
+    # 103's whole argument for keeping n=12 has gone with it.
+    frozen_12 = payload["power_frozen_threshold"]["n12/collapse0.6"]
+    frozen_30 = payload["power_frozen_threshold"]["n30/collapse0.6"]
+    assert frozen_30 < frozen_12, (
+        f"frozen threshold gained power going 12->30 ({frozen_12} -> {frozen_30}); "
+        "DECISIONS 103 says it must lose it"
+    )
+
+    # And recalibrating reverses that.
+    recal_30 = payload["power_recalibrated_threshold"]["n30/collapse0.6"]
+    assert recal_30 > frozen_30, (
+        f"recalibrating at n=30 did not beat the frozen threshold "
+        f"({recal_30} vs {frozen_30})"
+    )
