@@ -46,6 +46,10 @@ from controlplane.evalsets.banking import (  # noqa: E402
     BANKING_PILOT_QUESTIONS,
     build_banking_dual_pilot,
 )
+from controlplane.extract.model import (  # noqa: E402
+    load_tokenizer,
+    token_length_summary,
+)
 from controlplane.evalsets.registry import load_evalset  # noqa: E402
 
 _LOG = logging.getLogger("scripts.12_pilot_freeze")
@@ -81,9 +85,14 @@ def _script_mix(text: str) -> dict[str, float]:
 def _summarise(prompts: list[str]) -> dict:
     """Surface statistics of a prompt set, in units that need no tokenizer.
 
-    Whitespace tokens rather than model tokens: this stage is CPU-only and must
-    run without loading a 7B model, so it reports what it can actually measure
-    and says so rather than approximating a token count and calling it one.
+    **The whitespace count here is a proxy, and it is the wrong unit.** The
+    probe reads activations, activations are indexed by model tokens, and
+    Qwen2.5 fragments romanised Hindi and digit runs far more aggressively than
+    English -- ``Aadhaar 9999 0687 2026 valid hai kya?`` is 7 whitespace tokens
+    and 23 model tokens. The real envelope measurement is
+    ``model_tokens``, added by :func:`main` when a tokenizer loads. This stays
+    because it is free, it is comparable across the two sets, and removing it
+    would delete the record of what the earlier artifact actually reported.
     """
     lengths = [len(p.split()) for p in prompts]
     chars = [len(p) for p in prompts]
@@ -120,6 +129,14 @@ def main() -> int:
         "--reference", default="triviaqa-2400-t960",
         help="the envelope the probe was fitted on",
     )
+    parser.add_argument(
+        "--no-model-tokens", action="store_true",
+        help=(
+            "skip the model-token measurement. The tokenizer is a ~10 MB "
+            "download, no weights and no GPU; skipping leaves the envelope "
+            "measured only by a proxy and the artifact says so."
+        ),
+    )
     args = parser.parse_args()
 
     setup_logging()
@@ -153,9 +170,11 @@ def main() -> int:
 
     reference_path = Path(args.evalsets_out) / f"{args.reference}.json"
     reference = None
+    reference_prompts: list[str] = []
     if reference_path.is_file():
         reference_set = load_evalset(reference_path)
-        reference = _summarise([i.prompt for i in reference_set.items])
+        reference_prompts = [i.prompt for i in reference_set.items]
+        reference = _summarise(reference_prompts)
         _LOG.info(
             "reference %s: %d items, mean %.1f whitespace tokens",
             args.reference, reference["n"], reference["whitespace_tokens"]["mean"],
@@ -173,12 +192,57 @@ def main() -> int:
         {k: round(v, 3) for k, v in pilot["script_mix_mean"].items()},
     )
 
-    ratio = None
+    whitespace_ratio = None
     if reference is not None:
-        ratio = (
+        whitespace_ratio = (
             pilot["whitespace_tokens"]["mean"] / reference["whitespace_tokens"]["mean"]
         )
-        _LOG.info("length ratio pilot/reference: %.3f", ratio)
+        _LOG.info("whitespace proxy ratio pilot/reference: %.3f", whitespace_ratio)
+
+    # ------------------------------------------------------ model tokens (B1)
+    # The envelope measurement proper. Tokenizer only -- no weights, no GPU.
+    # If it cannot be loaded the fields stay None and carry the reason, because
+    # a plausible number in place of an absent measurement is the failure this
+    # project exists to catch.
+    model_ratio = None
+    model_tokens_unavailable = None
+    if args.no_model_tokens:
+        model_tokens_unavailable = "skipped: --no-model-tokens was passed"
+    else:
+        try:
+            tokenizer = load_tokenizer(config.model.name)
+        except Exception as exc:  # noqa: BLE001 - the reason is the artifact
+            model_tokens_unavailable = (
+                f"tokenizer {config.model.name!r} could not be loaded: "
+                f"{type(exc).__name__}: {exc}"
+            )
+            _LOG.warning("%s", model_tokens_unavailable)
+        else:
+            pilot["model_tokens"] = token_length_summary(pilot_prompts, tokenizer)
+            _LOG.info(
+                "pilot: mean %.1f model tokens, IQR %.1f",
+                pilot["model_tokens"]["mean"], pilot["model_tokens"]["iqr"],
+            )
+            if reference is not None:
+                reference["model_tokens"] = token_length_summary(
+                    reference_prompts, tokenizer
+                )
+                model_ratio = (
+                    pilot["model_tokens"]["mean"] / reference["model_tokens"]["mean"]
+                )
+                _LOG.info(
+                    "reference: mean %.1f model tokens, IQR %.1f",
+                    reference["model_tokens"]["mean"],
+                    reference["model_tokens"]["iqr"],
+                )
+                _LOG.info("MODEL-TOKEN ratio pilot/reference: %.3f", model_ratio)
+                if model_ratio > 2.0:
+                    _LOG.warning(
+                        "model-token ratio %.3f exceeds 2.0: this is a genuine "
+                        "envelope finding and it changes what the GPU run is "
+                        "testing. Report before proceeding (handoff plan, B2).",
+                        model_ratio,
+                    )
 
     payload = {
         "eval_set_id": draft.eval_set_id,
@@ -186,17 +250,28 @@ def main() -> int:
         "reference_eval_set_id": args.reference,
         "pilot": pilot,
         "reference": reference,
-        "length_ratio": ratio,
+        "length_ratio_model_tokens": model_ratio,
+        "length_ratio_whitespace_proxy": whitespace_ratio,
+        "model_tokens_unavailable_reason": model_tokens_unavailable,
         "labels": "UNMEASURED - correctness is judged on the generation pass",
-        "interpretation": (
-            "Surface distance only, in whitespace tokens rather than model "
-            "tokens, because this stage runs on CPU without loading the model. "
-            "DECISIONS 090 calls this cheap de-risking: it does not predict "
-            "whether the probe's signal transfers, and a small distance here is "
-            "NOT evidence that it does. The saturation criterion in 101 (IQR "
-            "ratio below 0.439) is what decides that, and it needs the GPU pass."
+        "units": (
+            "length_ratio_model_tokens is THE envelope length measurement: the "
+            "probe reads activations and activations are indexed by model "
+            "tokens. length_ratio_whitespace_proxy is a PROXY for it, retained "
+            "because it is free and because it is what the pre-B1 artifact "
+            "reported. The two differ because Qwen2.5 fragments romanised "
+            "Hindi and digit runs far more aggressively than English, so the "
+            "proxy understates the distance on exactly the traffic this pilot "
+            "is built from."
         ),
-        "preregistered_in": "DECISIONS.md 090 (corrected), 101",
+        "interpretation": (
+            "Surface distance only. DECISIONS 090 calls this cheap de-risking: "
+            "it does not predict whether the probe's signal transfers, and a "
+            "small distance here is NOT evidence that it does. The saturation "
+            "criterion in 101 (IQR ratio below 0.439) is what decides that, "
+            "and it needs the GPU pass."
+        ),
+        "preregistered_in": "DECISIONS.md 090 (corrected), 101, 102",
     }
     write_json_artifact(Path(args.out), payload, config)
     _LOG.info("wrote %s", args.out)
