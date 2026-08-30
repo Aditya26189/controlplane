@@ -89,13 +89,34 @@ def build_warrant_metrics(
     n_flagged = int(np.sum(scores >= threshold))
     n_items = int(labels.size)
 
-    if single_class:
-        _LOG.info(
-            "single-class set (%d items, all class %d): AUROC, recall and "
-            "precision are undefined, so this warrant claims FPR only",
-            n_items,
-            int(labels[0]) if n_items else -1,
-        )
+    if single_class or n_flagged == 0:
+        if single_class:
+            _LOG.info(
+                "single-class set (%d items, all class %d): AUROC, recall and "
+                "precision are undefined, so this warrant claims FPR only",
+                n_items,
+                int(labels[0]) if n_items else -1,
+            )
+        else:
+            # Nothing cleared the threshold. Precision is TP/(TP+FP) with a
+            # zero denominator -- UNDEFINED, not zero -- and the bootstrap
+            # cannot know that: it resamples all-zero data, returns [0, 0],
+            # and the exact fallback cannot rescue it because a binomial
+            # interval needs trials > 0. That shipped in
+            # results/transfer-T1-mean_pool.json as precision 0.0 with a
+            # zero-width interval: perfect certainty about a ratio with no
+            # denominator.
+            #
+            # The whole ranking triple goes, not precision alone. CLAUDE.md
+            # invariant 5 -- precision and recall travel together -- and a
+            # warrant that flags nothing is making no operating-point claim to
+            # report. DECISIONS 108.
+            _LOG.info(
+                "nothing flagged at threshold %.6f on %d items: precision is "
+                "undefined (0/0), so AUROC, recall and precision are all "
+                "reported absent and this warrant claims FPR only",
+                threshold, n_items,
+            )
         ranking: dict[str, object] = {"auroc": None, "recall": None, "precision": None}
     else:
         ranking = {

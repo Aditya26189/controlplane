@@ -4521,3 +4521,119 @@ than fixing it — the recall floor is conjoined in the policy layer, and a test
 pins the name so it cannot drift back to `certified`. Session-level monitoring
 (the 0.2580 false-revocation rate on clustered traffic) is **not** addressed
 here and the claim must still be restated wherever it appears.
+
+## 108 - Three numbers checked properly, and one of them was a coincidence
+
+Three figures were challenged at once. Two survive, one did not, and a fourth
+defect fell out of checking them. Recorded together because the *method* is the
+point: each was resolved by pulling the field out of the artifact rather than by
+recognising the value.
+
+### `0.247` is real, and my objection to it was the error
+
+The status brief reads *"local slope 6.70 at customer support (fpr 0.015), 5.27
+at internal knowledge, 0.85 at decision support (fpr 0.247) -- a 7.9x spread"*.
+Every figure traces to `results/paired_comparison.json`:
+
+| operating point | achieved FPR | slope |
+|---|---|---|
+| P-customer-support | 0.01518 | 6.698 |
+| P-internal-knowledge | 0.04364 | 5.268 |
+| P-decision-support | **0.24668** | 0.850 |
+
+6.698 / 0.850 = **7.88x**. The brief is accurate and the 7.9x spread stands, so
+the argument for warranting operating points individually rather than warranting
+a detector rests on numbers that hold.
+
+**I then claimed decision support was "2.47x over its `max_fpr` budget of 0.10".
+That was wrong, and it was the scenario-mixing error `CLAUDE.md` lists.**
+`config.profiles.*.max_fpr` is documented in `config.py` as *"Maximum
+**hard-negative** FPR, compared against the upper bound"* and is enforced in
+`routing.py` only against `metrics.fpr_hard_negatives`. It is a ceiling on the
+`hard-negatives-200` set. `0.24668` is the FPR on the `triviaqa-2400-t960`
+hallucination envelope. **Two different rates on two different eval sets**, and
+the policy artifact already says so on every row: *"no hard-negative FPR ceiling
+declared on this envelope. Declared absent rather than left off."*
+
+The system was right and the reviewer was wrong. What made it easy to get wrong
+is a naming defect worth recording: the config key is bare `max_fpr` while every
+use site in code calls it `max_fpr_hard_negatives`. The unqualified name
+produced the same misreading in two independent readers within an hour. The
+qualified name is the correct one; the config key is the outlier.
+
+### `0.0183` was a coincidence doing the work of a check
+
+The hard-negative interval upper bound was read as confirmation that the pieces
+lined up. Four constructions land inside a band 0.4% wide:
+
+| construction | value |
+|---|---|
+| `cp_upper(1, 258, 0.05)` | 0.018254 |
+| **`cp_upper(0, 200, 0.025)`** | **0.018275340355136** |
+| `cp_upper(0, 162, 0.05)` | 0.018322 |
+| rule of three, n=164 | 0.018293 |
+
+The artifact's value is `0.018275340355136237`. Pulled from
+`results/validation-pii-reference-hard-negatives-200.json`, the true fields are
+**n = 200, k = 0**, and the exact match is `cp_upper(0, 200, alpha=0.025)` -- a
+**two-sided** 95% interval. Not n=258, not k=1.
+
+**This exposes a convention mismatch.** The shipped artifacts use two-sided 95%
+intervals; `warrant_stats.cp_upper` is documented as one-sided, *"because that
+is the direction the warrant makes a promise in"*. At n=200, k=0 the two differ
+by 23%:
+
+    one-sided 95%   0.014867
+    two-sided 95%   0.018275
+
+Both defensible, and the one-sided bound is the **tighter** one -- so certifying
+against a target calibrated by eye against the shipped intervals would certify
+where the shipped convention refuses. Declared here; `certify_fpr` is not yet
+wired into any issuance path, and it must not be until the convention is chosen
+once and stated.
+
+### A4, run rather than assumed
+
+Sweeping every interval in `results/`: **631 intervals, 580 bootstrap and 51
+Clopper-Pearson.** Of the six zero-event quantities, five correctly fall back to
+Clopper-Pearson and name it in their `estimator` string. One did not:
+
+    transfer-T1-mean_pool.json  precision  n=600  value 0.0  ci [0.0, 0.0]
+                                estimator: bootstrap-percentile-1000
+
+Nothing cleared the threshold, so precision is `TP/(TP+FP)` = **0/0 --
+undefined, not zero**. The bootstrap resampled all-zero data and returned
+`[0, 0]`; the Clopper-Pearson fallback in `estimated()` could not rescue it,
+because its guard is `if n_trials > 0` and the denominator here is the flagged
+count. So the guard correctly declined and the degenerate interval survived it.
+
+A rate reported as `0.0` with a zero-width interval is a **claim of perfect
+certainty about a quantity that does not exist**, and it breaches invariant 4 --
+no point estimate reaches a user.
+
+### The fix, and why it takes all three ranking metrics
+
+When nothing is flagged, `auroc`, `recall` and `precision` are **all** reported
+absent, exactly as the single-class path already does. Dropping precision alone
+raises `MetricError`, because invariant 5 says precision and recall travel
+together, and the model layer enforces it. That enforcement is what caught the
+first attempt at this fix -- the invariant did its job on its own author.
+
+`estimated()` now raises `MeasurementError` rather than returning a zero-width
+rate interval it could not back with an exact bound, so this cannot be
+reintroduced quietly at another call site. A sweep test asserts no committed
+artifact carries a zero-width rate interval, and the affected artifact is
+regenerated rather than grandfathered.
+
+### The recall floor is tested, not conventional
+
+Checked because the `fpr_certified` rename is only sufficient if it is.
+`Profile.accepts` refuses on `recall.ci_low < min_recall`, and
+`test_profile_compares_against_the_interval_bound_not_the_point` pins the
+stronger property -- that the **lower bound** is compared, not the point
+estimate. `resolution.py` enforces the same at bundle load.
+
+Note the scope: that conjunction guards **warrants**. `certify_fpr` is not in
+that path, so a `Certification` cannot yet reach a policy decision at all. The
+rename is sufficient today because the object is unwired, and the conjunction
+must be extended to it before it ever is.

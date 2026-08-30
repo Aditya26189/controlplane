@@ -850,4 +850,21 @@ def test_transfer_produces_a_usable_warrant_or_an_honest_refusal(
     if run.warrant.status is WarrantStatus.REFUSED:
         assert run.warrant.status_reason
     assert run.test_scored == 1
-    assert run.metrics.recall is not None
+
+    # The ranking triple travels together or not at all (CLAUDE.md invariant 5).
+    # Under long-context shift the probe can flag NOTHING at the transferred
+    # threshold, and then precision is 0/0 -- undefined, not zero -- so the
+    # warrant claims FPR only. Asserting recall unconditionally assumed a
+    # ranking claim that a collapsed probe does not make. DECISIONS 108.
+    ranking = (run.metrics.auroc, run.metrics.recall, run.metrics.precision)
+    assert all(m is None for m in ranking) or all(m is not None for m in ranking), (
+        f"ranking metrics must be present or absent together, got "
+        f"auroc={run.metrics.auroc}, recall={run.metrics.recall}, "
+        f"precision={run.metrics.precision}"
+    )
+    # Whichever way it went, the FPR claim is always there and always bounded.
+    assert run.metrics.flag_rate is not None
+    assert run.metrics.flag_rate.ci_high is not None
+    if run.metrics.recall is None:
+        # A zero-width interval here would be the defect 108 fixed.
+        assert run.metrics.flag_rate.ci_high > 0.0

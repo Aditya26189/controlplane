@@ -279,3 +279,107 @@ def test_certification_is_an_fpr_claim_and_says_nothing_about_recall() -> None:
     assert result.fpr_certified is True
     assert result.k == 0
     assert hasattr(result, "fpr_certified") and not hasattr(result, "certified")
+
+
+# --------------------------------------------------------------------------- #
+# A4 -- zero-event intervals. DECISIONS 108.
+# --------------------------------------------------------------------------- #
+
+
+def test_precision_is_absent_not_zero_when_nothing_is_flagged() -> None:
+    """0/0 is undefined. Reporting it as 0.0 with a [0, 0] interval is a claim
+    of perfect certainty about a ratio that has no denominator.
+
+    This shipped in results/transfer-T1-mean_pool.json -- the documented
+    mean-pool long-context collapse -- as precision 0.0, ci [0.0, 0.0],
+    estimator 'bootstrap-percentile-1000'. The bootstrap resampled all-zero
+    data, and the Clopper-Pearson fallback that rescues every other zero-event
+    quantity could not fire, because a binomial interval needs trials > 0.
+    """
+    import numpy as np
+
+    from controlplane.config import load_config
+    from controlplane.validation.metrics_builder import build_warrant_metrics
+
+    config = load_config(PROJECT_CONFIG)
+    rng = np.random.default_rng(0)
+    labels = (rng.random(200) < 0.4).astype(int)
+    scores = rng.random(200)
+
+    metrics = build_warrant_metrics(
+        labels=labels, scores=scores, threshold=2.0, config=config  # flags nothing
+    )
+    assert metrics.precision is None, (
+        f"precision reported as {metrics.precision} with nothing flagged; it is "
+        "undefined and must be absent"
+    )
+    # The whole ranking triple, not precision alone: CLAUDE.md invariant 5 says
+    # precision and recall travel together, and the model layer enforces it.
+    assert metrics.recall is None and metrics.auroc is None
+    # The quantities that ARE defined still carry exact intervals.
+    assert metrics.flag_rate is not None and metrics.flag_rate.ci_high > 0.0
+    assert "Clopper-Pearson" in metrics.flag_rate.estimator
+
+
+def test_a_zero_width_rate_interval_over_zero_trials_is_refused() -> None:
+    """The guard, at the layer that would otherwise emit it silently."""
+    import numpy as np
+
+    from controlplane.validation.stats import MeasurementError, estimated
+
+    labels = np.zeros(50, dtype=int)
+    scores = np.zeros(50)
+    with pytest.raises(MeasurementError, match="undefined at this threshold"):
+        estimated(
+            "precision",
+            lambda y, s: 0.0,
+            labels,
+            scores,
+            n_resamples=50,
+            ci=0.95,
+            seed=1729,
+            binomial_events=0,
+            binomial_trials=0,
+        )
+
+
+def test_no_committed_artifact_carries_a_zero_width_rate_interval() -> None:
+    """The sweep that found it, kept as a check.
+
+    A rate whose interval is [0, 0] is a point estimate wearing an interval's
+    clothes, and CLAUDE.md's fourth invariant says no point estimate reaches a
+    user. Artifacts predating DECISIONS 108 are regenerated, not grandfathered.
+    """
+    import glob
+    import json
+    import os
+
+    offenders = []
+
+    def walk(node, artifact):
+        if isinstance(node, dict):
+            if (
+                node.get("unit") == "rate"
+                and node.get("ci_low") == 0.0
+                and node.get("ci_high") == 0.0
+            ):
+                offenders.append(f"{artifact}: {node.get('name')} n={node.get('n')}")
+            for v in node.values():
+                walk(v, artifact)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v, artifact)
+
+    for path in glob.glob("results/**/*.json", recursive=True):
+        if "kaggle" in path:
+            continue  # a downloaded run's own outputs, not this repo's claims
+        try:
+            with open(path, encoding="utf-8") as handle:
+                walk(json.load(handle), os.path.basename(path))
+        except Exception:
+            continue
+
+    assert not offenders, (
+        "zero-width rate intervals in committed artifacts:\n  "
+        + "\n  ".join(sorted(set(offenders)))
+    )
