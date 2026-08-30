@@ -1,0 +1,16 @@
+{
+  "id": "aditya103856/controlplane-pilot",
+  "title": "controlplane-pilot",
+  "code_file": "run_pilot_on_kaggle.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["aditya103856/controlplane-reference-caches"],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": [],
+  "machine_shape": "NvidiaTeslaT4",
+  "enable_tpu": false
+}

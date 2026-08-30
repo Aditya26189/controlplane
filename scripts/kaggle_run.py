@@ -34,9 +34,34 @@ from pathlib import Path
 from typing import Optional
 
 PROJECT = Path(__file__).resolve().parent.parent
-UPLOAD = PROJECT / "kaggle"
-NOTEBOOK = PROJECT / "notebooks" / "run_on_kaggle.ipynb"
+# Two kernels, because the pilot has a resume point and the extraction does
+# not. `extract` re-derives the activations (~3 GPU-hours); `pilot` attaches
+# them as a dataset and runs the last stage alone (~20 minutes). Three
+# three-hour runs produced no pilot result before the split existed
+# (DECISIONS.md 110).
+KERNELS = {
+    "extract": {
+        "upload": PROJECT / "kaggle",
+        "notebook": PROJECT / "notebooks" / "run_on_kaggle.ipynb",
+    },
+    "pilot": {
+        "upload": PROJECT / "kaggle-pilot",
+        "notebook": PROJECT / "notebooks" / "run_pilot_on_kaggle.ipynb",
+    },
+}
+UPLOAD = KERNELS["extract"]["upload"]
+NOTEBOOK = KERNELS["extract"]["notebook"]
 METADATA = UPLOAD / "kernel-metadata.json"
+
+
+def select(kernel: str) -> None:
+    """Point the module-level paths at one of the two kernels."""
+    global UPLOAD, NOTEBOOK, METADATA
+    if kernel not in KERNELS:
+        raise SystemExit(f"unknown kernel {kernel!r}; expected one of {sorted(KERNELS)}")
+    UPLOAD = KERNELS[kernel]["upload"]
+    NOTEBOOK = KERNELS[kernel]["notebook"]
+    METADATA = UPLOAD / "kernel-metadata.json"
 
 # Terminal states reported by `kaggle kernels status`. Anything else means the
 # run is still going; treating an unknown string as finished would report a
@@ -88,7 +113,7 @@ def push(accelerator: Optional[str], timeout: Optional[int], yes: bool) -> None:
             "the notebook is generated, never hand-edited."
         )
     kernel_id = _kernel_id()
-    shutil.copy2(NOTEBOOK, UPLOAD / "run_on_kaggle.ipynb")
+    shutil.copy2(NOTEBOOK, UPLOAD / NOTEBOOK.name)
     args = ["kernels", "push", "-p", str(UPLOAD)]
     if accelerator:
         args += ["--accelerator", accelerator]
@@ -141,6 +166,14 @@ def wait(out: Optional[Path], poll_seconds: int) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--kernel", choices=sorted(KERNELS), default="extract",
+        help=(
+            "which kernel to act on. 'extract' re-derives the activations "
+            "(~3 GPU-hours); 'pilot' attaches them as a dataset and runs the "
+            "last stage alone (~20 minutes)."
+        ),
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     push_parser = sub.add_parser("push", help="upload and start a run")
@@ -165,6 +198,7 @@ def main() -> None:
     wait_parser.add_argument("--poll-seconds", type=int, default=300)
 
     args = parser.parse_args()
+    select(args.kernel)
     if args.command == "push":
         push(args.accelerator, args.timeout, args.yes)
     elif args.command == "status":

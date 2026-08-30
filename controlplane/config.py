@@ -550,7 +550,13 @@ class ProfileConfig:
         inline_budget_ms: Latency budget for the inline path.
         min_recall: Recall the profile requires, compared against the interval's
             lower bound.
-        max_fpr: Maximum hard-negative FPR, compared against the upper bound.
+        max_fpr_hard_negatives: Maximum FPR **on the hard-negative eval
+            set**, compared against the upper bound. NOT a ceiling on the
+            FPR measured on a hallucination envelope: those are different
+            rates on different eval sets, and P-decision-support sits at
+            0.2467 on `triviaqa-2400-t960` while declaring 0.10 here with
+            no contradiction. The unqualified name `max_fpr` caused exactly
+            that misreading twice in one hour (`DECISIONS.md` 110).
         operating_point: Id of the threshold this profile runs at.
         target_flag_rate: The budget that threshold was selected to hit.
         on_calibration_drift: ``REFUSE``, ``WIDEN_BUDGET`` or ``IGNORE``.
@@ -561,7 +567,7 @@ class ProfileConfig:
 
     inline_budget_ms: int
     min_recall: float
-    max_fpr: float
+    max_fpr_hard_negatives: float
     operating_point: str = "P-conservative"
     target_flag_rate: float = 0.05
     on_calibration_drift: str = "REFUSE"
@@ -577,8 +583,11 @@ class ProfileConfig:
             raise ConfigError(
                 f"profile.min_recall must be in (0, 1], got {self.min_recall}"
             )
-        if not 0.0 < self.max_fpr <= 1.0:
-            raise ConfigError(f"profile.max_fpr must be in (0, 1], got {self.max_fpr}")
+        if not 0.0 < self.max_fpr_hard_negatives <= 1.0:
+            raise ConfigError(
+                "profile.max_fpr_hard_negatives must be in (0, 1], got "
+                f"{self.max_fpr_hard_negatives}"
+            )
         if not 0.0 < self.target_flag_rate < 1.0:
             raise ConfigError(
                 "profile.target_flag_rate must be in (0, 1), got "

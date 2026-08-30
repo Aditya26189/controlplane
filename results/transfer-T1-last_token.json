@@ -1,25 +1,10 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-27T12:55:41+00:00",
-    "git_commit": "dd10bf375082fdea65391512bdf3b7c15987708e",
-    "git_branch": "main",
-    "dirty": true,
-    "dirty_paths": [
-      "results_bundle (3)",
-      "round 2/CLAUDE.md",
-      "round 2/DECISIONS.md",
-      "round 2/config.yaml",
-      "round 2/scripts/run.sh",
-      "round 2/src/config.py",
-      "round 2/src/matrix/matrix.py",
-      "round 2/src/model/calibration.py",
-      "round 2/src/model/enums.py",
-      "round 2/src/model/warrant.py",
-      "round 2/src/report/results.py",
-      "round 2/src/validation/calibration.py",
-      "round 2/src/validation/issuance.py",
-      "round 2/tests/test_calibration.py"
-    ],
+    "timestamp_utc": "2026-08-30T05:55:28+00:00",
+    "git_commit": "12f1310450ce5e8941f2535a063d0822a11a1a61",
+    "git_branch": "feat/warrant-stats",
+    "dirty": false,
+    "dirty_paths": [],
     "dirty_excludes": "results",
     "python": "3.12.10",
     "libraries": {
@@ -30,7 +15,7 @@
       "scipy": "1.16.3",
       "pandas": "2.3.3",
       "statsmodels": "0.14.6",
-      "presidio-analyzer": null,
+      "presidio-analyzer": "2.2.364",
       "bitsandbytes": "0.49.2"
     },
     "device": {
@@ -39,7 +24,7 @@
       "cuda_available": false,
       "device_name": "cpu"
     },
-    "config_hash": "4eb9f8bd410cb192",
+    "config_hash": "ae6eec9d1f8897af",
     "seed": 1729,
     "config": {
       "seed": 1729,
@@ -143,7 +128,8 @@
           "embedding_centroid_distance",
           "reference_perplexity",
           "category_mix"
-        ]
+        ],
+        "max_false_alarm_rate": 0.05
       },
       "sampling": {
         "allocation_month_one": "proportional",
@@ -170,17 +156,29 @@
         "customer_support": {
           "inline_budget_ms": 200,
           "min_recall": 0.1,
-          "max_fpr": 0.02
+          "max_fpr": 0.02,
+          "operating_point": "P-customer-support",
+          "target_flag_rate": 0.1,
+          "on_calibration_drift": "REFUSE",
+          "calibration_sensitivity": 0.25
         },
         "internal_knowledge": {
           "inline_budget_ms": 500,
           "min_recall": 0.25,
-          "max_fpr": 0.05
+          "max_fpr": 0.05,
+          "operating_point": "P-internal-knowledge",
+          "target_flag_rate": 0.2,
+          "on_calibration_drift": "WIDEN_BUDGET",
+          "calibration_sensitivity": 0.25
         },
         "decision_support": {
           "inline_budget_ms": 2000,
           "min_recall": 0.5,
-          "max_fpr": 0.1
+          "max_fpr": 0.1,
+          "operating_point": "P-decision-support",
+          "target_flag_rate": 0.5,
+          "on_calibration_drift": "IGNORE",
+          "calibration_sensitivity": 0.25
         }
       },
       "detectors": {
@@ -204,15 +202,16 @@
     }
   },
   "source": {
-    "run_id": "run-7f4e3749d9df",
+    "run_id": "run-3e6eb03bd976",
     "detector_id": "probe-qwen2.5-7b-instruct-T1-last_token",
     "variant": "T1-last_token",
     "eval_set_id": "triviaqa-600",
     "envelope_id": "sha256:e77c64f908491ad1",
+    "model_name": "Qwen/Qwen2.5-7B-Instruct",
     "data_source": "measured",
-    "started_at": "2026-08-27T12:55:14+00:00",
-    "completed_at": "2026-08-27T12:55:31+00:00",
-    "duration_seconds": 17.132854299852625,
+    "started_at": "2026-08-30T05:55:03+00:00",
+    "completed_at": "2026-08-30T05:55:19+00:00",
+    "duration_seconds": 16.245461999904364,
     "splits": {
       "train": 1200,
       "validation": 600,
@@ -301,6 +300,7 @@
       },
       "fpr_hard_negatives": null,
       "base_rate": 0.46166666666666667,
+      "ranking_absent_reason": null,
       "extra": [
         {
           "name": "fpr",
@@ -363,7 +363,7 @@
       }
     ],
     "warrant": {
-      "warrant_id": "W-7ba4b5d911207fb2",
+      "warrant_id": "W-03e3b6fc42303cf5",
       "detector_id": "probe-qwen2.5-7b-instruct-T1-last_token",
       "detector_version": "0.1.0",
       "operating_point": {
@@ -375,9 +375,9 @@
         "target_flag_rate": 0.05
       },
       "eval_set_id": "triviaqa-600",
-      "validation_run_id": "run-7f4e3749d9df",
-      "issued_at": "2026-08-27T12:55:14+00:00",
-      "expires_at": "2026-08-28T12:55:14+00:00",
+      "validation_run_id": "run-3e6eb03bd976",
+      "issued_at": "2026-08-30T05:55:03+00:00",
+      "expires_at": "2026-08-31T05:55:03+00:00",
       "metrics": {
         "auroc": {
           "name": "auroc",
@@ -436,6 +436,7 @@
         },
         "fpr_hard_negatives": null,
         "base_rate": 0.46166666666666667,
+        "ranking_absent_reason": null,
         "extra": [
           {
             "name": "fpr",
@@ -562,15 +563,16 @@
     "status_reason": null
   },
   "target": {
-    "run_id": "run-26751948ddf1",
+    "run_id": "run-25fd64ae35ab",
     "detector_id": "probe-qwen2.5-7b-instruct-T1-last_token",
     "variant": "T1-last_token",
     "eval_set_id": "triviaqa-longctx-600",
     "envelope_id": "sha256:c4733cda255e55d9",
+    "model_name": "Qwen/Qwen2.5-7B-Instruct",
     "data_source": "measured",
-    "started_at": "2026-08-27T12:55:32+00:00",
-    "completed_at": "2026-08-27T12:55:40+00:00",
-    "duration_seconds": 8.314578999998048,
+    "started_at": "2026-08-30T05:55:20+00:00",
+    "completed_at": "2026-08-30T05:55:27+00:00",
+    "duration_seconds": 7.929156299913302,
     "splits": {
       "train": 0,
       "validation": 0,
@@ -659,6 +661,7 @@
       },
       "fpr_hard_negatives": null,
       "base_rate": 0.46166666666666667,
+      "ranking_absent_reason": null,
       "extra": [
         {
           "name": "fpr",
@@ -721,7 +724,7 @@
       }
     ],
     "warrant": {
-      "warrant_id": "W-a743e596809fbf2c",
+      "warrant_id": "W-ee480a2347e4a5c3",
       "detector_id": "probe-qwen2.5-7b-instruct-T1-last_token",
       "detector_version": "0.1.0",
       "operating_point": {
@@ -733,9 +736,9 @@
         "target_flag_rate": 0.05
       },
       "eval_set_id": "triviaqa-longctx-600",
-      "validation_run_id": "run-26751948ddf1",
-      "issued_at": "2026-08-27T12:55:32+00:00",
-      "expires_at": "2026-08-28T12:55:32+00:00",
+      "validation_run_id": "run-25fd64ae35ab",
+      "issued_at": "2026-08-30T05:55:20+00:00",
+      "expires_at": "2026-08-31T05:55:20+00:00",
       "metrics": {
         "auroc": {
           "name": "auroc",
@@ -794,6 +797,7 @@
         },
         "fpr_hard_negatives": null,
         "base_rate": 0.46166666666666667,
+        "ranking_absent_reason": null,
         "extra": [
           {
             "name": "fpr",

@@ -162,9 +162,20 @@ def main(argv: list[str] | None = None) -> int:
             config,
         )
 
-    def _auroc(run):
+    def _auroc(run) -> str:
+        """Rendered AUROC, or an explicit absence.
+
+        A probe that flags NOTHING at the transferred threshold makes no
+        ranking claim: precision is 0/0 and the whole triple is reported absent
+        (DECISIONS 108). That is the mean-pool long-context collapse, i.e. the
+        result this table exists to show, so the cell says so rather than
+        crashing on None -- and rather than printing a 0.000 that would read as
+        a measured AUROC of zero.
+        """
         metric = run.metrics.auroc
-        return (metric.value, metric.ci_low, metric.ci_high)
+        if metric is None:
+            return "no ranking claim"
+        return "%.3f [%.3f, %.3f]" % (metric.value, metric.ci_low, metric.ci_high)
 
     print()
     print("Beat 4 — the same probe on two envelopes, nothing refitted")
@@ -175,11 +186,14 @@ def main(argv: list[str] | None = None) -> int:
     print(header)
     print("-" * len(header))
     for variant, source_run, target_run in rows:
-        sv, sl, sh = _auroc(source_run)
-        tv, tl, th = _auroc(target_run)
         print(
-            "%-24s %.3f [%.3f, %.3f]        %.3f [%.3f, %.3f]        %s"
-            % (variant, sv, sl, sh, tv, tl, th, target_run.warrant.status.value)
+            "%-24s %-28s %-28s %s"
+            % (
+                variant,
+                _auroc(source_run),
+                _auroc(target_run),
+                target_run.warrant.status.value,
+            )
         )
     print()
     verification = ledger.verify_chain()

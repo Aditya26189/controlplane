@@ -487,6 +487,20 @@ def estimated(
     # binomial interval, which is correct precisely where resampling is not.
     if low == high and unit == "rate" and binomial_events is not None:
         n_trials = binomial_trials if binomial_trials is not None else int(np.asarray(labels).size)
+        if n_trials == 0:
+            # The bootstrap collapsed AND the exact fallback is unavailable,
+            # because a proportion over zero trials is not a small number --
+            # it is undefined. Emitting the [0, 0] the bootstrap produced
+            # would report perfect certainty about a quantity that does not
+            # exist, which is strictly worse than any interval. The caller
+            # knows what the statistic means and must declare it absent.
+            raise MeasurementError(
+                f"{name} is undefined at this threshold: the bootstrap "
+                f"degenerated to [{low}, {high}] and the exact fallback needs "
+                f"trials > 0, but {binomial_events}/0 events were supplied. "
+                "Report the metric as absent with a reason rather than as a "
+                "zero-width interval."
+            )
         if n_trials > 0:
             low, high = clopper_pearson(int(binomial_events), int(n_trials), ci)
             low, high = min(low, value), max(high, value)

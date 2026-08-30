@@ -4451,3 +4451,357 @@ longer true of every item. Now derived: `sorted({i.gold_checked for i in
 items})`. Third hardcoded date this session — the test in `105`, the freeze log
 line, and this — all of which went stale the instant a gold answer was
 corrected. Deriving costs one expression.
+
+## 107 - `warrant_stats` lands, and two of its guards were themselves unguarded
+
+The module supplying `certify_fpr` and `FPRMonitor` is now in the tree at
+`controlplane/validation/warrant_stats.py`. It arrived with the `lam_hi` clamp,
+the unequal-cluster refusal, `from_state`, the `fpr_certified` rename and the
+monotonicity argument already applied. Two defects survived that pass.
+
+### The NaN is real, and it is not reachable here
+
+`log1p(lam * (x - p0))` needs `lam * p0 < 1`. The default `lam_hi = 10.0`
+breaks it for any `p0 > 0.1`. Measured on the raw arithmetic, 300 items at a
+3x breach:
+
+| p0 | `lam_hi * p0` | worst `log1p` | wealth | revokes |
+|---|---|---|---|---|
+| 0.02 | 0.20 | -0.2231 | 3.52 | no (correctly, 300 items) |
+| 0.05 | 0.50 | -0.6931 | 1.05e4 | yes |
+| **0.10** | **1.00** | **-inf** | 2.3e13 | **yes** |
+| 0.15 | 1.50 | NaN | NaN | **never** |
+| 0.247 | 2.47 | NaN | NaN | **never** |
+
+**The brief's premise needed correcting.** It states the decision-support
+profile sits at FPR 0.247. `config.yaml` publishes `max_fpr` of **0.02, 0.05
+and 0.10**; 0.247 appears in `results/` only as an unrelated `ci_low`. So the
+silent death is a **latent** defect, not a live one: 0.10 is exactly the
+boundary, where the largest bet goes to `-inf` and dies harmlessly inside the
+mixture rather than poisoning it.
+
+The clamp stays, and the boundary is pinned by a test, because the defect
+becomes live the moment anyone adds a profile above 0.10 — and it fails by
+going quiet, which is the one way a revocation trigger must not fail.
+
+### `from_state` rebuilt the betting grid from defaults
+
+`_logw[i]` is the log wealth of the bet at `lams[i]`. `from_state` called
+`cls(p0=..., alpha=...)` and took the **default** `lam_lo`/`lam_hi`/`n_lam`,
+while `state()` never serialised them. Resuming a monitor built with any
+non-default grid therefore rebuilt a *different* grid of the same length,
+passed the `logw.shape != m.lams.shape` check, and carried on with every bet
+misattributed. Same shape, same dtype, nothing raised.
+
+Measured across 400 monitors resumed mid-stream, grid `[0.05, 1.5]` against
+defaults `[0.05, 10.0]`:
+
+> **the revocation decision differed in 41 of 400 (10.3%)**, and it differed in
+> the direction of revoking when the correctly-resumed monitor did not.
+
+That is the false-revocation guarantee the module exists to provide, broken by
+the method whose docstring says restarting "voids the false-revocation
+guarantee". The grid now travels in `state()`, and a state without it is
+**refused** rather than resumed on defaults — a resumable-looking state that
+silently reattaches wealth to the wrong bets is worse than one that will not
+load.
+
+### The `assert` was not a guard
+
+`update()` checked `assert np.isfinite(self._logw).all()`. `python -O` strips
+asserts, so the one check standing between a poisoned grid and a monitor that
+never revokes disappears under an optimisation flag. Now a
+`FloatingPointError` naming `n`, `p0` and `max(lam)*p0`.
+
+### What is still not done
+
+`certify_fpr` remains an FPR claim only. A detector scoring nothing certifies
+trivially at `k=0`, and the rename to `fpr_certified` documents that rather
+than fixing it — the recall floor is conjoined in the policy layer, and a test
+pins the name so it cannot drift back to `certified`. Session-level monitoring
+(the 0.2580 false-revocation rate on clustered traffic) is **not** addressed
+here and the claim must still be restated wherever it appears.
+
+## 108 - Three numbers checked properly, and one of them was a coincidence
+
+Three figures were challenged at once. Two survive, one did not, and a fourth
+defect fell out of checking them. Recorded together because the *method* is the
+point: each was resolved by pulling the field out of the artifact rather than by
+recognising the value.
+
+### `0.247` is real, and my objection to it was the error
+
+The status brief reads *"local slope 6.70 at customer support (fpr 0.015), 5.27
+at internal knowledge, 0.85 at decision support (fpr 0.247) -- a 7.9x spread"*.
+Every figure traces to `results/paired_comparison.json`:
+
+| operating point | achieved FPR | slope |
+|---|---|---|
+| P-customer-support | 0.01518 | 6.698 |
+| P-internal-knowledge | 0.04364 | 5.268 |
+| P-decision-support | **0.24668** | 0.850 |
+
+6.698 / 0.850 = **7.88x**. The brief is accurate and the 7.9x spread stands, so
+the argument for warranting operating points individually rather than warranting
+a detector rests on numbers that hold.
+
+**I then claimed decision support was "2.47x over its `max_fpr` budget of 0.10".
+That was wrong, and it was the scenario-mixing error `CLAUDE.md` lists.**
+`config.profiles.*.max_fpr` is documented in `config.py` as *"Maximum
+**hard-negative** FPR, compared against the upper bound"* and is enforced in
+`routing.py` only against `metrics.fpr_hard_negatives`. It is a ceiling on the
+`hard-negatives-200` set. `0.24668` is the FPR on the `triviaqa-2400-t960`
+hallucination envelope. **Two different rates on two different eval sets**, and
+the policy artifact already says so on every row: *"no hard-negative FPR ceiling
+declared on this envelope. Declared absent rather than left off."*
+
+The system was right and the reviewer was wrong. What made it easy to get wrong
+is a naming defect worth recording: the config key is bare `max_fpr` while every
+use site in code calls it `max_fpr_hard_negatives`. The unqualified name
+produced the same misreading in two independent readers within an hour. The
+qualified name is the correct one; the config key is the outlier.
+
+### `0.0183` was a coincidence doing the work of a check
+
+The hard-negative interval upper bound was read as confirmation that the pieces
+lined up. Four constructions land inside a band 0.4% wide:
+
+| construction | value |
+|---|---|
+| `cp_upper(1, 258, 0.05)` | 0.018254 |
+| **`cp_upper(0, 200, 0.025)`** | **0.018275340355136** |
+| `cp_upper(0, 162, 0.05)` | 0.018322 |
+| rule of three, n=164 | 0.018293 |
+
+The artifact's value is `0.018275340355136237`. Pulled from
+`results/validation-pii-reference-hard-negatives-200.json`, the true fields are
+**n = 200, k = 0**, and the exact match is `cp_upper(0, 200, alpha=0.025)` -- a
+**two-sided** 95% interval. Not n=258, not k=1.
+
+**This exposes a convention mismatch.** The shipped artifacts use two-sided 95%
+intervals; `warrant_stats.cp_upper` is documented as one-sided, *"because that
+is the direction the warrant makes a promise in"*. At n=200, k=0 the two differ
+by 23%:
+
+    one-sided 95%   0.014867
+    two-sided 95%   0.018275
+
+Both defensible, and the one-sided bound is the **tighter** one -- so certifying
+against a target calibrated by eye against the shipped intervals would certify
+where the shipped convention refuses. Declared here; `certify_fpr` is not yet
+wired into any issuance path, and it must not be until the convention is chosen
+once and stated.
+
+### A4, run rather than assumed
+
+Sweeping every interval in `results/`: **631 intervals, 580 bootstrap and 51
+Clopper-Pearson.** Of the six zero-event quantities, five correctly fall back to
+Clopper-Pearson and name it in their `estimator` string. One did not:
+
+    transfer-T1-mean_pool.json  precision  n=600  value 0.0  ci [0.0, 0.0]
+                                estimator: bootstrap-percentile-1000
+
+Nothing cleared the threshold, so precision is `TP/(TP+FP)` = **0/0 --
+undefined, not zero**. The bootstrap resampled all-zero data and returned
+`[0, 0]`; the Clopper-Pearson fallback in `estimated()` could not rescue it,
+because its guard is `if n_trials > 0` and the denominator here is the flagged
+count. So the guard correctly declined and the degenerate interval survived it.
+
+A rate reported as `0.0` with a zero-width interval is a **claim of perfect
+certainty about a quantity that does not exist**, and it breaches invariant 4 --
+no point estimate reaches a user.
+
+### The fix, and why it takes all three ranking metrics
+
+When nothing is flagged, `auroc`, `recall` and `precision` are **all** reported
+absent, exactly as the single-class path already does. Dropping precision alone
+raises `MetricError`, because invariant 5 says precision and recall travel
+together, and the model layer enforces it. That enforcement is what caught the
+first attempt at this fix -- the invariant did its job on its own author.
+
+`estimated()` now raises `MeasurementError` rather than returning a zero-width
+rate interval it could not back with an exact bound, so this cannot be
+reintroduced quietly at another call site. A sweep test asserts no committed
+artifact carries a zero-width rate interval, and the affected artifact is
+regenerated rather than grandfathered.
+
+### The recall floor is tested, not conventional
+
+Checked because the `fpr_certified` rename is only sufficient if it is.
+`Profile.accepts` refuses on `recall.ci_low < min_recall`, and
+`test_profile_compares_against_the_interval_bound_not_the_point` pins the
+stronger property -- that the **lower bound** is compared, not the point
+estimate. `resolution.py` enforces the same at bundle load.
+
+Note the scope: that conjunction guards **warrants**. `certify_fpr` is not in
+that path, so a `Certification` cannot yet reach a policy decision at all. The
+rename is sufficient today because the object is unwired, and the conjunction
+must be extended to it before it ever is.
+
+## 109 - Correcting 108: the vacuous interval, not the absent metric
+
+`108` diagnosed the zero-width precision interval correctly and then fixed it
+wrongly. This records the correction, because the wrong fix was committed and
+`git log` should show why it moved.
+
+### What 108 did
+
+When nothing is flagged, precision is `0/0`. `108` reported **all three**
+ranking metrics absent, on the reasoning that invariant 5 makes precision and
+recall travel together and the model layer enforces it. That reasoning is
+sound and the conclusion was still wrong.
+
+### What it cost, and what caught it
+
+`test_every_readme_claim_resolves` failed on exactly one row:
+
+    Mean-pool probe collapses to chance under it    0.5015    -    DRIFT
+
+**AUROC 0.5015 is the finding.** It is the mean-pool long-context collapse --
+a README claim, a `CLAUDE.md` documented failure mode, and the reason
+max-of-rolling-means exists. `108` deleted a measured result to avoid
+reporting an undefined one, and only the claim table noticed.
+
+That is the same trade in the opposite direction from the defect it was
+fixing: `108` refused to let a fake number reach a user and then let a real one
+vanish. Both are the metric answering the wrong question.
+
+### The fix that keeps both
+
+**Precision carries `[0.0, 1.0]`, not absence.** Zero flagged items tell us
+*nothing* about precision, and the vacuous interval is exactly that statement:
+
+| | value | interval | estimator |
+|---|---|---|---|
+| before | 0.0 | **[0.0, 0.0]** | `bootstrap-percentile-1000` |
+| 108 | absent | absent | absent |
+| **now** | 0.0 | **[0.0, 1.0]** | `undefined: 0 of 600 items flagged ... 0/0` |
+
+The triple stays present, so invariant 5 holds structurally. Invariant 4 holds
+because `[0, 1]` claims nothing. And `transfer-T1-mean_pool.json` keeps
+`auroc 0.5015 [0.4546, 0.5479]`, `recall 0.0 [0.0, 0.0132]` and `flag_rate 0.0
+[0.0, 0.0061]` -- every defined quantity measured, the one undefined quantity
+labelled as such in its own estimator string.
+
+The Beat 4 table reads better for it: **0.813 / 0.555 / 0.502** across
+last-token, max-rolling-means and mean-pool, which is the transfer story in one
+line.
+
+### What stands from 108
+
+The sweep (631 intervals, 580 bootstrap, 51 Clopper-Pearson), the finding that
+one zero-event quantity used bootstrap, the `MeasurementError` guard in
+`estimated()`, the artifact sweep test, and the `ranking_absent_reason` field
+that stopped issuance inferring "single class" from an absent AUROC. Only the
+choice of remedy changed.
+
+### The lesson worth keeping
+
+The claim table is the control that works. Two invariants were reasoned about
+carefully and the reasoning still produced a regression; what caught it was a
+mechanical check that every README number still resolves to an artifact. That
+is the argument for `CLAUDE.md`'s eighth invariant in a single incident.
+
+## 110 - What the monitor watches is undecided, the interval convention is now chosen, and the pilot gets a resume point
+
+Three things settled together because one investigation produced all of them.
+
+### `max_fpr` is renamed, on a measured reproduction rate of 2/2
+
+`profile.max_fpr` is now `profile.max_fpr_hard_negatives`, matching what every
+use site in the code already called it.
+
+The unqualified name is a ceiling on the **hard-negative** set. It was read as a
+ceiling on the **envelope** FPR by two independent readers within one hour --
+both of whom then asserted that P-decision-support at 0.24668 was "2.47x over
+its 0.10 budget". It is not: those are different rates on different eval sets,
+and the policy artifact already declares *"no hard-negative FPR ceiling declared
+on this envelope"* on every row.
+
+A name that produces the same misreading in everyone who reads it is a defect
+with a reproduction rate, and this one's is 2 of 2.
+
+### What feeds `FPRMonitor.p0` is not decided, and that is now the finding
+
+The NaN needs `lam_hi * p0 > 1`. Which rate is the estimand decides whether the
+bug is live:
+
+| candidate | customer support | internal knowledge | decision support |
+|---|---|---|---|
+| declared hard-negative ceiling | 0.02 → 0.20 | 0.05 → 0.50 | 0.10 → **1.00** |
+| achieved envelope FPR | 0.0152 → 0.15 | 0.0436 → 0.44 | **0.2467 → 2.47** |
+
+`grep` settles it: **`FPRMonitor` and `certify_fpr` are called from nowhere.**
+They appear only in `controlplane/validation/__init__.py`'s exports. Nothing
+feeds `p0`, so the clamp is **prophylactic** and the estimand is an open choice
+made at the cheapest possible moment -- before anything depends on it.
+
+Both readings are parametrised in the Gate A test, so neither can regress
+silently while the choice is pending. **The monitor must not be wired until the
+estimand is declared**, because the two differ by 16x at decision support and
+one of them is fatal at the default grid.
+
+### The interval convention: one-sided for warrants, two-sided for description
+
+`0.018275` was traced to `cp_upper(0, 200, alpha=0.025)` -- a two-sided 95%
+interval -- while `warrant_stats.cp_upper` is one-sided. The gap is 23% at
+n=200, and it propagates straight into the number the demo says out loud:
+
+| convention | tail | n required | with DEFF 1.60, 50/50 split |
+|---|---|---|---|
+| one-sided 95% | 0.05 | **199** | |
+| two-sided 95% upper (shipped) | 0.025 | 245 | |
+| one-sided, Bonferroni /3 | 0.0167 | 271 | **868** |
+| two-sided, Bonferroni /3 | 0.0083 | 317 | **1,016** |
+
+**868 versus 1,016 -- a 17% move on a convention nobody had chosen.**
+
+**Warrant bounds are one-sided.** The warrant claims *"FPR <= x at 95%"*, which
+is a one-sided claim, and a one-sided bound is its matching object. A two-sided
+interval's upper limit is a 97.5% one-sided bound wearing a 95% label: more
+conservative, and the stated confidence differs from the actual one.
+
+**Descriptive intervals stay two-sided.** *"Here is our uncertainty about
+recall"* is genuinely two-sided.
+
+The mistake was never having both -- it was having both **unlabelled**. Every
+interval carries its convention, and the fix is labelling rather than
+standardising. Outstanding: the `convention` tag on `Metric`, and
+`docs/INTERVAL_METHODS.md` with a convention column over all 631 intervals.
+
+### The pilot gets a resume point
+
+Three three-hour runs, nine GPU-hours, zero pilot results: a wrong argument
+list, an OOM, and one before those. Each re-ran an extraction whose output had
+not changed, to reach a stage that takes twenty minutes.
+
+The activations are a pure function of (model, eval set, layer), so they are
+published as the Kaggle dataset `controlplane-reference-caches` and attached
+read-only. `notebooks/run_pilot_on_kaggle.ipynb` runs `13_pilot_run.py` alone
+against them.
+
+**The manifest is checked, not trusted.** SHA-256 per cache, and the eval-set
+content hashes must match what the checkout builds -- a cache extracted from a
+different eval set would load fine and produce numbers describing an envelope
+the warrant does not name. Same argument as the pilot's own draft-hash guard,
+which passed on the failed run at `312516ded744e4fe` before the OOM killed the
+stage after it.
+
+The OOM was the symptom. The absence of a checkpoint was the defect.
+
+### The n=24 correction, with the trap restated
+
+If the pilot grows to **24 clusters** -- 24 questions, 48 items, not a
+relabelling of the current 24 items over 12 questions, which is the error `090`
+corrected -- the resolution statement changes:
+
+| clusters | items | 95% null band | p5 | FA @ 0.70 | FA @ 0.439 |
+|---|---|---|---|---|---|
+| 12 | 24 | [0.394, 1.540] | 0.454 | 0.271 | 0.042 |
+| **24** | **48** | **[0.547, 1.429]** | **0.602** | **0.133** | 0.005 |
+
+A healthy probe still trips a 0.70 rule one time in eight at 24 clusters. And
+`103`'s trap applies unchanged: holding 0.439 at 24 clusters drops power
+against a 0.6x collapse from 0.313 to **0.169**, where recalibrating to 0.602
+takes it to **0.620**. Enlarging without recalibrating remains strictly worse
+than not enlarging.

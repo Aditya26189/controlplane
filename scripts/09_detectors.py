@@ -151,7 +151,10 @@ def main(argv: list[str] | None = None) -> int:
                     # load time (SPEC.md 7.2), which is where that decision
                     # belongs.
                     max_fpr_hard_negatives=(
-                        max(p.max_fpr for p in config.profiles.values())
+                        max(
+                            p.max_fpr_hard_negatives
+                            for p in config.profiles.values()
+                        )
                         if is_hard_negative
                         else None
                     ),

@@ -33,7 +33,7 @@ from typing import Optional
 import numpy as np
 
 from ..config import Config
-from ..model import MetricKind, WarrantMetrics
+from ..model import Metric, MetricKind, WarrantMetrics
 from .stats import (
     auroc,
     estimated,
@@ -97,7 +97,12 @@ def build_warrant_metrics(
             int(labels[0]) if n_items else -1,
         )
         ranking: dict[str, object] = {"auroc": None, "recall": None, "precision": None}
+        ranking_absent_reason = (
+            f"single-class envelope: all {n_items} items carry the same label, "
+            "so there is no ranking to score"
+        )
     else:
+        ranking_absent_reason = None
         ranking = {
             "auroc": estimated(
                 "auroc", auroc, labels, scores,
@@ -109,13 +114,53 @@ def build_warrant_metrics(
                 binomial_events=int(np.sum((scores >= threshold) & (labels == 1))),
                 binomial_trials=int(np.sum(labels == 1)),
             ),
-            "precision": estimated(
-                "precision", lambda y, s: precision_at(y, s, threshold), labels, scores,
-                n_resamples=boot, ci=ci, seed=seed, groups=groups,
-                binomial_events=int(np.sum((scores >= threshold) & (labels == 1))),
-                binomial_trials=n_flagged,
+            # Precision is TP/(TP+FP). With NOTHING flagged the denominator
+            # is zero, so the quantity is undefined -- and the bootstrap does
+            # not know that: it resamples all-zero data and returns [0, 0], a
+            # claim of PERFECT CERTAINTY about a ratio with no denominator.
+            # That shipped in results/transfer-T1-mean_pool.json.
+            #
+            # The interval is [0, 1], not absent. Absent would take AUROC and
+            # recall with it (invariant 5, enforced in the model layer), and on
+            # that same artifact AUROC is 0.5015 -- the mean-pool long-context
+            # collapse, a README claim and the documented failure mode. Dropping
+            # a measured result to avoid an undefined one is the wrong trade.
+            # Zero flagged items tell us NOTHING about precision, and [0, 1] is
+            # exactly that statement. DECISIONS 108.
+            "precision": (
+                Metric(
+                    name="precision",
+                    value=float(precision_at(labels, scores, threshold)),
+                    kind=MetricKind.ESTIMATED,
+                    n=n_items,
+                    ci_low=0.0,
+                    ci_high=1.0,
+                    ci_level=ci,
+                    unit="rate",
+                    estimator=(
+                        f"undefined: 0 of {n_items} items flagged at this "
+                        "threshold, so precision is 0/0. The interval is "
+                        "vacuous [0, 1] rather than the zero-width interval a "
+                        "bootstrap returns on all-zero data"
+                    ),
+                )
+                if n_flagged == 0
+                else estimated(
+                    "precision", lambda y, s: precision_at(y, s, threshold),
+                    labels, scores,
+                    n_resamples=boot, ci=ci, seed=seed, groups=groups,
+                    binomial_events=int(np.sum((scores >= threshold) & (labels == 1))),
+                    binomial_trials=n_flagged,
+                )
             ),
         }
+        if n_flagged == 0:
+            _LOG.info(
+                "nothing flagged at threshold %.6f on %d items: precision is "
+                "undefined (0/0) and carries a vacuous [0, 1] interval; AUROC "
+                "and recall are unaffected and still measured",
+                threshold, n_items,
+            )
 
     within_set_fpr = None
     if (labels == 0).any():
@@ -132,6 +177,7 @@ def build_warrant_metrics(
         auroc=ranking["auroc"],
         recall=ranking["recall"],
         precision=ranking["precision"],
+        ranking_absent_reason=ranking_absent_reason,
         flag_rate=estimated(
             "flag_rate", lambda y, s: flag_rate_at(s, threshold), labels, scores,
             n_resamples=boot, ci=ci, seed=seed, groups=groups,

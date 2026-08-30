@@ -850,4 +850,18 @@ def test_transfer_produces_a_usable_warrant_or_an_honest_refusal(
     if run.warrant.status is WarrantStatus.REFUSED:
         assert run.warrant.status_reason
     assert run.test_scored == 1
+
+    # The ranking triple travels together (CLAUDE.md invariant 5). Under
+    # long-context shift the probe can flag NOTHING at the transferred
+    # threshold, which makes PRECISION undefined (0/0) -- but AUROC and recall
+    # are still measured, and on the mean-pool variant that AUROC is 0.5015,
+    # the collapse this whole comparison exists to show. So the triple stays
+    # present and precision carries a vacuous [0, 1] rather than the [0, 0] a
+    # bootstrap returns on all-zero data. DECISIONS 108.
     assert run.metrics.recall is not None
+    assert run.metrics.precision is not None
+    assert run.metrics.auroc is not None
+    assert run.metrics.flag_rate is not None and run.metrics.flag_rate.ci_high is not None
+    if run.metrics.flag_rate.value == 0.0:
+        assert (run.metrics.precision.ci_low, run.metrics.precision.ci_high) == (0.0, 1.0)
+        assert "undefined" in run.metrics.precision.estimator

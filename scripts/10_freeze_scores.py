@@ -309,7 +309,10 @@ def freeze_text_scores(config, out: Path) -> int:
                 threshold=detector.min_confidence,
                 canary_evalset=canary,
                 max_fpr_hard_negatives=(
-                    max(p.max_fpr for p in config.profiles.values())
+                    max(
+                        p.max_fpr_hard_negatives
+                        for p in config.profiles.values()
+                    )
                     if hard_negatives
                     else None
                 ),

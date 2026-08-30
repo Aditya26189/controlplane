@@ -53,7 +53,8 @@ class Profile:
             **lower bound**, not the point estimate: a profile asking for "at
             least 25% recall" is asking for a guarantee, and 0.26 with a lower
             bound of 0.18 does not supply one.
-        max_fpr: Maximum false-positive rate, compared against the **upper**
+        max_fpr_hard_negatives: Maximum FPR **on the hard-negative set**,
+            compared against the **upper**
             bound by the same argument reversed.
         inline_budget_ms: Latency budget. A warrant whose detector cannot answer
             inside it is not eligible however good its numbers are.
@@ -62,7 +63,7 @@ class Profile:
 
     name: str
     min_recall: float
-    max_fpr: float
+    max_fpr_hard_negatives: float
     inline_budget_ms: int
     conservative_default: Action = Action.ESCALATE
 
@@ -82,7 +83,7 @@ class Profile:
         return cls(
             name=name,
             min_recall=profile.min_recall,
-            max_fpr=profile.max_fpr,
+            max_fpr_hard_negatives=profile.max_fpr_hard_negatives,
             inline_budget_ms=profile.inline_budget_ms,
         )
 
@@ -110,9 +111,10 @@ class Profile:
         fpr = metrics.fpr_hard_negatives
         if fpr is not None:
             upper = fpr.ci_high if fpr.ci_high is not None else fpr.value
-            if upper > self.max_fpr:
+            if upper > self.max_fpr_hard_negatives:
                 return False, (
-                    f"{self.name} requires hard-negative FPR <= {self.max_fpr}; "
+                    f"{self.name} requires hard-negative FPR <= "
+                    f"{self.max_fpr_hard_negatives}; "
                     f"the warrant's upper bound is {upper:.4f}"
                 )
         return True, ""
@@ -302,7 +304,8 @@ def route(
     suspended = bool(candidates)
     reason = (
         f"no warrant on {envelope_id} meets {profile.name}'s declared minimums "
-        f"(recall >= {profile.min_recall}, FPR <= {profile.max_fpr}); "
+        f"(recall >= {profile.min_recall}, hard-negative FPR <= "
+        f"{profile.max_fpr_hard_negatives}); "
         f"{profile.name} is suspended on this envelope"
         if suspended
         else f"no valid warrant on envelope {envelope_id}"

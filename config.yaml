@@ -115,7 +115,7 @@ profiles:
   customer_support:
     inline_budget_ms: 200
     min_recall: 0.10
-    max_fpr: 0.02
+    max_fpr_hard_negatives: 0.02
     operating_point: "P-customer-support"
     target_flag_rate: 0.10
     # High volume, and the economics are sized on the flag rate. A budget 40%
@@ -125,7 +125,7 @@ profiles:
   internal_knowledge:
     inline_budget_ms: 500
     min_recall: 0.25
-    max_fpr: 0.05
+    max_fpr_hard_negatives: 0.05
     operating_point: "P-internal-knowledge"
     target_flag_rate: 0.20
     # Internal users tolerate friction and the corpus exists, so a drifted
@@ -136,7 +136,7 @@ profiles:
   decision_support:
     inline_budget_ms: 2000
     min_recall: 0.50
-    max_fpr: 0.10
+    max_fpr_hard_negatives: 0.10
     operating_point: "P-decision-support"
     target_flag_rate: 0.50
     # Low volume, high consequence, review affordable. The per-item cost is paid
