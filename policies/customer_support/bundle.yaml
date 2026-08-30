@@ -1,0 +1,43 @@
+# customer_support -- generated shape, hand-maintained values.
+#
+# Every operating point below is resolved against the warrant matrix at load
+# time. Missing, expired, refused, unvalidated or below a declared minimum and
+# this bundle does not load (SPEC.md 7.2, DECISIONS.md 012). Not a warning.
+#
+# The three profiles name the SAME detector and the SAME envelope and differ
+# only in operating_point. That is what "three points on one measured curve"
+# means, and it is checkable here rather than asserted in a slide.
+
+profile: customer_support
+version: "1.1"
+entrypoint: data.controlplane.decision
+rules: policy.rego
+
+requires_warrant:
+  - detector: probe-qwen2.5-7b-instruct-T1-last_token
+    operating_point: P-customer-support
+    # Re-pointed from triviaqa-600 in v1.1. Same 2400 items and the same
+    # input distribution; the held-out split is 960 instead of 600, so a
+    # 0.10 flag-rate budget can be warranted to +/-25% (DECISIONS.md 079).
+    # The old envelope keeps its warrants and its published numbers.
+    envelope: triviaqa-2400-t960
+    min_recall: 0.1
+    # Declared null, not omitted. Hard-negative FPR is measured on
+    # hard-negatives-200 and this detector holds no warrant there yet
+    # (Phase 8). Declaring a ceiling the warrant cannot back would put
+    # an unbacked guarantee on every certificate this profile issues,
+    # so the profile's 0.02 ceiling is not claimed on this envelope.
+    max_fpr_hard_negatives: null
+    max_age: 24h
+    calibration:
+      on_drift: REFUSE
+      sensitivity: 0.25
+
+# SPEC.md 7.4. Declared, versioned and hashed with the rules, because there is
+# no threshold that is correct in the abstract and a system presenting one as
+# if there were is hiding the choice that matters. A reviewer who disagrees
+# with this tradeoff has to be able to see it first.
+weighted_error:
+  w_fpr_benign: 50.0
+  w_fnr: 5.0
+  w_fpr_hard_negative: 2.0

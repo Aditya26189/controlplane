@@ -1,0 +1,257 @@
+"""Run /validate and the tier ablation on one eval set, and write the artifacts.
+
+Thin wrapper: parses arguments, calls ``controlplane/``, writes files. No logic
+(``CLAUDE.md``). Anything this script decides is a decision nobody can review in
+a diff of the pipeline.
+
+Usage:
+    python scripts/02_validate.py --config config.yaml
+    python scripts/02_validate.py --config config.yaml --fixture --smoke
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from controlplane.config import load_config, provenance, set_seeds, setup_logging, write_json_artifact
+from controlplane.evalsets.registry import load_evalset
+from controlplane.report.plots import plot_tier_ladder
+from controlplane.store import Ledger, RecordKind
+from controlplane.validation.ablation import run_ablation
+from controlplane.validation.evalsets import ExtractionCache
+from controlplane.validation.synthetic import synthetic_cache, synthetic_evalset
+
+_LOG = logging.getLogger("scripts.02_validate")
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", default=str(PROJECT_ROOT / "config.yaml"))
+    parser.add_argument(
+        "--fixture",
+        action="store_true",
+        help=(
+            "run against a synthetic fixture instead of a real extraction. The "
+            "fixture's eval set hashes differently, so its numbers occupy "
+            "different matrix cells and can never be read as measured ones."
+        ),
+    )
+    parser.add_argument(
+        "--cache",
+        default=None,
+        help="path to an extraction cache (.npz) produced by 01_extract.py",
+    )
+    parser.add_argument(
+        "--eval-set", default="triviaqa-600", help="eval set id to validate on"
+    )
+    parser.add_argument(
+        "--target-flag-rate",
+        type=float,
+        default=0.05,
+        help="flag-rate budget for threshold selection, chosen on validation",
+    )
+    parser.add_argument(
+        "--smoke", action="store_true", help="tiny sizes, for the end-to-end check"
+    )
+    parser.add_argument(
+        "--evalset-path",
+        default=None,
+        help="frozen eval set JSON; defaults to evalsets/<eval-set>.json",
+    )
+    parser.add_argument(
+        "--canary-cache",
+        default=None,
+        help="canary extraction cache; defaults to cache-canary-20-triviaqa.npz "
+             "beside --cache",
+    )
+    parser.add_argument("--out", default=None, help="results directory override")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    setup_logging()
+    config = load_config(args.config)
+    set_seeds(config.seed)
+
+    results_dir = Path(args.out) if args.out else PROJECT_ROOT / config.paths.results_dir
+    results_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.fixture:
+        n_items = 400 if args.smoke else 2400
+        _LOG.warning(
+            "running against a SYNTHETIC FIXTURE — these numbers are not "
+            "measurements and must not reach RESULTS.md (DECISIONS.md 027)"
+        )
+        evalset = synthetic_evalset(
+            eval_set_id=f"{args.eval_set}-synthetic",
+            n_items=n_items,
+            base_rate=0.152,
+            seed=config.seed,
+            items_per_question=2,
+            declare_splits=True,
+        )
+        cache = synthetic_cache(
+            evalset,
+            seed=config.seed,
+            window=config.probe.rolling_window,
+            stride=config.probe.rolling_stride,
+        )
+        canary_evalset = synthetic_evalset(
+            eval_set_id="canary-20-synthetic", n_items=20, base_rate=0.95, seed=7
+        )
+        canary_cache = synthetic_cache(
+            canary_evalset,
+            seed=7,
+            window=config.probe.rolling_window,
+            stride=config.probe.rolling_stride,
+            signal_by_tier={v: 8.0 for v in cache.variants},
+            amplitude_spread=0.05,
+        )
+    else:
+        if not args.cache:
+            _LOG.error(
+                "no --cache given and --fixture not set. A real validation needs an "
+                "extraction from 01_extract.py; there is deliberately no default "
+                "that would silently fall back to synthetic data."
+            )
+            return 2
+        cache = ExtractionCache.load(args.cache)
+        evalset_path = (
+            Path(args.evalset_path)
+            if args.evalset_path
+            else PROJECT_ROOT / "evalsets" / f"{args.eval_set}.json"
+        )
+        if not evalset_path.exists():
+            _LOG.error(
+                "no frozen eval set at %s. The cache carries %d items of "
+                "activations but not the prompts, labels or splits they belong "
+                "to; those live in the eval set that 00_extract.py froze beside "
+                "it. Point --evalset-path at it.",
+                evalset_path,
+                cache.n_items,
+            )
+            return 2
+        evalset = load_evalset(evalset_path)
+
+        # The hash is the envelope id and the third element of every warrant key
+        # (invariant 1). A cache paired with the wrong eval set would attach
+        # real activations to someone else's labels and report a number for a
+        # detector-envelope pair that was never measured.
+        if cache.eval_set_hash != evalset.content_hash:
+            _LOG.error(
+                "cache/eval-set mismatch: %s records eval_set_hash %s but %s "
+                "hashes to %s. These describe different data.",
+                args.cache,
+                cache.eval_set_hash,
+                evalset_path,
+                evalset.content_hash,
+            )
+            return 2
+        # The canary is a regression tripwire and canary_control fails CLOSED
+        # without one, so an absent canary refuses every warrant for a reason
+        # that has nothing to do with the run. Loaded when present; still
+        # absent-and-refusing when not, which stays visible rather than
+        # silently passing.
+        canary_cache = None
+        canary_path = Path(args.canary_cache) if args.canary_cache else (
+            Path(args.cache).parent / "cache-canary-20-triviaqa.npz"
+        )
+        if canary_path.exists():
+            canary_cache = ExtractionCache.load(canary_path)
+            _LOG.info(
+                "canary %s: %d items from %s",
+                canary_cache.eval_set_id, canary_cache.n_items, canary_path,
+            )
+        else:
+            _LOG.warning(
+                "no canary cache at %s. canary_control fails closed, so every "
+                "warrant below will be refused on that control alone -- a "
+                "refusal that says nothing about the detector. Build one with "
+                "scripts/05_canary.py.",
+                canary_path,
+            )
+        _LOG.info(
+            "validating %s (%d items, %s) against cache %s",
+            evalset.eval_set_id,
+            len(evalset),
+            evalset.content_hash,
+            args.cache,
+        )
+
+    ladder = run_ablation(
+        config,
+        evalset,
+        cache,
+        detector_prefix=f"probe-{config.model.name.split('/')[-1].lower()}",
+        detector_version="0.1.0+fixture" if args.fixture else "0.1.0",
+        target_flag_rate=args.target_flag_rate,
+        canary_cache=canary_cache,
+    )
+
+    print()
+    print(ladder.render())
+    print()
+
+    suffix = "-fixture" if args.fixture else ""
+    write_json_artifact(
+        results_dir / f"tier_ladder{suffix}.json", ladder.to_payload(), config
+    )
+    for run in ladder.runs:
+        write_json_artifact(
+            results_dir / f"validation-{run.variant}{suffix}.json",
+            run.to_payload(),
+            config,
+        )
+
+    prov = provenance(config)
+    plot_tier_ladder(
+        ladder,
+        results_dir / f"tier_ladder{suffix}.png",
+        config_hash=prov.get("config_hash"),
+        git_commit=prov.get("git_commit"),
+    )
+
+    ledger = Ledger(
+        results_dir / Path(config.store.path).name,
+        retention_days=config.store.retention_days,
+    )
+    try:
+        for run in ladder.runs:
+            if ledger.contains(RecordKind.WARRANT, run.warrant.warrant_id):
+                _LOG.info(
+                    "warrant %s already recorded; identical validation, not "
+                    "appending a duplicate",
+                    run.warrant.warrant_id,
+                )
+                continue
+            ledger.append_warrant(run.warrant)
+            ledger.append_validation_run(
+                run.run_id + "-" + run.variant,
+                run.to_payload(),
+                eval_set_id=run.eval_set_id,
+                detector_id=run.detector_id,
+            )
+        verification = ledger.verify_chain()
+        _LOG.info(
+            "ledger: %d records, chain %s",
+            verification.n_records,
+            "intact" if verification.ok else f"BROKEN at seq {verification.first_break_seq}",
+        )
+    finally:
+        ledger.close()
+
+    slowest = max(run.duration_seconds for run in ladder.runs)
+    _LOG.info("slowest single validation: %.2fs", slowest)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

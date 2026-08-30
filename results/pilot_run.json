@@ -1,0 +1,366 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-30T08:38:30+00:00",
+    "git_commit": "e5757c3f18711dc8b30bd0b92f3a105165756459",
+    "git_branch": "main",
+    "dirty": false,
+    "dirty_paths": [],
+    "dirty_excludes": "results",
+    "python": "3.12.13",
+    "libraries": {
+      "torch": "2.10.0+cu128",
+      "transformers": "5.0.0",
+      "scikit-learn": "1.6.1",
+      "numpy": "2.0.2",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "statsmodels": "0.14.6",
+      "presidio-analyzer": null,
+      "bitsandbytes": "0.50.2"
+    },
+    "device": {
+      "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+      "processor": "x86_64",
+      "cuda_available": true,
+      "device_name": "Tesla T4",
+      "device_count": 2,
+      "cuda_version": "12.8"
+    },
+    "config_hash": "533fb74983fcd8af",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "workload": {
+        "name": "enterprise-3pct",
+        "monthly_interactions": 200000,
+        "base_error_rate": 0.03,
+        "review_minutes_per_item": 3.0,
+        "reviewer_monthly_cost_inr": 85000.0,
+        "reviewer_productive_hours": 160.0,
+        "measured_tpr": 0.1416,
+        "measured_fpr": 0.011
+      },
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ],
+        "prefill_chunk_tokens": 2048
+      },
+      "probe": {
+        "aggregations": [
+          "mean_pool",
+          "max_rolling_means",
+          "last_token"
+        ],
+        "rolling_window": 64,
+        "rolling_stride": 32,
+        "standardize": true,
+        "class_weight": "balanced",
+        "C_grid": [
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "evalsets": [
+        {
+          "id": "triviaqa-600",
+          "pad_tokens": null
+        },
+        {
+          "id": "triviaqa-longctx-600",
+          "pad_tokens": [
+            4000,
+            16000
+          ]
+        },
+        {
+          "id": "hinglish-pii-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "hard-negatives-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "canary-20",
+          "pad_tokens": null
+        }
+      ],
+      "validation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_n_test": 200,
+        "min_auroc_lower_ci": 0.55,
+        "warrant_ttl_hours": 24,
+        "controls": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature",
+          "canary",
+          "determinism"
+        ],
+        "null_control_band": [
+          0.45,
+          0.55
+        ],
+        "null_control_min_repeats": 8,
+        "null_control_max_repeats": 200,
+        "calibration_tolerance": 0.25
+      },
+      "drift": {
+        "window_size": 200,
+        "psi_stable": 0.1,
+        "psi_significant": 0.25,
+        "mmd_permutations": 500,
+        "features": [
+          "token_length",
+          "script_mix",
+          "embedding_centroid_distance",
+          "reference_perplexity",
+          "category_mix"
+        ],
+        "max_false_alarm_rate": 0.05
+      },
+      "sampling": {
+        "allocation_month_one": "proportional",
+        "allocation_thereafter": "neyman",
+        "expected_design_effect": 0.67,
+        "score_bands": 4,
+        "double_label_fraction": 0.1,
+        "recall_margin_tiers": [
+          0.05,
+          0.02
+        ],
+        "blind_queue": true
+      },
+      "policy": {
+        "engine": "opa",
+        "fail_closed_on_missing_warrant": true,
+        "weighted_error": {
+          "w_fpr_benign": 50.0,
+          "w_fnr": 5.0,
+          "w_fpr_hard_negative": 2.0
+        }
+      },
+      "profiles": {
+        "customer_support": {
+          "inline_budget_ms": 200,
+          "min_recall": 0.1,
+          "max_fpr_hard_negatives": 0.02,
+          "operating_point": "P-customer-support",
+          "target_flag_rate": 0.1,
+          "on_calibration_drift": "REFUSE",
+          "calibration_sensitivity": 0.25
+        },
+        "internal_knowledge": {
+          "inline_budget_ms": 500,
+          "min_recall": 0.25,
+          "max_fpr_hard_negatives": 0.05,
+          "operating_point": "P-internal-knowledge",
+          "target_flag_rate": 0.2,
+          "on_calibration_drift": "WIDEN_BUDGET",
+          "calibration_sensitivity": 0.25
+        },
+        "decision_support": {
+          "inline_budget_ms": 2000,
+          "min_recall": 0.5,
+          "max_fpr_hard_negatives": 0.1,
+          "operating_point": "P-decision-support",
+          "target_flag_rate": 0.5,
+          "on_calibration_drift": "IGNORE",
+          "calibration_sensitivity": 0.25
+        }
+      },
+      "detectors": {
+        "presidio_configs": [
+          "stock",
+          "enabled",
+          "enabled_plus_custom"
+        ],
+        "qwen3guard": "Qwen/Qwen3Guard-Gen-0.6B"
+      },
+      "store": {
+        "path": "results/controlplane.db",
+        "retention_days": 400,
+        "hash_chain": true
+      },
+      "paths": {
+        "results_dir": "results",
+        "evalsets_dir": "evalsets",
+        "policies_dir": "policies"
+      }
+    }
+  },
+  "scores": {
+    "pilot": [
+      0.1712227455758845,
+      0.20292338707487187,
+      0.11577072439444587,
+      0.12471406005704458,
+      0.17509989740956486,
+      0.21632721736654956,
+      0.31262912270601795,
+      0.3671634534580792,
+      0.10274628157665444,
+      0.16252123972126664,
+      0.25844257568376866,
+      0.3645139709657436,
+      0.1687130045215594,
+      0.22071077953330406,
+      0.6918771019845832,
+      0.7190422934237104,
+      0.39023393597148937,
+      0.31877958919735694,
+      0.7115364343218007,
+      0.7183053491615452,
+      0.5412819211703922,
+      0.5795751006515361,
+      0.5151675216245013,
+      0.5423164156339544
+    ],
+    "labels": [
+      0,
+      0,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "question_ids": [
+      "bq01-neft-full-form",
+      "bq01-neft-full-form",
+      "bq02-ifsc-length",
+      "bq02-ifsc-length",
+      "bq03-aadhaar-digits",
+      "bq03-aadhaar-digits",
+      "bq04-micr-digits",
+      "bq04-micr-digits",
+      "bq05-upi-operator",
+      "bq05-upi-operator",
+      "bq06-ifsc-bank-part",
+      "bq06-ifsc-bank-part",
+      "bq07-pan-length",
+      "bq07-pan-length",
+      "bq08-rtgs-minimum",
+      "bq08-rtgs-minimum",
+      "bq09-ifsc-fifth-char",
+      "bq09-ifsc-fifth-char",
+      "bq10-pan-fourth-char",
+      "bq10-pan-fourth-char",
+      "bq11-aadhaar-checksum",
+      "bq11-aadhaar-checksum",
+      "bq12-neft-upper-limit",
+      "bq12-neft-upper-limit"
+    ],
+    "reference_summary": {
+      "n": 960,
+      "median": 0.4276458517443459,
+      "iqr": 0.49922952359072426,
+      "p25": 0.20906711725595792,
+      "p75": 0.7082966408466822
+    },
+    "note": "pilot scores in full; the reference is summarised because only its median and IQR enter the two ratio statistics."
+  },
+  "location_shift": {
+    "value_reference_iqrs": -0.22422851715082007,
+    "gated": false,
+    "why": "The IQR ratio is a SCALE statistic and AUROC is a RANK statistic. Neither sees a wholesale location shift, which leaves spread and ordering intact and moves the operating point -- this project's Round 2 finding exactly. Reported rather than gated because no threshold was pre-registered, and choosing one after seeing the value is DECISIONS 084."
+  },
+  "eval_set_id": "banking-dual-24",
+  "envelope_id": "sha256:09bbdbd6a316536b",
+  "draft_content_hash": "312516ded744e4fe12a20f6192d0dd9bab8dd61911b9f62dbe8b63825fa389c2",
+  "model_name": "Qwen/Qwen2.5-7B-Instruct",
+  "layer": 23,
+  "variant": "T1-last_token",
+  "probe_fit": {
+    "C": 0.001,
+    "selected_on": "validation",
+    "fitted_on": "triviaqa-2400-t960"
+  },
+  "generation": {
+    "n_items": 24,
+    "n_questions": 12,
+    "items_incorrect": 13,
+    "questions_wrong": 7,
+    "base_rate_items": 0.5416666666666666,
+    "match_rules": {
+      "substring match": 4,
+      "no alias matched": 13,
+      "exact token match": 7
+    }
+  },
+  "acceptance_band": {
+    "low": 3,
+    "high": 9,
+    "observed": 7,
+    "in_band": true,
+    "derivation": "two-sided 5% band under Binomial(12, 0.4510), the measured base error rate of triviaqa-2400-t960. DECISIONS 101."
+  },
+  "identifier_strata": {
+    "note": "UNDERPOWERED at 12 questions and reported rather than interpreted. DECISIONS 101 defers this to full scale, where a difference would mean the composed decision is partly measuring identifier presence rather than difficulty.",
+    "by_state": {
+      "0": {
+        "n": 12,
+        "error_rate": 0.5833333333333334
+      },
+      "1": {
+        "n": 12,
+        "error_rate": 0.5
+      }
+    }
+  },
+  "saturation": {
+    "pilot_iqr": 0.367409935335138,
+    "reference_iqr": 0.49922952359072426,
+    "reference_eval_set_id": "triviaqa-2400-t960",
+    "reference_n": 960,
+    "ratio": 0.7359539409699377,
+    "threshold": 0.439,
+    "saturated": false,
+    "derivation": "drawn at 12 clusters, not 24 items. The pre-registered 0.605 was drawn at independent items and was 38% too high for a clustered pilot; see the correction to DECISIONS 090."
+  },
+  "auroc": {
+    "value": 0.8461538461538461,
+    "ci_low": 0.5554166666666668,
+    "ci_high": 1.0,
+    "ci_level": 0.95,
+    "n_clusters": 12,
+    "estimator": "percentile bootstrap resampling question_id, not items -- the two identifier states of a question are one cluster",
+    "min_lower_ci_for_issuance": 0.55
+  },
+  "branch": "clears_the_pilot",
+  "response": "In band, spread healthy, AUROC lower bound clears the issuance bar. The full 240-item set is worth authoring.",
+  "consumes_retry": false,
+  "decided_by": "This script reports. Choosing the response is a person's decision after reading the numbers, because one branch consumes the single retry DECISIONS 090 allows.",
+  "preregistered_in": "DECISIONS.md 090 (corrected), 101"
+}

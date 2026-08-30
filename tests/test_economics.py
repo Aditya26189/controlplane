@@ -1,272 +1,324 @@
-"""Cascade economics: lift is R/f, its ceiling, and what cancels from it.
+"""The abstention floor and the review sizing. ``DECISIONS.md`` 099.
 
-The invariance tests are the point. "But you assumed a 3% error rate" is the
-most natural attack on this analysis, and the answer is that the assumption
-cancels out of the ratio. These make that demonstrable rather than asserted.
+Two things worth checking harder than usual.
+
+**The bound is checked against a simulation, not only against itself.** A
+closed form asserted by the test that also computes it proves nothing. The
+floor is a claim about what no selector can do, so it is checked against an
+exhaustively-searched perfect selector on a concrete population.
+
+**Measured and declared inputs must stay separated.** The whole reason this
+package exists in the state it does is that the price list was never built and
+every money figure is therefore a declared estimate. If a derived quantity
+stopped saying which of its inputs came from an artifact and which from
+``config.yaml``, the distinction the proposal rests on would quietly go.
 """
 
+from __future__ import annotations
+
+import json
+import math
 from pathlib import Path
 
 import pytest
 
-from src.economics import (
-    compare_policies,
-    invariance_check,
-    lift,
-    lift_ceiling,
-    lift_from_precision,
-    policy_table,
-    project_lift_at_base_rate,
+from controlplane.config import Config
+from controlplane.economics import (
+    abstention_floor,
+    achieved_risk,
+    feasibility_curve,
+    recall_sample_size,
+    review_volume,
 )
-from src.evaluate import evaluate_at_threshold
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-
-
-def test_lift_is_recall_over_flag_rate():
-    """The definition, pinned exactly (SPEC.md §7)."""
-    assert lift(0.61, 0.052) == pytest.approx(0.61 / 0.052)
-    assert lift(0.5, 0.05) == pytest.approx(10.0)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+ARTIFACT = PROJECT_ROOT / "results" / "feasibility.json"
 
 
-def test_lift_of_one_means_no_better_than_random():
-    assert lift(0.05, 0.05) == pytest.approx(1.0)
+# --------------------------------------------------------------------------- #
+# The bound
+# --------------------------------------------------------------------------- #
 
 
-def test_lift_undefined_at_zero_flag_rate():
-    """No flagged responses means no budget to compare against."""
-    with pytest.raises(ValueError, match="undefined"):
-        lift(0.5, 0.0)
+def test_the_floor_matches_an_exhaustive_perfect_selector() -> None:
+    """The closed form against a simulated optimal selector on 1000 items.
 
-
-def test_random_sampling_policy_has_lift_exactly_one():
-    """A probe whose recall equals its flag rate is exactly random sampling."""
-    f = 0.05
-    table = {
-        row["policy"]: row
-        for row in policy_table(1_000_000, error_rate=0.03, flag_rate=f, recall=f)
-    }
-    assert table["probe_triggered"]["errors_caught"] == pytest.approx(
-        table["random_sample"]["errors_caught"]
-    )
-    assert lift(f, f) == pytest.approx(1.0)
-
-
-@pytest.mark.parametrize("error_rate", [0.001, 0.03, 0.25, 0.9])
-def test_lift_is_invariant_to_the_base_error_rate(error_rate):
-    """e scales every policy's errors-caught identically, so it cancels."""
-    result = compare_policies(1_000_000, error_rate, flag_rate=0.05, recall=0.60)
-    assert result["lift"] == pytest.approx(12.0)
-    assert result["lift_from_policy_table"] == pytest.approx(12.0)
-
-
-@pytest.mark.parametrize("judge_accuracy", [0.4, 0.75, 1.0])
-def test_lift_is_invariant_to_judge_accuracy(judge_accuracy):
-    """a multiplies every policy's errors-caught identically, so it cancels."""
-    result = compare_policies(
-        1_000_000, 0.03, flag_rate=0.05, recall=0.60, judge_accuracy=judge_accuracy
-    )
-    assert result["lift"] == pytest.approx(12.0)
-    assert result["lift_from_policy_table"] == pytest.approx(12.0)
-
-
-def test_invariance_block_reports_all_equal():
-    """The artifact carries the demonstration, not just the claim."""
-    block = invariance_check(flag_rate=0.05, recall=0.60)
-    assert block["all_equal"] is True
-    assert block["spread"] == pytest.approx(0.0, abs=1e-9)
-    assert len(block["lifts"]) == len(block["error_rates_tested"]) * len(
-        block["judge_accuracies_tested"]
-    )
-    assert all(row["lift"] == pytest.approx(12.0) for row in block["lifts"])
-
-
-def test_two_ways_of_computing_lift_must_agree():
-    """R/f and the table's errors-caught ratio are the same claim."""
-    result = compare_policies(1_000_000, 0.03, flag_rate=0.052, recall=0.61)
-    assert result["lift"] == pytest.approx(result["lift_from_policy_table"])
-
-
-def test_probe_and_random_spend_the_same_budget():
-    """Equal judge calls is what makes the comparison fair at all."""
-    table = {
-        row["policy"]: row
-        for row in policy_table(1_000_000, 0.03, flag_rate=0.05, recall=0.60)
-    }
-    assert table["probe_triggered"]["judge_calls"] == table["random_sample"]["judge_calls"]
-    assert table["probe_triggered"]["relative_cost"] == pytest.approx(1.0)
-    assert table["random_sample"]["relative_cost"] == pytest.approx(1.0)
-
-
-def test_coverage_differs_even_though_cost_does_not():
-    """Coverage and verdict are different things; that gap is the whole result."""
-    table = {
-        row["policy"]: row
-        for row in policy_table(1_000_000, 0.03, flag_rate=0.05, recall=0.60)
-    }
-    assert table["random_sample"]["coverage"] == pytest.approx(0.05)
-    assert table["probe_triggered"]["coverage"] == pytest.approx(1.0)
-
-
-def test_judge_everything_costs_one_over_f():
-    table = {
-        row["policy"]: row
-        for row in policy_table(1_000_000, 0.03, flag_rate=0.05, recall=0.60)
-    }
-    assert table["judge_everything"]["relative_cost"] == pytest.approx(20.0)
-    assert table["judge_everything"]["judge_calls"] == pytest.approx(1_000_000)
-
-
-def test_flag_rate_out_of_range_raises():
-    with pytest.raises(ValueError, match="flag_rate"):
-        policy_table(1000, 0.03, flag_rate=0.0, recall=0.5)
-    with pytest.raises(ValueError, match="flag_rate"):
-        policy_table(1000, 0.03, flag_rate=1.5, recall=0.5)
-
-
-def test_lift_matches_the_metrics_module_end_to_end():
-    """evaluate_at_threshold and economics must not drift apart."""
-    import numpy as np
-
-    labels = np.array([1, 1, 1, 1, 0, 0, 0, 0, 0, 0])
-    scores = np.array([9.0, 8.0, 0.1, 0.0, 7.0, 0.5, 0.4, 0.3, 0.2, 0.1])
-    result = evaluate_at_threshold(labels, scores, threshold=7.0)
-
-    assert result["recall"] == pytest.approx(2 / 4)
-    assert result["flag_rate"] == pytest.approx(3 / 10)
-    assert result["precision"] == pytest.approx(2 / 3)
-    assert result["lift"] == pytest.approx(lift(result["recall"], result["flag_rate"]))
-
-
-# --- the ceiling: lift = precision/base_rate (DECISIONS.md 015) ------------ #
-
-
-def test_lift_equals_precision_over_base_rate():
-    """The identity that makes the ceiling real, checked against real numbers.
-
-    From the Kaggle run: TP 33, FP 4, FN 200, TN 363 on 600 examples.
+    A perfect selector abstains on errors first, since abstaining on a correct
+    response costs coverage and buys no risk reduction. So the minimum
+    abstention achieving a target is found by abstaining on errors one at a
+    time until the residual risk drops below alpha. This walks that directly
+    and compares.
     """
-    tp, fp, fn, n = 33, 4, 200, 600
-    positives, flagged = tp + fn, tp + fp
-    base_rate, flag_rate = positives / n, flagged / n
-    recall, precision = tp / positives, tp / flagged
-
-    assert lift(recall, flag_rate) == pytest.approx(
-        lift_from_precision(precision, base_rate)
-    )
-    assert lift(recall, flag_rate) == pytest.approx(2.2967, abs=1e-4)
-
-
-def test_ceiling_is_one_over_base_rate():
-    assert lift_ceiling(0.3883) == pytest.approx(2.5753, abs=1e-3)
-    assert lift_ceiling(0.03) == pytest.approx(33.333, abs=1e-2)
-    assert lift_ceiling(1.0) == pytest.approx(1.0)
-
-
-def test_lift_can_never_exceed_the_ceiling():
-    """Precision <= 1 is the whole argument; assert it holds across the range."""
-    for base_rate in [0.05, 0.2, 0.3883, 0.7]:
-        for precision in [0.1, 0.5, 0.9, 1.0]:
-            assert lift_from_precision(precision, base_rate) <= lift_ceiling(
-                base_rate
-            ) + 1e-12
+    n = 1000
+    for mu in (0.10, 0.25, 0.4510, 0.80):
+        errors = round(mu * n)
+        for alpha in (0.01, 0.05, 0.20, 0.40):
+            simulated = None
+            for abstained in range(n + 1):
+                # Best case: every abstained item is an error, until they run out.
+                remaining_errors = max(0, errors - abstained)
+                retained = n - abstained
+                if retained == 0:
+                    simulated = abstained / n
+                    break
+                if remaining_errors / retained <= alpha:
+                    simulated = abstained / n
+                    break
+            derived = abstention_floor(mu, alpha).floor
+            assert simulated is not None
+            assert abs(derived - simulated) <= 1.5 / n, (
+                f"mu={mu} alpha={alpha}: closed form {derived:.4f}, "
+                f"simulated optimum {simulated:.4f}"
+            )
 
 
-def test_measured_run_achieved_89_percent_of_its_ceiling():
-    """The headline is ceiling-bound, not probe-bound. Pinned so it stays stated."""
-    result = compare_policies(
-        1_000_000,
-        0.03,
-        flag_rate=37 / 600,
-        recall=33 / 233,
-        measured_base_rate=233 / 600,
-        precision=33 / 37,
-    )
-    ceiling = result["ceiling"]
-    assert ceiling["max_attainable_lift"] == pytest.approx(2.5751, abs=1e-3)
-    assert ceiling["fraction_of_ceiling_achieved"] == pytest.approx(0.892, abs=1e-3)
-    assert ceiling["lift_from_precision"] == pytest.approx(result["lift"])
+def test_no_abstention_is_forced_when_the_traffic_already_meets_the_target() -> None:
+    floor = abstention_floor(0.02, 0.05)
+    assert floor.floor == 0.0
+    assert floor.binding is False
+    assert "already meets" in floor.render()
 
 
-def test_ceiling_absent_when_base_rate_not_supplied():
-    """Backwards compatible: the block only appears when it can be computed."""
-    assert "ceiling" not in compare_policies(1000, 0.03, 0.05, 0.6)
+def test_the_floor_rises_as_the_target_tightens() -> None:
+    """The shape is the argument: tightening the target costs coverage, fast."""
+    curve = feasibility_curve(0.4510, [0.40, 0.20, 0.10, 0.05, 0.01])
+    floors = [f.floor for f in curve]
+    assert floors == sorted(floors), "the floor must be monotone in the target"
+    assert floors[0] < floors[-1]
 
 
-# --- projecting the measured ROC onto other base rates -------------------- #
+def test_the_floor_approaches_the_base_rate_as_the_target_approaches_zero() -> None:
+    assert abstention_floor(0.4510, 0.0).floor == pytest.approx(0.4510)
 
 
-def perfect_roc():
-    return [0.0, 0.0, 1.0], [0.0, 1.0, 1.0]
+def test_a_rate_outside_the_unit_interval_is_refused() -> None:
+    """Clamping would produce a plausible bound from an impossible input."""
+    with pytest.raises(ValueError, match="not a rate"):
+        abstention_floor(1.5, 0.05)
+    with pytest.raises(ValueError, match="not a rate"):
+        abstention_floor(0.4, -0.1)
 
 
-def chance_roc(points: int = 101):
-    """A diagonal ROC, finely sampled so small budgets have operating points."""
-    grid = [i / (points - 1) for i in range(points)]
-    return grid, list(grid)
+def test_a_target_of_one_is_reported_unattainable_rather_than_free() -> None:
+    """"risk <= 1" is not a target, and 0.0 alone would read as a result."""
+    floor = abstention_floor(0.4510, 1.0)
+    assert floor.floor == 0.0
+    assert floor.attainable is False
 
 
-def test_projection_of_a_perfect_ranker_hits_the_ceiling():
-    fpr, tpr = perfect_roc()
-    row = project_lift_at_base_rate(fpr, tpr, base_rate=0.03, budget=0.05)
-    assert row["lift"] == pytest.approx(row["ceiling"], rel=1e-9)
+# --------------------------------------------------------------------------- #
+# Achieved risk -- fully measured, no declared inputs
+# --------------------------------------------------------------------------- #
 
 
-def test_projection_of_a_chance_ranker_gives_lift_one():
-    """A probe no better than random must project to exactly 1.0."""
-    fpr, tpr = chance_roc()
-    row = project_lift_at_base_rate(fpr, tpr, base_rate=0.03, budget=0.5)
-    assert row["lift"] == pytest.approx(1.0, abs=1e-9)
+def test_achieved_risk_is_the_error_rate_among_what_is_not_flagged() -> None:
+    """Checked by counting, not by re-deriving the same formula.
 
-
-def test_projection_respects_the_budget():
-    fpr, tpr = chance_roc()
-    row = project_lift_at_base_rate(fpr, tpr, base_rate=0.03, budget=0.05)
-    assert row["flag_rate"] <= 0.05
-
-
-def test_projection_returns_none_when_no_point_fits_the_budget():
-    """A coarse curve may have no operating point inside a small budget.
-
-    None is the honest answer there; inventing an interpolated point would be
-    reporting an operating point the probe cannot actually be set to.
+    1000 items, base rate 0.40 -> 400 errors. Recall 0.75 -> 300 caught, 100
+    missed. Flag rate 0.50 -> 500 flagged, 500 retained. Residual risk is the
+    100 missed errors among the 500 retained.
     """
-    fpr, tpr = [0.0, 0.5, 1.0], [0.0, 0.5, 1.0]
-    assert project_lift_at_base_rate(fpr, tpr, base_rate=0.03, budget=0.05) is None
-
-
-def test_projection_is_labelled_as_a_projection():
-    """It must never be mistaken for a measurement in an artifact."""
-    fpr, tpr = perfect_roc()
-    row = project_lift_at_base_rate(fpr, tpr, base_rate=0.03, budget=0.05)
-    assert row["projected"] is True
-
-    result = compare_policies(
-        1000,
-        0.03,
-        0.05,
-        0.6,
-        roc={"fpr": fpr, "tpr": tpr},
-        projection_base_rates=(0.03,),
+    result = achieved_risk(
+        operating_point_id="P-test",
+        base_error_rate=0.40,
+        recall=0.75,
+        flag_rate=0.50,
     )
-    assert "PROJECTION, NOT MEASUREMENT" in result["projection"]["caveat"]
-    assert "NOT tested" in result["projection"]["caveat"]
+    assert result.residual_risk == pytest.approx(100 / 500)
 
 
-def test_projection_reproduces_the_measured_row():
-    """Projecting onto the test set's own base rate must recover what was measured."""
-    import json
+def test_a_perfect_selector_scores_an_efficiency_of_one() -> None:
+    """The ratio must bottom out at 1.0, or it is not measuring distance to a floor.
 
-    bundle = REPO_ROOT / "results_bundle (1)" / "results" / "probe_test.json"
-    if not bundle.is_file():
-        pytest.skip("real-run bundle not present")
-    probe_test = json.loads(bundle.read_text(encoding="utf-8"))
-    test = probe_test["test"]
-    row = project_lift_at_base_rate(
-        probe_test["roc"]["fpr"],
-        probe_test["roc"]["tpr"],
-        base_rate=test["base_rate"],
-        budget=test["flag_rate"],
+    A selector that flags exactly the errors and nothing else: base rate 0.30,
+    recall 1.0, flag rate 0.30. It ships zero residual risk, and the floor for
+    zero residual risk is the base rate itself.
+    """
+    result = achieved_risk(
+        operating_point_id="P-perfect",
+        base_error_rate=0.30,
+        recall=1.0,
+        flag_rate=0.30,
     )
-    # Same regime, same budget: the projection must land near the measurement.
-    assert row["lift"] == pytest.approx(test["lift"], rel=0.10)
+    assert result.residual_risk == pytest.approx(0.0)
+    assert result.efficiency == pytest.approx(1.0)
+
+
+def test_efficiency_is_never_below_one_for_an_achievable_point() -> None:
+    """A point beating the floor would mean the floor is wrong.
+
+    Swept rather than spot-checked, and it earned that: the sweep produced
+    recall=0.3 at flag_rate=0.1 on a 0.451 base rate, which scored 0.65 --
+    apparently beating a bound no selector can beat. The combination is
+    impossible (it catches more errors than it flags) and achieved_risk now
+    refuses it, which is the finding rather than a workaround.
+    """
+    mu = 0.4510
+    checked = 0
+    for recall in (0.1, 0.3, 0.5, 0.75, 0.9):
+        for flag_rate in (0.1, 0.25, 0.5, 0.7):
+            if mu * recall > flag_rate:
+                continue  # infeasible; covered by the test below
+            result = achieved_risk(
+                operating_point_id="P",
+                base_error_rate=mu,
+                recall=recall,
+                flag_rate=flag_rate,
+            )
+            checked += 1
+            if math.isfinite(result.efficiency):
+                assert result.efficiency >= 1.0 - 1e-9, (
+                    f"recall={recall} f={flag_rate} scored {result.efficiency:.4f}, "
+                    "which is below the theoretical floor"
+                )
+    assert checked >= 10, "the sweep skipped almost everything"
+
+
+def test_catching_more_errors_than_were_flagged_is_refused() -> None:
+    """The rates must describe one envelope, or the bound is meaningless.
+
+    mu * recall is the share of all traffic that is a caught error; it cannot
+    exceed the share flagged. When it did, the efficiency came out below 1.0 --
+    an operating point apparently beating a bound no selector can beat. That is
+    the signature of rates taken from different measurements.
+    """
+    with pytest.raises(ValueError, match="cannot describe one envelope"):
+        achieved_risk(
+            operating_point_id="P",
+            base_error_rate=0.4510,
+            recall=0.3,
+            flag_rate=0.1,
+        )
+
+
+def test_the_three_measured_operating_points_are_internally_consistent() -> None:
+    """The real ones pass the check the synthetic sweep failed."""
+    for recall, flag_rate in (
+        (0.21709006928406466, 0.10625),
+        (0.36027713625866054, 0.18645833333333334),
+        (0.7367205542725174, 0.46770833333333334),
+    ):
+        result = achieved_risk(
+            operating_point_id="P",
+            base_error_rate=0.4510416666666667,
+            recall=recall,
+            flag_rate=flag_rate,
+        )
+        assert result.efficiency >= 1.0
+
+
+def test_flagging_everything_is_refused_rather_than_scored() -> None:
+    with pytest.raises(ValueError, match="retains nothing"):
+        achieved_risk(
+            operating_point_id="P", base_error_rate=0.4, recall=1.0, flag_rate=1.0
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Review sizing -- measured and declared, kept apart
+# --------------------------------------------------------------------------- #
+
+
+def test_review_volume_labels_which_inputs_were_declared() -> None:
+    volume = review_volume(
+        flag_rate=0.10625,
+        recall=0.21709006928406466,
+        base_error_rate=0.03,
+        monthly_interactions=200_000,
+        operating_point_id="P-customer-support",
+    )
+    flagged = volume["flagged"]
+    assert flagged.value == pytest.approx(21_250)
+    assert set(flagged.measured_inputs) == {"flag_rate", "recall"}
+    assert set(flagged.declared_inputs) == {
+        "monthly_interactions",
+        "base_error_rate",
+    }
+    assert "declared workload" in flagged.note
+
+
+def test_the_parts_of_the_flagged_pool_add_up() -> None:
+    volume = review_volume(
+        flag_rate=0.20, recall=0.50, base_error_rate=0.03,
+        monthly_interactions=100_000,
+    )
+    assert volume["true_positives"].value + volume["false_positives"].value == (
+        pytest.approx(volume["flagged"].value)
+    )
+
+
+def test_rates_from_the_wrong_workload_are_flagged_not_silently_negative() -> None:
+    """A recall and a base rate from different distributions can disagree.
+
+    Flag 1% of traffic but claim to catch 100% of a 30% error rate, and the
+    implied true positives exceed the flagged total. That is scenario mixing,
+    and it must surface rather than produce a negative false-positive count.
+    """
+    volume = review_volume(
+        flag_rate=0.01, recall=1.0, base_error_rate=0.30,
+        monthly_interactions=100_000,
+    )
+    assert volume["false_positives"].value == 0.0
+    assert "WARNING" in volume["false_positives"].note
+
+
+def test_recall_sample_size_is_sized_at_the_measured_recall() -> None:
+    """Sizing at p=0.5 would overstate the requirement by nearly threefold."""
+    at_measured = recall_sample_size(recall=0.2171, margin=0.02)
+    at_half = recall_sample_size(recall=0.5, margin=0.02)
+    assert at_measured.value < at_half.value
+    assert at_half.value / at_measured.value > 1.4
+
+
+def test_a_tighter_margin_costs_quadratically() -> None:
+    coarse = recall_sample_size(recall=0.2171, margin=0.05)
+    fine = recall_sample_size(recall=0.2171, margin=0.02)
+    assert fine.value / coarse.value == pytest.approx((0.05 / 0.02) ** 2, rel=0.02)
+
+
+def test_a_non_positive_margin_is_refused() -> None:
+    with pytest.raises(ValueError, match="must be positive"):
+        recall_sample_size(recall=0.3, margin=0.0)
+
+
+# --------------------------------------------------------------------------- #
+# The committed artifact
+# --------------------------------------------------------------------------- #
+
+
+def test_the_feasibility_artifact_reproduces(config: Config) -> None:
+    """Every number in results/feasibility.json recomputes from its inputs."""
+    if not ARTIFACT.is_file():
+        pytest.skip("results/feasibility.json is not committed")
+    payload = json.loads(ARTIFACT.read_text(encoding="utf-8"))
+    mu = payload["measured"]["base_error_rate"]
+
+    for row in payload["abstention_floor"]:
+        expected = abstention_floor(mu, row["target_risk"]).floor
+        assert row["floor"] == pytest.approx(expected)
+
+    for profile in payload["profiles"]:
+        recomputed = achieved_risk(
+            operating_point_id=profile["operating_point_id"],
+            base_error_rate=mu,
+            recall=profile["measured_recall"],
+            flag_rate=profile["measured_flag_rate"],
+        )
+        recorded = profile["achieved_risk"]
+        assert recorded["residual_risk"] == pytest.approx(recomputed.residual_risk)
+        assert recorded["efficiency"] == pytest.approx(recomputed.efficiency)
+
+
+def test_the_artifact_states_what_it_does_not_derive() -> None:
+    """The gap must travel with the numbers, or it will be forgotten.
+
+    Anyone reading feasibility.json is one step from writing a cost figure. The
+    artifact says, in itself, that no cost figure is derived here and that the
+    price list is not built.
+    """
+    if not ARTIFACT.is_file():
+        pytest.skip("results/feasibility.json is not committed")
+    payload = json.loads(ARTIFACT.read_text(encoding="utf-8"))
+    note = payload["not_derived_here"]
+    assert "not built" in note
+    assert "declared estimate" in note

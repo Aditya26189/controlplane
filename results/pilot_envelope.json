@@ -1,0 +1,274 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-30T01:52:08+00:00",
+    "git_commit": "ed6ad78d63770130cad109c0742f55ddccea6853",
+    "git_branch": "fix/envelope-units-and-null-band",
+    "dirty": false,
+    "dirty_paths": [],
+    "dirty_excludes": "results",
+    "python": "3.12.10",
+    "libraries": {
+      "torch": "2.9.1+cpu",
+      "transformers": "5.8.0",
+      "scikit-learn": "1.7.2",
+      "numpy": "2.2.6",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "statsmodels": "0.14.6",
+      "presidio-analyzer": "2.2.364",
+      "bitsandbytes": "0.49.2"
+    },
+    "device": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
+      "cuda_available": false,
+      "device_name": "cpu"
+    },
+    "config_hash": "ae6eec9d1f8897af",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "workload": {
+        "name": "enterprise-3pct",
+        "monthly_interactions": 200000,
+        "base_error_rate": 0.03,
+        "review_minutes_per_item": 3.0,
+        "reviewer_monthly_cost_inr": 85000.0,
+        "reviewer_productive_hours": 160.0,
+        "measured_tpr": 0.1416,
+        "measured_fpr": 0.011
+      },
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ],
+        "prefill_chunk_tokens": 2048
+      },
+      "probe": {
+        "aggregations": [
+          "mean_pool",
+          "max_rolling_means",
+          "last_token"
+        ],
+        "rolling_window": 64,
+        "rolling_stride": 32,
+        "standardize": true,
+        "class_weight": "balanced",
+        "C_grid": [
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "evalsets": [
+        {
+          "id": "triviaqa-600",
+          "pad_tokens": null
+        },
+        {
+          "id": "triviaqa-longctx-600",
+          "pad_tokens": [
+            4000,
+            16000
+          ]
+        },
+        {
+          "id": "hinglish-pii-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "hard-negatives-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "canary-20",
+          "pad_tokens": null
+        }
+      ],
+      "validation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_n_test": 200,
+        "min_auroc_lower_ci": 0.55,
+        "warrant_ttl_hours": 24,
+        "controls": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature",
+          "canary",
+          "determinism"
+        ],
+        "null_control_band": [
+          0.45,
+          0.55
+        ],
+        "null_control_min_repeats": 8,
+        "null_control_max_repeats": 200,
+        "calibration_tolerance": 0.25
+      },
+      "drift": {
+        "window_size": 200,
+        "psi_stable": 0.1,
+        "psi_significant": 0.25,
+        "mmd_permutations": 500,
+        "features": [
+          "token_length",
+          "script_mix",
+          "embedding_centroid_distance",
+          "reference_perplexity",
+          "category_mix"
+        ],
+        "max_false_alarm_rate": 0.05
+      },
+      "sampling": {
+        "allocation_month_one": "proportional",
+        "allocation_thereafter": "neyman",
+        "expected_design_effect": 0.67,
+        "score_bands": 4,
+        "double_label_fraction": 0.1,
+        "recall_margin_tiers": [
+          0.05,
+          0.02
+        ],
+        "blind_queue": true
+      },
+      "policy": {
+        "engine": "opa",
+        "fail_closed_on_missing_warrant": true,
+        "weighted_error": {
+          "w_fpr_benign": 50.0,
+          "w_fnr": 5.0,
+          "w_fpr_hard_negative": 2.0
+        }
+      },
+      "profiles": {
+        "customer_support": {
+          "inline_budget_ms": 200,
+          "min_recall": 0.1,
+          "max_fpr": 0.02,
+          "operating_point": "P-customer-support",
+          "target_flag_rate": 0.1,
+          "on_calibration_drift": "REFUSE",
+          "calibration_sensitivity": 0.25
+        },
+        "internal_knowledge": {
+          "inline_budget_ms": 500,
+          "min_recall": 0.25,
+          "max_fpr": 0.05,
+          "operating_point": "P-internal-knowledge",
+          "target_flag_rate": 0.2,
+          "on_calibration_drift": "WIDEN_BUDGET",
+          "calibration_sensitivity": 0.25
+        },
+        "decision_support": {
+          "inline_budget_ms": 2000,
+          "min_recall": 0.5,
+          "max_fpr": 0.1,
+          "operating_point": "P-decision-support",
+          "target_flag_rate": 0.5,
+          "on_calibration_drift": "IGNORE",
+          "calibration_sensitivity": 0.25
+        }
+      },
+      "detectors": {
+        "presidio_configs": [
+          "stock",
+          "enabled",
+          "enabled_plus_custom"
+        ],
+        "qwen3guard": "Qwen/Qwen3Guard-Gen-0.6B"
+      },
+      "store": {
+        "path": "results/controlplane.db",
+        "retention_days": 400,
+        "hash_chain": true
+      },
+      "paths": {
+        "results_dir": "results",
+        "evalsets_dir": "evalsets",
+        "policies_dir": "policies"
+      }
+    }
+  },
+  "eval_set_id": "banking-dual-24",
+  "draft_content_hash": "312516ded744e4fe12a20f6192d0dd9bab8dd61911b9f62dbe8b63825fa389c2",
+  "reference_eval_set_id": "triviaqa-2400-t960",
+  "pilot": {
+    "n": 24,
+    "whitespace_tokens": {
+      "mean": 18.375,
+      "median": 18.0,
+      "min": 12,
+      "max": 28,
+      "stdev": 4.401704215414752
+    },
+    "characters": {
+      "mean": 105.83333333333333,
+      "median": 104.5
+    },
+    "script_mix_mean": {
+      "latin": 1.0,
+      "devanagari": 0.0,
+      "other": 0.0
+    },
+    "model_tokens": {
+      "n": 24,
+      "mean": 34.5,
+      "median": 34.0,
+      "p25": 25.5,
+      "p75": 43.0,
+      "iqr": 17.5,
+      "min": 21,
+      "max": 54,
+      "stdev": 10.49637618625963
+    }
+  },
+  "reference": {
+    "n": 2400,
+    "whitespace_tokens": {
+      "mean": 13.600833333333334,
+      "median": 12.0,
+      "min": 5,
+      "max": 91,
+      "stdev": 6.579478445323567
+    },
+    "characters": {
+      "mean": 78.37833333333333,
+      "median": 70.0
+    },
+    "script_mix_mean": {
+      "latin": 1.0,
+      "devanagari": 0.0,
+      "other": 0.0
+    },
+    "model_tokens": {
+      "n": 2400,
+      "mean": 18.817083333333333,
+      "median": 17.0,
+      "p25": 13.0,
+      "p75": 22.0,
+      "iqr": 9.0,
+      "min": 6,
+      "max": 141,
+      "stdev": 9.65906303862935
+    }
+  },
+  "length_ratio_model_tokens": 1.8334403578308718,
+  "length_ratio_whitespace_proxy": 1.351020158078549,
+  "model_tokens_unavailable_reason": null,
+  "labels": "UNMEASURED - correctness is judged on the generation pass",
+  "units": "length_ratio_model_tokens is THE envelope length measurement: the probe reads activations and activations are indexed by model tokens. length_ratio_whitespace_proxy is a PROXY for it, retained because it is free and because it is what the pre-B1 artifact reported. The two differ because Qwen2.5 fragments romanised Hindi and digit runs far more aggressively than English, so the proxy understates the distance on exactly the traffic this pilot is built from.",
+  "interpretation": "Surface distance only. DECISIONS 090 calls this cheap de-risking: it does not predict whether the probe's signal transfers, and a small distance here is NOT evidence that it does. The saturation criterion in 101 (IQR ratio below 0.439) is what decides that, and it needs the GPU pass.",
+  "preregistered_in": "DECISIONS.md 090 (corrected), 101, 102"
+}

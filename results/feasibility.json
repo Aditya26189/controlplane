@@ -1,0 +1,586 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-29T06:44:59+00:00",
+    "git_commit": "e440d557ca652c9596a0816ccea6432eaf1b1f2d",
+    "git_branch": "main",
+    "dirty": false,
+    "dirty_paths": [],
+    "dirty_excludes": "results",
+    "python": "3.12.10",
+    "libraries": {
+      "torch": "2.9.1+cpu",
+      "transformers": "5.8.0",
+      "scikit-learn": "1.7.2",
+      "numpy": "2.2.6",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "statsmodels": "0.14.6",
+      "presidio-analyzer": "2.2.364",
+      "bitsandbytes": "0.49.2"
+    },
+    "device": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
+      "cuda_available": false,
+      "device_name": "cpu"
+    },
+    "config_hash": "ae6eec9d1f8897af",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "workload": {
+        "name": "enterprise-3pct",
+        "monthly_interactions": 200000,
+        "base_error_rate": 0.03,
+        "review_minutes_per_item": 3.0,
+        "reviewer_monthly_cost_inr": 85000.0,
+        "reviewer_productive_hours": 160.0,
+        "measured_tpr": 0.1416,
+        "measured_fpr": 0.011
+      },
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ],
+        "prefill_chunk_tokens": 2048
+      },
+      "probe": {
+        "aggregations": [
+          "mean_pool",
+          "max_rolling_means",
+          "last_token"
+        ],
+        "rolling_window": 64,
+        "rolling_stride": 32,
+        "standardize": true,
+        "class_weight": "balanced",
+        "C_grid": [
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "evalsets": [
+        {
+          "id": "triviaqa-600",
+          "pad_tokens": null
+        },
+        {
+          "id": "triviaqa-longctx-600",
+          "pad_tokens": [
+            4000,
+            16000
+          ]
+        },
+        {
+          "id": "hinglish-pii-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "hard-negatives-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "canary-20",
+          "pad_tokens": null
+        }
+      ],
+      "validation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_n_test": 200,
+        "min_auroc_lower_ci": 0.55,
+        "warrant_ttl_hours": 24,
+        "controls": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature",
+          "canary",
+          "determinism"
+        ],
+        "null_control_band": [
+          0.45,
+          0.55
+        ],
+        "null_control_min_repeats": 8,
+        "null_control_max_repeats": 200,
+        "calibration_tolerance": 0.25
+      },
+      "drift": {
+        "window_size": 200,
+        "psi_stable": 0.1,
+        "psi_significant": 0.25,
+        "mmd_permutations": 500,
+        "features": [
+          "token_length",
+          "script_mix",
+          "embedding_centroid_distance",
+          "reference_perplexity",
+          "category_mix"
+        ],
+        "max_false_alarm_rate": 0.05
+      },
+      "sampling": {
+        "allocation_month_one": "proportional",
+        "allocation_thereafter": "neyman",
+        "expected_design_effect": 0.67,
+        "score_bands": 4,
+        "double_label_fraction": 0.1,
+        "recall_margin_tiers": [
+          0.05,
+          0.02
+        ],
+        "blind_queue": true
+      },
+      "policy": {
+        "engine": "opa",
+        "fail_closed_on_missing_warrant": true,
+        "weighted_error": {
+          "w_fpr_benign": 50.0,
+          "w_fnr": 5.0,
+          "w_fpr_hard_negative": 2.0
+        }
+      },
+      "profiles": {
+        "customer_support": {
+          "inline_budget_ms": 200,
+          "min_recall": 0.1,
+          "max_fpr": 0.02,
+          "operating_point": "P-customer-support",
+          "target_flag_rate": 0.1,
+          "on_calibration_drift": "REFUSE",
+          "calibration_sensitivity": 0.25
+        },
+        "internal_knowledge": {
+          "inline_budget_ms": 500,
+          "min_recall": 0.25,
+          "max_fpr": 0.05,
+          "operating_point": "P-internal-knowledge",
+          "target_flag_rate": 0.2,
+          "on_calibration_drift": "WIDEN_BUDGET",
+          "calibration_sensitivity": 0.25
+        },
+        "decision_support": {
+          "inline_budget_ms": 2000,
+          "min_recall": 0.5,
+          "max_fpr": 0.1,
+          "operating_point": "P-decision-support",
+          "target_flag_rate": 0.5,
+          "on_calibration_drift": "IGNORE",
+          "calibration_sensitivity": 0.25
+        }
+      },
+      "detectors": {
+        "presidio_configs": [
+          "stock",
+          "enabled",
+          "enabled_plus_custom"
+        ],
+        "qwen3guard": "Qwen/Qwen3Guard-Gen-0.6B"
+      },
+      "store": {
+        "path": "results/controlplane.db",
+        "retention_days": 400,
+        "hash_chain": true
+      },
+      "paths": {
+        "results_dir": "results",
+        "evalsets_dir": "evalsets",
+        "policies_dir": "policies"
+      }
+    }
+  },
+  "measured": {
+    "base_error_rate": 0.4510416666666667,
+    "eval_set_id": "triviaqa-2400-t960",
+    "envelope_id": "sha256:3c481c8f9ba5cd40",
+    "source": "results/policy-triviaqa-2400-t960.json"
+  },
+  "declared": {
+    "workload": "enterprise-3pct",
+    "monthly_interactions": 200000,
+    "production_base_error_rate": 0.03,
+    "target_risks": [
+      0.2,
+      0.1,
+      0.05,
+      0.02,
+      0.01
+    ],
+    "recall_margin_tiers": [
+      0.05,
+      0.02
+    ],
+    "expected_design_effect": 0.67
+  },
+  "abstention_floor": [
+    {
+      "base_error_rate": 0.4510416666666667,
+      "target_risk": 0.2,
+      "floor": 0.3138020833333333,
+      "attainable": true,
+      "binding": true,
+      "envelope_id": "sha256:3c481c8f9ba5cd40",
+      "source": "results/policy-triviaqa-2400-t960.json"
+    },
+    {
+      "base_error_rate": 0.4510416666666667,
+      "target_risk": 0.1,
+      "floor": 0.39004629629629634,
+      "attainable": true,
+      "binding": true,
+      "envelope_id": "sha256:3c481c8f9ba5cd40",
+      "source": "results/policy-triviaqa-2400-t960.json"
+    },
+    {
+      "base_error_rate": 0.4510416666666667,
+      "target_risk": 0.05,
+      "floor": 0.4221491228070176,
+      "attainable": true,
+      "binding": true,
+      "envelope_id": "sha256:3c481c8f9ba5cd40",
+      "source": "results/policy-triviaqa-2400-t960.json"
+    },
+    {
+      "base_error_rate": 0.4510416666666667,
+      "target_risk": 0.02,
+      "floor": 0.4398384353741497,
+      "attainable": true,
+      "binding": true,
+      "envelope_id": "sha256:3c481c8f9ba5cd40",
+      "source": "results/policy-triviaqa-2400-t960.json"
+    },
+    {
+      "base_error_rate": 0.4510416666666667,
+      "target_risk": 0.01,
+      "floor": 0.445496632996633,
+      "attainable": true,
+      "binding": true,
+      "envelope_id": "sha256:3c481c8f9ba5cd40",
+      "source": "results/policy-triviaqa-2400-t960.json"
+    }
+  ],
+  "profiles": [
+    {
+      "profile": "customer_support",
+      "operating_point_id": "P-customer-support",
+      "measured_recall": 0.21709006928406466,
+      "measured_flag_rate": 0.10625,
+      "achieved_risk": {
+        "operating_point_id": "P-customer-support",
+        "base_error_rate": 0.4510416666666667,
+        "recall": 0.21709006928406466,
+        "abstention": 0.10625,
+        "residual_risk": 0.39510489510489505,
+        "floor_at_residual_risk": 0.09247350674373804,
+        "efficiency": 1.1489777314754515
+      },
+      "review_volume": {
+        "flagged": {
+          "name": "flagged @ P-customer-support",
+          "value": 21250.0,
+          "unit": "items/month",
+          "measured_inputs": {
+            "flag_rate": 0.10625,
+            "recall": 0.21709006928406466
+          },
+          "declared_inputs": {
+            "monthly_interactions": 200000,
+            "base_error_rate": 0.03
+          },
+          "note": "Derived from ONE declared workload. The flag rate and recall are measured on an eval set; the volume and production error rate are declared. Mixing rates from two workloads is the error CLAUDE.md names."
+        },
+        "true_positives": {
+          "name": "true positives @ P-customer-support",
+          "value": 1302.540415704388,
+          "unit": "items/month",
+          "measured_inputs": {
+            "flag_rate": 0.10625,
+            "recall": 0.21709006928406466
+          },
+          "declared_inputs": {
+            "monthly_interactions": 200000,
+            "base_error_rate": 0.03
+          },
+          "note": "Derived from ONE declared workload. The flag rate and recall are measured on an eval set; the volume and production error rate are declared. Mixing rates from two workloads is the error CLAUDE.md names."
+        },
+        "false_positives": {
+          "name": "false positives @ P-customer-support",
+          "value": 19947.45958429561,
+          "unit": "items/month",
+          "measured_inputs": {
+            "flag_rate": 0.10625,
+            "recall": 0.21709006928406466
+          },
+          "declared_inputs": {
+            "monthly_interactions": 200000,
+            "base_error_rate": 0.03
+          },
+          "note": "Derived from ONE declared workload. The flag rate and recall are measured on an eval set; the volume and production error rate are declared. Mixing rates from two workloads is the error CLAUDE.md names."
+        },
+        "errors_missed": {
+          "name": "errors missed @ P-customer-support",
+          "value": 4697.459584295612,
+          "unit": "items/month",
+          "measured_inputs": {
+            "flag_rate": 0.10625,
+            "recall": 0.21709006928406466
+          },
+          "declared_inputs": {
+            "monthly_interactions": 200000,
+            "base_error_rate": 0.03
+          },
+          "note": "Derived from ONE declared workload. The flag rate and recall are measured on an eval set; the volume and production error rate are declared. Mixing rates from two workloads is the error CLAUDE.md names."
+        }
+      },
+      "recall_sample_size": [
+        {
+          "name": "reviewed items for recall +/- 0.05 @ P-customer-support",
+          "value": 175.0,
+          "unit": "reviewed items",
+          "measured_inputs": {
+            "recall": 0.21709006928406466
+          },
+          "declared_inputs": {
+            "margin": 0.05,
+            "design_effect": 0.67,
+            "confidence": 0.95
+          },
+          "note": "Normal approximation, sized at the measured recall rather than at p=0.5. The design effect is declared, not measured -- config.yaml says 'measure, don't assume', and it has not been measured."
+        },
+        {
+          "name": "reviewed items for recall +/- 0.02 @ P-customer-support",
+          "value": 1094.0,
+          "unit": "reviewed items",
+          "measured_inputs": {
+            "recall": 0.21709006928406466
+          },
+          "declared_inputs": {
+            "margin": 0.02,
+            "design_effect": 0.67,
+            "confidence": 0.95
+          },
+          "note": "Normal approximation, sized at the measured recall rather than at p=0.5. The design effect is declared, not measured -- config.yaml says 'measure, don't assume', and it has not been measured."
+        }
+      ]
+    },
+    {
+      "profile": "internal_knowledge",
+      "operating_point_id": "P-internal-knowledge",
+      "measured_recall": 0.36027713625866054,
+      "measured_flag_rate": 0.18645833333333334,
+      "achieved_risk": {
+        "operating_point_id": "P-internal-knowledge",
+        "base_error_rate": 0.4510416666666667,
+        "recall": 0.36027713625866054,
+        "abstention": 0.18645833333333334,
+        "residual_risk": 0.3546734955185659,
+        "floor_at_residual_risk": 0.149332423941799,
+        "efficiency": 1.248612514359265
+      },
+      "review_volume": {
+        "flagged": {
+          "name": "flagged @ P-internal-knowledge",
+          "value": 37291.666666666664,
+          "unit": "items/month",
+          "measured_inputs": {
+            "flag_rate": 0.18645833333333334,
+            "recall": 0.36027713625866054
+          },
+          "declared_inputs": {
+            "monthly_interactions": 200000,
+            "base_error_rate": 0.03
+          },
+          "note": "Derived from ONE declared workload. The flag rate and recall are measured on an eval set; the volume and production error rate are declared. Mixing rates from two workloads is the error CLAUDE.md names."
+        },
+        "true_positives": {
+          "name": "true positives @ P-internal-knowledge",
+          "value": 2161.662817551963,
+          "unit": "items/month",
+          "measured_inputs": {
+            "flag_rate": 0.18645833333333334,
+            "recall": 0.36027713625866054
+          },
+          "declared_inputs": {
+            "monthly_interactions": 200000,
+            "base_error_rate": 0.03
+          },
+          "note": "Derived from ONE declared workload. The flag rate and recall are measured on an eval set; the volume and production error rate are declared. Mixing rates from two workloads is the error CLAUDE.md names."
+        },
+        "false_positives": {
+          "name": "false positives @ P-internal-knowledge",
+          "value": 35130.0038491147,
+          "unit": "items/month",
+          "measured_inputs": {
+            "flag_rate": 0.18645833333333334,
+            "recall": 0.36027713625866054
+          },
+          "declared_inputs": {
+            "monthly_interactions": 200000,
+            "base_error_rate": 0.03
+          },
+          "note": "Derived from ONE declared workload. The flag rate and recall are measured on an eval set; the volume and production error rate are declared. Mixing rates from two workloads is the error CLAUDE.md names."
+        },
+        "errors_missed": {
+          "name": "errors missed @ P-internal-knowledge",
+          "value": 3838.337182448037,
+          "unit": "items/month",
+          "measured_inputs": {
+            "flag_rate": 0.18645833333333334,
+            "recall": 0.36027713625866054
+          },
+          "declared_inputs": {
+            "monthly_interactions": 200000,
+            "base_error_rate": 0.03
+          },
+          "note": "Derived from ONE declared workload. The flag rate and recall are measured on an eval set; the volume and production error rate are declared. Mixing rates from two workloads is the error CLAUDE.md names."
+        }
+      },
+      "recall_sample_size": [
+        {
+          "name": "reviewed items for recall +/- 0.05 @ P-internal-knowledge",
+          "value": 238.0,
+          "unit": "reviewed items",
+          "measured_inputs": {
+            "recall": 0.36027713625866054
+          },
+          "declared_inputs": {
+            "margin": 0.05,
+            "design_effect": 0.67,
+            "confidence": 0.95
+          },
+          "note": "Normal approximation, sized at the measured recall rather than at p=0.5. The design effect is declared, not measured -- config.yaml says 'measure, don't assume', and it has not been measured."
+        },
+        {
+          "name": "reviewed items for recall +/- 0.02 @ P-internal-knowledge",
+          "value": 1483.0,
+          "unit": "reviewed items",
+          "measured_inputs": {
+            "recall": 0.36027713625866054
+          },
+          "declared_inputs": {
+            "margin": 0.02,
+            "design_effect": 0.67,
+            "confidence": 0.95
+          },
+          "note": "Normal approximation, sized at the measured recall rather than at p=0.5. The design effect is declared, not measured -- config.yaml says 'measure, don't assume', and it has not been measured."
+        }
+      ]
+    },
+    {
+      "profile": "decision_support",
+      "operating_point_id": "P-decision-support",
+      "measured_recall": 0.7367205542725174,
+      "measured_flag_rate": 0.46770833333333334,
+      "achieved_risk": {
+        "operating_point_id": "P-decision-support",
+        "base_error_rate": 0.4510416666666667,
+        "recall": 0.7367205542725174,
+        "abstention": 0.46770833333333334,
+        "residual_risk": 0.22309197651663404,
+        "floor_at_residual_risk": 0.2934062762384551,
+        "efficiency": 1.594063833021829
+      },
+      "review_volume": {
+        "flagged": {
+          "name": "flagged @ P-decision-support",
+          "value": 93541.66666666667,
+          "unit": "items/month",
+          "measured_inputs": {
+            "flag_rate": 0.46770833333333334,
+            "recall": 0.7367205542725174
+          },
+          "declared_inputs": {
+            "monthly_interactions": 200000,
+            "base_error_rate": 0.03
+          },
+          "note": "Derived from ONE declared workload. The flag rate and recall are measured on an eval set; the volume and production error rate are declared. Mixing rates from two workloads is the error CLAUDE.md names."
+        },
+        "true_positives": {
+          "name": "true positives @ P-decision-support",
+          "value": 4420.323325635104,
+          "unit": "items/month",
+          "measured_inputs": {
+            "flag_rate": 0.46770833333333334,
+            "recall": 0.7367205542725174
+          },
+          "declared_inputs": {
+            "monthly_interactions": 200000,
+            "base_error_rate": 0.03
+          },
+          "note": "Derived from ONE declared workload. The flag rate and recall are measured on an eval set; the volume and production error rate are declared. Mixing rates from two workloads is the error CLAUDE.md names."
+        },
+        "false_positives": {
+          "name": "false positives @ P-decision-support",
+          "value": 89121.34334103156,
+          "unit": "items/month",
+          "measured_inputs": {
+            "flag_rate": 0.46770833333333334,
+            "recall": 0.7367205542725174
+          },
+          "declared_inputs": {
+            "monthly_interactions": 200000,
+            "base_error_rate": 0.03
+          },
+          "note": "Derived from ONE declared workload. The flag rate and recall are measured on an eval set; the volume and production error rate are declared. Mixing rates from two workloads is the error CLAUDE.md names."
+        },
+        "errors_missed": {
+          "name": "errors missed @ P-decision-support",
+          "value": 1579.676674364896,
+          "unit": "items/month",
+          "measured_inputs": {
+            "flag_rate": 0.46770833333333334,
+            "recall": 0.7367205542725174
+          },
+          "declared_inputs": {
+            "monthly_interactions": 200000,
+            "base_error_rate": 0.03
+          },
+          "note": "Derived from ONE declared workload. The flag rate and recall are measured on an eval set; the volume and production error rate are declared. Mixing rates from two workloads is the error CLAUDE.md names."
+        }
+      },
+      "recall_sample_size": [
+        {
+          "name": "reviewed items for recall +/- 0.05 @ P-decision-support",
+          "value": 200.0,
+          "unit": "reviewed items",
+          "measured_inputs": {
+            "recall": 0.7367205542725174
+          },
+          "declared_inputs": {
+            "margin": 0.05,
+            "design_effect": 0.67,
+            "confidence": 0.95
+          },
+          "note": "Normal approximation, sized at the measured recall rather than at p=0.5. The design effect is declared, not measured -- config.yaml says 'measure, don't assume', and it has not been measured."
+        },
+        {
+          "name": "reviewed items for recall +/- 0.02 @ P-decision-support",
+          "value": 1249.0,
+          "unit": "reviewed items",
+          "measured_inputs": {
+            "recall": 0.7367205542725174
+          },
+          "declared_inputs": {
+            "margin": 0.02,
+            "design_effect": 0.67,
+            "confidence": 0.95
+          },
+          "note": "Normal approximation, sized at the measured recall rather than at p=0.5. The design effect is declared, not measured -- config.yaml says 'measure, don't assume', and it has not been measured."
+        }
+      ]
+    }
+  ],
+  "not_derived_here": "No cost, headcount or saving figure. The price list (controlplane/economics/sizing.py) is specified in five contracts and not built -- DECISIONS 096 and 099. Any money figure in the proposal or the deck is a declared estimate and must say so."
+}

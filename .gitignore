@@ -12,15 +12,74 @@ env/
 .DS_Store
 Thumbs.db
 
-# Regenerable and large — see CONTRIBUTING.md "What is and isn't committed".
+# Regenerable or large — see CONTRIBUTING.md, "What is and isn't committed".
 # results/*.json, results/*.png and results/RESULTS.md ARE committed: they are
-# the evidence. Everything below is either large or trivially regenerable.
-results/activations.npz
-results/*.parquet
-results/probe.joblib
+# the evidence. Everything below is either large, regenerable, or must never
+# be published.
 results/*.npz
+results/*.parquet
+results/*.joblib
+results/cache/
 results/smoke/
 
-# Caches for models and datasets
+# The audit store is generated; the hash chain is only meaningful for the run
+# that built it.
+results/controlplane.db
+results/policy.db
+results/**/detectors.db
+results/detectors.db
+results/*.db-journal
+
+# NEVER committed: review labels can contain real personal data
+# (CONTRIBUTING.md). Synthetic evaluation PII lives in evalsets/ and is marked
+# synthetic in its manifest; this path is for real reviewer output only.
+labels/
+*.labels.jsonl
+
+# Model and dataset caches
 .cache/
 hf_home/
+
+# Demo scratch: a fresh chain per run, so the trace on screen is legible.
+results/demo.db
+results/demo_stream.json
+
+# Derived eval sets are regenerable and large: build_longctx pads each prompt to
+# 4-16k tokens, so hinglish-pii-200-longctx.json is ~8 MB. The manifest records
+# its content hash, so its identity is committed and checkable after a rebuild
+# even though the expansion is not. See DECISIONS.md 037.
+evalsets/*-longctx.json
+
+# Extraction caches: large, regenerable on a GPU, and the evidence they support
+# is the validation run rather than the activations themselves.
+results/cache-*.npz
+
+# Kaggle API credentials -- account tokens, never committed
+kaggle/access_token
+kaggle/kaggle.json
+kaggle/run_on_kaggle.ipynb
+
+# Measured extraction: caches and the long-context eval set exceed the 10 MB
+# staging limit. cache-*.npz is already covered; the padded eval set is not.
+evalsets/triviaqa-longctx-600.json
+results/kaggle/
+results/*.npz
+
+# A Round 1 results bundle downloaded to the repository root. results_bundle,
+# results_bundle (1) and results_bundle (2) are tracked, and moved to round1/
+# with the rest of Round 1; gitignore does not untrack them. This entry is for
+# the later download only, which duplicates evidence already committed.
+#
+# It matters beyond tidiness: provenance() flags an artifact dirty from any
+# untracked path, so while this sits here untracked every generated artifact
+# records dirty: true. Those flags are accurate but they point at a file
+# unrelated to the work that produced them.
+results_bundle (3)/
+
+# Working plans handed to the agent for a session. Not deliverables and not
+# documentation: they describe what to build, and the build's record is
+# DECISIONS.md plus git log. Ignored rather than committed for the same reason
+# as the entry above -- provenance() flags an artifact dirty from ANY untracked
+# path, so a plan file sitting here would stamp dirty: true on every number
+# generated while it does.
+implementation.md

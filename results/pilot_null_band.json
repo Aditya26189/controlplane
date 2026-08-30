@@ -1,0 +1,470 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-30T01:15:40+00:00",
+    "git_commit": "f10302d740f89b64f3d03df2397883621a07b380",
+    "git_branch": "fix/envelope-units-and-null-band",
+    "dirty": false,
+    "dirty_paths": [],
+    "dirty_excludes": "results",
+    "python": "3.12.10",
+    "libraries": {
+      "torch": "2.9.1+cpu",
+      "transformers": "5.8.0",
+      "scikit-learn": "1.7.2",
+      "numpy": "2.2.6",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "statsmodels": "0.14.6",
+      "presidio-analyzer": "2.2.364",
+      "bitsandbytes": "0.49.2"
+    },
+    "device": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
+      "cuda_available": false,
+      "device_name": "cpu"
+    },
+    "config_hash": "ae6eec9d1f8897af",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "workload": {
+        "name": "enterprise-3pct",
+        "monthly_interactions": 200000,
+        "base_error_rate": 0.03,
+        "review_minutes_per_item": 3.0,
+        "reviewer_monthly_cost_inr": 85000.0,
+        "reviewer_productive_hours": 160.0,
+        "measured_tpr": 0.1416,
+        "measured_fpr": 0.011
+      },
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ],
+        "prefill_chunk_tokens": 2048
+      },
+      "probe": {
+        "aggregations": [
+          "mean_pool",
+          "max_rolling_means",
+          "last_token"
+        ],
+        "rolling_window": 64,
+        "rolling_stride": 32,
+        "standardize": true,
+        "class_weight": "balanced",
+        "C_grid": [
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "evalsets": [
+        {
+          "id": "triviaqa-600",
+          "pad_tokens": null
+        },
+        {
+          "id": "triviaqa-longctx-600",
+          "pad_tokens": [
+            4000,
+            16000
+          ]
+        },
+        {
+          "id": "hinglish-pii-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "hard-negatives-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "canary-20",
+          "pad_tokens": null
+        }
+      ],
+      "validation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_n_test": 200,
+        "min_auroc_lower_ci": 0.55,
+        "warrant_ttl_hours": 24,
+        "controls": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature",
+          "canary",
+          "determinism"
+        ],
+        "null_control_band": [
+          0.45,
+          0.55
+        ],
+        "null_control_min_repeats": 8,
+        "null_control_max_repeats": 200,
+        "calibration_tolerance": 0.25
+      },
+      "drift": {
+        "window_size": 200,
+        "psi_stable": 0.1,
+        "psi_significant": 0.25,
+        "mmd_permutations": 500,
+        "features": [
+          "token_length",
+          "script_mix",
+          "embedding_centroid_distance",
+          "reference_perplexity",
+          "category_mix"
+        ],
+        "max_false_alarm_rate": 0.05
+      },
+      "sampling": {
+        "allocation_month_one": "proportional",
+        "allocation_thereafter": "neyman",
+        "expected_design_effect": 0.67,
+        "score_bands": 4,
+        "double_label_fraction": 0.1,
+        "recall_margin_tiers": [
+          0.05,
+          0.02
+        ],
+        "blind_queue": true
+      },
+      "policy": {
+        "engine": "opa",
+        "fail_closed_on_missing_warrant": true,
+        "weighted_error": {
+          "w_fpr_benign": 50.0,
+          "w_fnr": 5.0,
+          "w_fpr_hard_negative": 2.0
+        }
+      },
+      "profiles": {
+        "customer_support": {
+          "inline_budget_ms": 200,
+          "min_recall": 0.1,
+          "max_fpr": 0.02,
+          "operating_point": "P-customer-support",
+          "target_flag_rate": 0.1,
+          "on_calibration_drift": "REFUSE",
+          "calibration_sensitivity": 0.25
+        },
+        "internal_knowledge": {
+          "inline_budget_ms": 500,
+          "min_recall": 0.25,
+          "max_fpr": 0.05,
+          "operating_point": "P-internal-knowledge",
+          "target_flag_rate": 0.2,
+          "on_calibration_drift": "WIDEN_BUDGET",
+          "calibration_sensitivity": 0.25
+        },
+        "decision_support": {
+          "inline_budget_ms": 2000,
+          "min_recall": 0.5,
+          "max_fpr": 0.1,
+          "operating_point": "P-decision-support",
+          "target_flag_rate": 0.5,
+          "on_calibration_drift": "IGNORE",
+          "calibration_sensitivity": 0.25
+        }
+      },
+      "detectors": {
+        "presidio_configs": [
+          "stock",
+          "enabled",
+          "enabled_plus_custom"
+        ],
+        "qwen3guard": "Qwen/Qwen3Guard-Gen-0.6B"
+      },
+      "store": {
+        "path": "results/controlplane.db",
+        "retention_days": 400,
+        "hash_chain": true
+      },
+      "paths": {
+        "results_dir": "results",
+        "evalsets_dir": "evalsets",
+        "policies_dir": "policies"
+      }
+    }
+  },
+  "quantity": "pilot score IQR / reference test-split score IQR",
+  "reference_eval_set_id": "triviaqa-2400-t960",
+  "n_reference": 960,
+  "frozen_threshold": 0.439,
+  "frozen_threshold_source": "controlplane/evalsets/banking.py SATURATION_IQR_RATIO, derived by hand in the correction to DECISIONS 090 at 12 clusters",
+  "effective_n_is_clusters": "The pilot is 24 items over 12 questions and the two items of a question share it, so the effective n is 12. Simulating at 24 gives a p5 of about 0.60 and would call a healthy pilot saturated.",
+  "null_band": {
+    "normal/n12": {
+      "n_pilot": 12,
+      "n_reference": 960,
+      "shape": "normal",
+      "repeats": 20000,
+      "p2_5": 0.39425894735352585,
+      "p5": 0.4537717528169404,
+      "p50": 0.8684995723714466,
+      "p95": 1.4308176793711513,
+      "p97_5": 1.5402278375382539,
+      "false_alarm_rate": 0.0424,
+      "threshold": 0.439
+    },
+    "normal/n24": {
+      "n_pilot": 24,
+      "n_reference": 960,
+      "shape": "normal",
+      "repeats": 20000,
+      "p2_5": 0.5473586074781691,
+      "p5": 0.6018339375180948,
+      "p50": 0.9319943210051654,
+      "p95": 1.3406002514321396,
+      "p97_5": 1.429155309256347,
+      "false_alarm_rate": 0.0052,
+      "threshold": 0.439
+    },
+    "normal/n30": {
+      "n_pilot": 30,
+      "n_reference": 960,
+      "shape": "normal",
+      "repeats": 20000,
+      "p2_5": 0.5865024011047753,
+      "p5": 0.6376264978648052,
+      "p50": 0.9472006960399508,
+      "p95": 1.315300656811309,
+      "p97_5": 1.3977302068881934,
+      "false_alarm_rate": 0.0017,
+      "threshold": 0.439
+    },
+    "normal/n60": {
+      "n_pilot": 60,
+      "n_reference": 960,
+      "shape": "normal",
+      "repeats": 20000,
+      "p2_5": 0.6992848740121822,
+      "p5": 0.7429881466574914,
+      "p50": 0.974044638380902,
+      "p95": 1.2389323832144201,
+      "p97_5": 1.2934265547004637,
+      "false_alarm_rate": 0.0,
+      "threshold": 0.439
+    },
+    "normal/n120": {
+      "n_pilot": 120,
+      "n_reference": 960,
+      "shape": "normal",
+      "repeats": 20000,
+      "p2_5": 0.7874041678885659,
+      "p5": 0.8169008734547587,
+      "p50": 0.9870012538928522,
+      "p95": 1.181867541100842,
+      "p97_5": 1.223331859259481,
+      "false_alarm_rate": 0.0,
+      "threshold": 0.439
+    },
+    "logistic/n12": {
+      "n_pilot": 12,
+      "n_reference": 960,
+      "shape": "logistic",
+      "repeats": 20000,
+      "p2_5": 0.39378262492031363,
+      "p5": 0.45615162709074397,
+      "p50": 0.878475783492962,
+      "p95": 1.483430052147151,
+      "p97_5": 1.6094028941020375,
+      "false_alarm_rate": 0.04195,
+      "threshold": 0.439
+    },
+    "logistic/n24": {
+      "n_pilot": 24,
+      "n_reference": 960,
+      "shape": "logistic",
+      "repeats": 20000,
+      "p2_5": 0.5438807453901148,
+      "p5": 0.5962572256681757,
+      "p50": 0.939198008935503,
+      "p95": 1.3751183189908378,
+      "p97_5": 1.4702112142468722,
+      "false_alarm_rate": 0.0042,
+      "threshold": 0.439
+    },
+    "logistic/n30": {
+      "n_pilot": 30,
+      "n_reference": 960,
+      "shape": "logistic",
+      "repeats": 20000,
+      "p2_5": 0.5835420116295816,
+      "p5": 0.6350161545006927,
+      "p50": 0.9503781045587727,
+      "p95": 1.3401623047179512,
+      "p97_5": 1.4273072481210787,
+      "false_alarm_rate": 0.0021,
+      "threshold": 0.439
+    },
+    "logistic/n60": {
+      "n_pilot": 60,
+      "n_reference": 960,
+      "shape": "logistic",
+      "repeats": 20000,
+      "p2_5": 0.6938807351114461,
+      "p5": 0.737517917741449,
+      "p50": 0.977159746835724,
+      "p95": 1.2558783226741572,
+      "p97_5": 1.314794128732952,
+      "false_alarm_rate": 0.0,
+      "threshold": 0.439
+    },
+    "logistic/n120": {
+      "n_pilot": 120,
+      "n_reference": 960,
+      "shape": "logistic",
+      "repeats": 20000,
+      "p2_5": 0.7748217194701718,
+      "p5": 0.8071866121529608,
+      "p50": 0.9892987953831363,
+      "p95": 1.191439604225958,
+      "p97_5": 1.23566338144937,
+      "false_alarm_rate": 0.0,
+      "threshold": 0.439
+    },
+    "beta2_2/n12": {
+      "n_pilot": 12,
+      "n_reference": 960,
+      "shape": "beta2_2",
+      "repeats": 20000,
+      "p2_5": 0.39932399699011817,
+      "p5": 0.45868207809073214,
+      "p50": 0.8570676983495517,
+      "p95": 1.3460085373082553,
+      "p97_5": 1.4460669532130157,
+      "false_alarm_rate": 0.0414,
+      "threshold": 0.439
+    },
+    "beta2_2/n24": {
+      "n_pilot": 24,
+      "n_reference": 960,
+      "shape": "beta2_2",
+      "repeats": 20000,
+      "p2_5": 0.5528090416263169,
+      "p5": 0.6091982760196574,
+      "p50": 0.9289177354804319,
+      "p95": 1.2917460757961237,
+      "p97_5": 1.365761602085789,
+      "false_alarm_rate": 0.00335,
+      "threshold": 0.439
+    },
+    "beta2_2/n30": {
+      "n_pilot": 30,
+      "n_reference": 960,
+      "shape": "beta2_2",
+      "repeats": 20000,
+      "p2_5": 0.5968195094720491,
+      "p5": 0.6472199863520695,
+      "p50": 0.943262832395825,
+      "p95": 1.2755124432022964,
+      "p97_5": 1.3415582796524999,
+      "false_alarm_rate": 0.00085,
+      "threshold": 0.439
+    },
+    "beta2_2/n60": {
+      "n_pilot": 60,
+      "n_reference": 960,
+      "shape": "beta2_2",
+      "repeats": 20000,
+      "p2_5": 0.7075594221690062,
+      "p5": 0.7488152116341481,
+      "p50": 0.9695982476326777,
+      "p95": 1.2163693952319925,
+      "p97_5": 1.2638940349284171,
+      "false_alarm_rate": 0.0,
+      "threshold": 0.439
+    },
+    "beta2_2/n120": {
+      "n_pilot": 120,
+      "n_reference": 960,
+      "shape": "beta2_2",
+      "repeats": 20000,
+      "p2_5": 0.7941389148505422,
+      "p5": 0.8230086689449255,
+      "p50": 0.986561021540282,
+      "p95": 1.164738053517771,
+      "p97_5": 1.2006503142670175,
+      "false_alarm_rate": 0.0,
+      "threshold": 0.439
+    }
+  },
+  "power_frozen_threshold": {
+    "n12/collapse1.0": 0.0424,
+    "n12/collapse0.8": 0.11145,
+    "n12/collapse0.6": 0.3127,
+    "n12/collapse0.5": 0.5124,
+    "n12/collapse0.4": 0.7674,
+    "n24/collapse1.0": 0.0052,
+    "n24/collapse0.8": 0.0253,
+    "n24/collapse0.6": 0.1692,
+    "n24/collapse0.5": 0.4019,
+    "n24/collapse0.4": 0.7573,
+    "n30/collapse1.0": 0.0017,
+    "n30/collapse0.8": 0.0145,
+    "n30/collapse0.6": 0.13745,
+    "n30/collapse0.5": 0.3689,
+    "n30/collapse0.4": 0.76,
+    "n60/collapse1.0": 0.0,
+    "n60/collapse0.8": 0.0003,
+    "n60/collapse0.6": 0.0419,
+    "n60/collapse0.5": 0.25715,
+    "n60/collapse0.4": 0.7821,
+    "n120/collapse1.0": 0.0,
+    "n120/collapse0.8": 0.0,
+    "n120/collapse0.6": 0.0061,
+    "n120/collapse0.5": 0.1532,
+    "n120/collapse0.4": 0.83005
+  },
+  "power_recalibrated_threshold": {
+    "n12/collapse1.0": 0.05,
+    "n12/collapse0.8": 0.12745,
+    "n12/collapse0.6": 0.34295,
+    "n12/collapse0.5": 0.5511,
+    "n12/collapse0.4": 0.80005,
+    "n24/collapse1.0": 0.05,
+    "n24/collapse0.8": 0.19665,
+    "n24/collapse0.6": 0.6199,
+    "n24/collapse0.5": 0.8699,
+    "n24/collapse0.4": 0.98655,
+    "n30/collapse1.0": 0.05,
+    "n30/collapse0.8": 0.2276,
+    "n30/collapse0.6": 0.7068,
+    "n30/collapse0.5": 0.9301,
+    "n30/collapse0.4": 0.9976,
+    "n60/collapse1.0": 0.05,
+    "n60/collapse0.8": 0.3801,
+    "n60/collapse0.6": 0.94975,
+    "n60/collapse0.5": 0.99885,
+    "n60/collapse0.4": 1.0,
+    "n120/collapse1.0": 0.05,
+    "n120/collapse0.8": 0.6194,
+    "n120/collapse0.6": 0.9987,
+    "n120/collapse0.5": 1.0,
+    "n120/collapse0.4": 1.0
+  },
+  "recalibrated_threshold": {
+    "n12": 0.4537717528169404,
+    "n24": 0.6018339375180948,
+    "n30": 0.6376264978648052,
+    "n60": 0.7429881466574914,
+    "n120": 0.8169008734547587
+  },
+  "collapse_is": "a multiplicative shrinkage of the pilot's score spread about its median. collapse=1.0 is the null, so that column is the false-alarm rate rather than power.",
+  "preregistered_in": "DECISIONS.md 090 (corrected), 101, 103"
+}

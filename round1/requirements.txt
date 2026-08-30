@@ -1,0 +1,18 @@
+# Pinned to lower bounds, not exact versions: the reference environment is a
+# free Colab/Kaggle T4 image whose preinstalled stack moves. Everything here is
+# MIT/Apache-2.0/BSD — CLAUDE.md requires the stack stay open and self-hostable.
+torch>=2.1
+transformers>=4.45
+accelerate>=0.30
+bitsandbytes>=0.43        # NF4 quantisation; GPU-only, import is optional on CPU
+datasets>=2.19
+scikit-learn>=1.3
+numpy>=1.24
+pandas>=2.0
+pyarrow>=14.0             # parquet backend for splits/labels
+scipy>=1.10
+matplotlib>=3.7
+joblib>=1.3
+PyYAML>=6.0
+tqdm>=4.65
+pytest>=7.4

@@ -1,0 +1,601 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-08-27T12:54:58+00:00",
+    "git_commit": "dd10bf375082fdea65391512bdf3b7c15987708e",
+    "git_branch": "main",
+    "dirty": true,
+    "dirty_paths": [
+      "results_bundle (3)",
+      "round 2/CLAUDE.md",
+      "round 2/DECISIONS.md",
+      "round 2/config.yaml",
+      "round 2/scripts/run.sh",
+      "round 2/src/config.py",
+      "round 2/src/matrix/matrix.py",
+      "round 2/src/model/calibration.py",
+      "round 2/src/model/enums.py",
+      "round 2/src/model/warrant.py",
+      "round 2/src/report/results.py",
+      "round 2/src/validation/calibration.py",
+      "round 2/src/validation/issuance.py",
+      "round 2/tests/test_calibration.py"
+    ],
+    "dirty_excludes": "results",
+    "python": "3.12.10",
+    "libraries": {
+      "torch": "2.9.1+cpu",
+      "transformers": "5.8.0",
+      "scikit-learn": "1.7.2",
+      "numpy": "2.2.6",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "statsmodels": "0.14.6",
+      "presidio-analyzer": null,
+      "bitsandbytes": "0.49.2"
+    },
+    "device": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
+      "cuda_available": false,
+      "device_name": "cpu"
+    },
+    "config_hash": "4eb9f8bd410cb192",
+    "seed": 1729,
+    "config": {
+      "seed": 1729,
+      "workload": {
+        "name": "enterprise-3pct",
+        "monthly_interactions": 200000,
+        "base_error_rate": 0.03,
+        "review_minutes_per_item": 3.0,
+        "reviewer_monthly_cost_inr": 85000.0,
+        "reviewer_productive_hours": 160.0,
+        "measured_tpr": 0.1416,
+        "measured_fpr": 0.011
+      },
+      "model": {
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "quantization": "nf4",
+        "layer_fractions": [
+          0.29,
+          0.39,
+          0.5,
+          0.61,
+          0.71,
+          0.82,
+          0.93
+        ],
+        "prefill_chunk_tokens": 2048
+      },
+      "probe": {
+        "aggregations": [
+          "mean_pool",
+          "max_rolling_means",
+          "last_token"
+        ],
+        "rolling_window": 64,
+        "rolling_stride": 32,
+        "standardize": true,
+        "class_weight": "balanced",
+        "C_grid": [
+          0.0001,
+          0.001,
+          0.01,
+          0.1,
+          1.0
+        ],
+        "positive_class": "incorrect"
+      },
+      "evalsets": [
+        {
+          "id": "triviaqa-600",
+          "pad_tokens": null
+        },
+        {
+          "id": "triviaqa-longctx-600",
+          "pad_tokens": [
+            4000,
+            16000
+          ]
+        },
+        {
+          "id": "hinglish-pii-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "hard-negatives-200",
+          "pad_tokens": null
+        },
+        {
+          "id": "canary-20",
+          "pad_tokens": null
+        }
+      ],
+      "validation": {
+        "bootstrap_samples": 1000,
+        "ci": 0.95,
+        "min_n_test": 200,
+        "min_auroc_lower_ci": 0.55,
+        "warrant_ttl_hours": 24,
+        "controls": [
+          "padding_fault",
+          "label_shuffle",
+          "null_feature",
+          "canary",
+          "determinism"
+        ],
+        "null_control_band": [
+          0.45,
+          0.55
+        ],
+        "null_control_min_repeats": 8,
+        "null_control_max_repeats": 200,
+        "calibration_tolerance": 0.25
+      },
+      "drift": {
+        "window_size": 200,
+        "psi_stable": 0.1,
+        "psi_significant": 0.25,
+        "mmd_permutations": 500,
+        "features": [
+          "token_length",
+          "script_mix",
+          "embedding_centroid_distance",
+          "reference_perplexity",
+          "category_mix"
+        ]
+      },
+      "sampling": {
+        "allocation_month_one": "proportional",
+        "allocation_thereafter": "neyman",
+        "expected_design_effect": 0.67,
+        "score_bands": 4,
+        "double_label_fraction": 0.1,
+        "recall_margin_tiers": [
+          0.05,
+          0.02
+        ],
+        "blind_queue": true
+      },
+      "policy": {
+        "engine": "opa",
+        "fail_closed_on_missing_warrant": true,
+        "weighted_error": {
+          "w_fpr_benign": 50.0,
+          "w_fnr": 5.0,
+          "w_fpr_hard_negative": 2.0
+        }
+      },
+      "profiles": {
+        "customer_support": {
+          "inline_budget_ms": 200,
+          "min_recall": 0.1,
+          "max_fpr": 0.02
+        },
+        "internal_knowledge": {
+          "inline_budget_ms": 500,
+          "min_recall": 0.25,
+          "max_fpr": 0.05
+        },
+        "decision_support": {
+          "inline_budget_ms": 2000,
+          "min_recall": 0.5,
+          "max_fpr": 0.1
+        }
+      },
+      "detectors": {
+        "presidio_configs": [
+          "stock",
+          "enabled",
+          "enabled_plus_custom"
+        ],
+        "qwen3guard": "Qwen/Qwen3Guard-Gen-0.6B"
+      },
+      "store": {
+        "path": "results/controlplane.db",
+        "retention_days": 400,
+        "hash_chain": true
+      },
+      "paths": {
+        "results_dir": "results",
+        "evalsets_dir": "evalsets",
+        "policies_dir": "policies"
+      }
+    }
+  },
+  "eval_set_id": "triviaqa-600",
+  "envelope_id": "sha256:e77c64f908491ad1",
+  "data_source": "measured",
+  "base_rate": 0.46166666666666667,
+  "variants": [
+    "T1-last_token",
+    "T1-max_rolling_means",
+    "T1-mean_pool"
+  ],
+  "rungs": {
+    "T1-last_token": {
+      "access_tier": "T1_ACTIVATIONS",
+      "warrant_status": "VALID",
+      "status_reason": null,
+      "n_test": 600,
+      "C": 0.001,
+      "threshold": 0.9403371394300616,
+      "metrics": {
+        "auroc": {
+          "name": "auroc",
+          "value": 0.8255524136312324,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.793354746771496,
+          "ci_high": 0.8567162724940566,
+          "ci_level": 0.95,
+          "unit": "ratio",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "recall": {
+          "name": "recall",
+          "value": 0.07942238267148015,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.04958385655462431,
+          "ci_high": 0.11151877240822096,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "precision": {
+          "name": "precision",
+          "value": 0.88,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.75,
+          "ci_high": 1.0,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "flag_rate": {
+          "name": "flag_rate",
+          "value": 0.041666666666666664,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.02666666666666667,
+          "ci_high": 0.058333333333333334,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "confirmed_errors": {
+          "name": "confirmed_errors",
+          "value": 22.0,
+          "kind": "EXACT",
+          "n": 25,
+          "ci_low": null,
+          "ci_high": null,
+          "ci_level": null,
+          "unit": "count",
+          "estimator": null
+        },
+        "fpr_hard_negatives": null,
+        "base_rate": 0.46166666666666667,
+        "extra": [
+          {
+            "name": "fpr",
+            "value": 0.009287925696594427,
+            "kind": "ESTIMATED",
+            "n": 600,
+            "ci_low": 0.0,
+            "ci_high": 0.020663046393134876,
+            "ci_level": 0.95,
+            "unit": "rate",
+            "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+          }
+        ]
+      },
+      "controls": [
+        {
+          "control": "padding_fault",
+          "passed": true,
+          "measured": 0.999888073970217,
+          "expected": "left-padded vs unbatched: rel-L2 <= 0.1, cosine >= 0.999; right-padded must be rejected",
+          "margin": 0.0008880739702169516,
+          "detail": "left-padded: rel-L2 1.49e-02, cosine 0.999888 -> matches unbatched. right-padded (deliberate fault): rel-L2 0.741, cosine 0.5664 -> REJECTED as required. 4 prompts, max 134 pad tokens.",
+          "applicable": true
+        },
+        {
+          "control": "label_shuffle",
+          "passed": true,
+          "measured": 0.5043840218037439,
+          "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
+          "margin": 0.04561597819625618,
+          "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.5044. 8 repeats; null spread sd 0.0164, SE of mean 0.0058; band +/-0.05 is +/-8.64 SE; measured spread is 0.7x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal.",
+          "applicable": true
+        },
+        {
+          "control": "null_feature",
+          "passed": true,
+          "measured": 0.49154039412734557,
+          "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
+          "margin": 0.04154039412734556,
+          "detail": "features replaced by Gaussian noise matched per column in mean and variance; labels intact; mean AUROC 0.4915. 8 repeats; null spread sd 0.0226, SE of mean 0.0080; band +/-0.05 is +/-6.25 SE; measured spread is 1.0x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031).",
+          "applicable": true
+        },
+        {
+          "control": "canary",
+          "passed": true,
+          "measured": 1.0,
+          "expected": "recall == 1.0",
+          "margin": 0.0,
+          "detail": "20/20 canary positives caught at threshold 0.940337",
+          "applicable": true
+        },
+        {
+          "control": "determinism",
+          "passed": true,
+          "measured": 0.0,
+          "expected": "bit-identical scores across two runs at one seed",
+          "margin": 0.0,
+          "detail": "max |difference| = 0.000e+00 over 600 scores; coefficients identical",
+          "applicable": true
+        }
+      ],
+      "duration_seconds": 20.083963599987328
+    },
+    "T1-max_rolling_means": {
+      "access_tier": "T1_ACTIVATIONS",
+      "warrant_status": "VALID",
+      "status_reason": null,
+      "n_test": 600,
+      "C": 0.001,
+      "threshold": 0.9023906031996711,
+      "metrics": {
+        "auroc": {
+          "name": "auroc",
+          "value": 0.7853382660303339,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.7501286526275482,
+          "ci_high": 0.8207605168283456,
+          "ci_level": 0.95,
+          "unit": "ratio",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "recall": {
+          "name": "recall",
+          "value": 0.08303249097472924,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.0535666624300966,
+          "ci_high": 0.11744295583001883,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "precision": {
+          "name": "precision",
+          "value": 0.92,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.7998275862068968,
+          "ci_high": 1.0,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "flag_rate": {
+          "name": "flag_rate",
+          "value": 0.041666666666666664,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.028291666666666705,
+          "ci_high": 0.058333333333333334,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "confirmed_errors": {
+          "name": "confirmed_errors",
+          "value": 23.0,
+          "kind": "EXACT",
+          "n": 25,
+          "ci_low": null,
+          "ci_high": null,
+          "ci_level": null,
+          "unit": "count",
+          "estimator": null
+        },
+        "fpr_hard_negatives": null,
+        "base_rate": 0.46166666666666667,
+        "extra": [
+          {
+            "name": "fpr",
+            "value": 0.006191950464396285,
+            "kind": "ESTIMATED",
+            "n": 600,
+            "ci_low": 0.0,
+            "ci_high": 0.015723270440251572,
+            "ci_level": 0.95,
+            "unit": "rate",
+            "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+          }
+        ]
+      },
+      "controls": [
+        {
+          "control": "padding_fault",
+          "passed": true,
+          "measured": 0.999888073970217,
+          "expected": "left-padded vs unbatched: rel-L2 <= 0.1, cosine >= 0.999; right-padded must be rejected",
+          "margin": 0.0008880739702169516,
+          "detail": "left-padded: rel-L2 1.49e-02, cosine 0.999888 -> matches unbatched. right-padded (deliberate fault): rel-L2 0.741, cosine 0.5664 -> REJECTED as required. 4 prompts, max 134 pad tokens.",
+          "applicable": true
+        },
+        {
+          "control": "label_shuffle",
+          "passed": true,
+          "measured": 0.49993971444273716,
+          "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
+          "margin": 0.04993971444273715,
+          "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.4999. 8 repeats; null spread sd 0.0189, SE of mean 0.0067; band +/-0.05 is +/-7.49 SE; measured spread is 0.8x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal.",
+          "applicable": true
+        },
+        {
+          "control": "null_feature",
+          "passed": true,
+          "measured": 0.49154039412734557,
+          "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
+          "margin": 0.04154039412734556,
+          "detail": "features replaced by Gaussian noise matched per column in mean and variance; labels intact; mean AUROC 0.4915. 8 repeats; null spread sd 0.0226, SE of mean 0.0080; band +/-0.05 is +/-6.25 SE; measured spread is 1.0x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031).",
+          "applicable": true
+        },
+        {
+          "control": "canary",
+          "passed": true,
+          "measured": 1.0,
+          "expected": "recall == 1.0",
+          "margin": 0.0,
+          "detail": "20/20 canary positives caught at threshold 0.902391",
+          "applicable": true
+        },
+        {
+          "control": "determinism",
+          "passed": true,
+          "measured": 0.0,
+          "expected": "bit-identical scores across two runs at one seed",
+          "margin": 0.0,
+          "detail": "max |difference| = 0.000e+00 over 600 scores; coefficients identical",
+          "applicable": true
+        }
+      ],
+      "duration_seconds": 17.592187899863347
+    },
+    "T1-mean_pool": {
+      "access_tier": "T1_ACTIVATIONS",
+      "warrant_status": "VALID",
+      "status_reason": null,
+      "n_test": 600,
+      "C": 0.001,
+      "threshold": 0.9050946376086847,
+      "metrics": {
+        "auroc": {
+          "name": "auroc",
+          "value": 0.7854612108951504,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.7499728749194725,
+          "ci_high": 0.8211107300292506,
+          "ci_level": 0.95,
+          "unit": "ratio",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "recall": {
+          "name": "recall",
+          "value": 0.07942238267148015,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.050170578358875444,
+          "ci_high": 0.11340981967382684,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "precision": {
+          "name": "precision",
+          "value": 0.9166666666666666,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.785636645962733,
+          "ci_high": 1.0,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "flag_rate": {
+          "name": "flag_rate",
+          "value": 0.04,
+          "kind": "ESTIMATED",
+          "n": 600,
+          "ci_low": 0.025,
+          "ci_high": 0.056666666666666664,
+          "ci_level": 0.95,
+          "unit": "rate",
+          "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+        },
+        "confirmed_errors": {
+          "name": "confirmed_errors",
+          "value": 22.0,
+          "kind": "EXACT",
+          "n": 24,
+          "ci_low": null,
+          "ci_high": null,
+          "ci_level": null,
+          "unit": "count",
+          "estimator": null
+        },
+        "fpr_hard_negatives": null,
+        "base_rate": 0.46166666666666667,
+        "extra": [
+          {
+            "name": "fpr",
+            "value": 0.006191950464396285,
+            "kind": "ESTIMATED",
+            "n": 600,
+            "ci_low": 0.0,
+            "ci_high": 0.015723270440251572,
+            "ci_level": 0.95,
+            "unit": "rate",
+            "estimator": "bootstrap-percentile-1000 over questions, seed=1729"
+          }
+        ]
+      },
+      "controls": [
+        {
+          "control": "padding_fault",
+          "passed": true,
+          "measured": 0.999888073970217,
+          "expected": "left-padded vs unbatched: rel-L2 <= 0.1, cosine >= 0.999; right-padded must be rejected",
+          "margin": 0.0008880739702169516,
+          "detail": "left-padded: rel-L2 1.49e-02, cosine 0.999888 -> matches unbatched. right-padded (deliberate fault): rel-L2 0.741, cosine 0.5664 -> REJECTED as required. 4 prompts, max 134 pad tokens.",
+          "applicable": true
+        },
+        {
+          "control": "label_shuffle",
+          "passed": true,
+          "measured": 0.4997392299150955,
+          "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
+          "margin": 0.049739229915095495,
+          "detail": "train labels permuted (n=1200), holdout labels intact (n=600); mean AUROC 0.4997. 8 repeats; null spread sd 0.0192, SE of mean 0.0068; band +/-0.05 is +/-7.35 SE; measured spread is 0.8x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031). Pipeline produces a null result when there is no signal.",
+          "applicable": true
+        },
+        {
+          "control": "null_feature",
+          "passed": true,
+          "measured": 0.49154039412734557,
+          "expected": "mean AUROC over repeats in [0.45, 0.55], with SE of the mean <= 0.0250",
+          "margin": 0.04154039412734556,
+          "detail": "features replaced by Gaussian noise matched per column in mean and variance; labels intact; mean AUROC 0.4915. 8 repeats; null spread sd 0.0226, SE of mean 0.0080; band +/-0.05 is +/-6.25 SE; measured spread is 1.0x the Hanley-McNeil closed form (0.0237), which is why the closed form is not the reference (DECISIONS.md 031).",
+          "applicable": true
+        },
+        {
+          "control": "canary",
+          "passed": true,
+          "measured": 1.0,
+          "expected": "recall == 1.0",
+          "margin": 0.0,
+          "detail": "20/20 canary positives caught at threshold 0.905095",
+          "applicable": true
+        },
+        {
+          "control": "determinism",
+          "passed": true,
+          "measured": 0.0,
+          "expected": "bit-identical scores across two runs at one seed",
+          "margin": 0.0,
+          "detail": "max |difference| = 0.000e+00 over 600 scores; coefficients identical",
+          "applicable": true
+        }
+      ],
+      "duration_seconds": 17.319921100046486
+    }
+  }
+}

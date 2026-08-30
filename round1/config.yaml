@@ -1,0 +1,110 @@
+# ControlPlane cascade-economics experiment
+# Every knob lives here. Nothing in src/ hardcodes these values.
+
+seed: 1729
+
+model:
+  name: "Qwen/Qwen2.5-7B-Instruct"
+  quantization: "nf4"          # nf4 | none
+  dtype: "bfloat16"            # compute dtype for quantized layers
+  device_map: "auto"
+  # Fractional depths through the transformer stack. Resolved to absolute
+  # indices at load time against model.config.num_hidden_layers, so the same
+  # config transfers across model sizes.
+  # Predictive power saturates mid-stack; this brackets that region.
+  layer_fractions: [0.29, 0.39, 0.50, 0.61, 0.71, 0.82, 0.93]
+
+data:
+  dataset: "mandarjoshi/trivia_qa"
+  config: "rc.nocontext"       # no-context: forces parametric recall
+  split: "validation"
+  n_examples: 3000
+  train_frac: 0.6
+  val_frac: 0.2
+  test_frac: 0.2
+  dedup_questions: true
+
+prompt:
+  system: "You are a helpful assistant. Answer the question concisely."
+  add_generation_prompt: true
+
+equivalence_check:
+  # CLAUDE.md invariant 4, verified numerically before every extraction.
+  # Criteria are SCALE-INVARIANT, not absolute. Residual-stream activations run
+  # to magnitudes in the hundreds, where one bfloat16 rounding step is ~1.0 --
+  # so an absolute tolerance rejects healthy runs on arithmetic noise alone.
+  batch: 4                     # prompts, chosen to span the length distribution
+  # Measured separation on a 4-layer fp32 model: left padding gives relative L2
+  # 1.8e-07 and cosine 1.000000000; right padding gives 1.36 and 0.036. In
+  # bfloat16 the left-padding side rises to ~1e-2 relative L2 from accumulated
+  # rounding, so the limits sit between the two regimes, and cosine carries most
+  # of the discrimination. positive_control is what makes a permissive-looking
+  # limit safe: if either limit ever accepts right padding, the run stops.
+  relative_tolerance: 0.10     # max per-row ||batched - unbatched|| / ||unbatched||
+  min_cosine: 0.999            # min per-row cosine(batched, unbatched)
+  positive_control: true       # prove right padding IS rejected, every run
+
+generation:
+  max_new_tokens: 32           # TriviaQA answers are short spans
+  do_sample: false             # greedy — labels must be deterministic
+  batch_size: 8                # T4 with NF4 7B; lower to 4 if OOM
+  sort_by_length: true         # cuts padding waste; order is restored after
+
+labeling:
+  min_alias_len_for_substring: 3   # shorter aliases need whole-token match
+  record_strict_em: true           # secondary column for the labelling audit
+  base_rate_min: 0.25              # extraction aborts outside this band
+  base_rate_max: 0.85
+
+probe:
+  type: "logistic_regression"
+  standardize: true            # fit on train only
+  class_weight: "balanced"
+  max_iter: 2000
+  # Extended downward in DECISIONS.md 016: the first run selected the
+  # smallest value for all seven layers, so the optimum was at the edge of
+  # the search rather than inside it.
+  C_grid: [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0]
+  positive_class: "incorrect"  # polarity: 1 == the answer is wrong
+
+economics:
+  target_flag_rate: 0.05       # threshold picked on val to hit this
+  judge_accuracy: 1.0          # cancels out of lift; kept explicit
+  n_responses: 1000000         # for the worked table
+  reference_error_rate: 0.03   # illustrative only; lift is independent of it
+  # Measured lift is bounded above by 1/base_rate (DECISIONS.md 015), so the
+  # number obtained on a hard benchmark understates what the same probe would
+  # deliver on rarer errors. These base rates are re-evaluated against the
+  # measured ROC and reported as an explicitly labelled PROJECTION.
+  projection_base_rates: [0.10, 0.05, 0.03, 0.01]
+
+evaluation:
+  bootstrap_samples: 1000
+  ci: 0.95
+  min_auroc_to_proceed: 0.55   # below this, stop and report — do not tune
+
+latency:
+  probe_timing_repeats: 1000
+
+abstention:
+  patterns:
+    - "i don't know"
+    - "i do not know"
+    - "i'm not sure"
+    - "i am not sure"
+    - "i cannot"
+    - "unable to"
+    - "no information"
+  min_rate_to_report: 0.02     # below this, mark underpowered
+
+negative_control:              # Stage 6, optional
+  enabled: false
+  dataset: "gsm8k"
+  config: "main"
+  n_examples: 1000
+
+paths:
+  results_dir: "results"
+  activations: "results/activations.npz"
+  labels: "results/labels.parquet"
+  splits: "results/splits.parquet"
