@@ -878,13 +878,29 @@ from pathlib import Path
 
 sys.path.insert(0, "/kaggle/working/controlplane")
 
-SOURCE = Path("/kaggle/input/controlplane-reference-caches")
-if not SOURCE.exists():
-    raise SystemExit(
-        f"{SOURCE} is not attached. Add Input -> Datasets -> "
-        "aditya103856/controlplane-reference-caches, then re-run. Refusing to "
-        "re-extract: that is the three-hour path this notebook replaces."
+# Do not assume the mount path. Kaggle derives the input directory from the
+# dataset's slug, and version 1 of this kernel died on a hardcoded
+# /kaggle/input/controlplane-reference-caches that did not exist -- with the
+# metadata correctly listing the dataset. Find the manifest instead, and print
+# what IS mounted so the next failure diagnoses itself.
+INPUT = Path("/kaggle/input")
+candidates = sorted(INPUT.glob("*/MANIFEST.json")) if INPUT.exists() else []
+if not candidates:
+    listing = (
+        "
+".join(f"    {d.name}/" for d in sorted(INPUT.iterdir()))
+        if INPUT.exists() else "    (/kaggle/input does not exist)"
     )
+    raise SystemExit(
+        "no attached dataset carries a MANIFEST.json. Add Input -> Datasets -> "
+        "aditya103856/controlplane-reference-caches, then re-run. Refusing to "
+        "re-extract: that is the three-hour path this notebook replaces.
+"
+        f"  what is mounted:
+{listing}"
+    )
+SOURCE = candidates[0].parent
+print("reference caches mounted at", SOURCE)
 
 manifest = json.loads((SOURCE / "MANIFEST.json").read_text())
 print("caches built from commit", manifest["built_from_commit"][:8])
