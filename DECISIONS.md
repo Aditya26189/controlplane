@@ -5307,3 +5307,51 @@ tier (`116`), and this. The rate is not falling, and the honest reading is that
 crosses it.** Every fix so far has been local. The general form — a check that
 a number in a rendered artifact traces to `config.yaml` or `results/` — is not
 built, and is the largest remaining hole in the discipline this project sells.
+
+## 118 - A claim about a dependency is checkable by running the dependency
+
+The demo wanted to say *"the library ships no recogniser for these identifier
+formats, in any configuration."* Strong claim, and **true** -- but it traced to
+a planning document and to nothing in this repository. Same import path as
+`DEFF 1.60` (`113`), the register's own provenance tier (`116`) and the refusal
+beat's budget (`117`). It would have been the sixth.
+
+Measured instead, by `scripts/17_presidio_coverage.py` into
+`results/presidio_coverage.json`:
+
+    presidio-analyzer 2.2.364
+    19 supported entity types
+    IN_* entities: 0
+    no recogniser for: UPI, IFSC, AADHAAR, PAN, MICR
+
+The claim survives contact with measurement, and is now stronger than the
+version that could not be cited: it is **five** identifier families, not two,
+and the count of India-specific entity types is **zero**.
+
+### Why this is a coverage claim, not a performance claim
+
+Stock recall on Hinglish PII is 0.1471 on the held-out set. That reads as a
+tuning problem -- pick a better threshold, add a pattern. It is not. **The
+recogniser does not exist to load**, so no threshold recovers it, and the fix
+was to write the recognisers rather than to tune anything.
+
+Separating the two is the difference between *"the tool underperforms here"*
+and *"the tool does not cover this at all"*. The second is the claim worth
+making and the one that needed evidence.
+
+### The rule this instance adds
+
+`113` said a number arriving from outside the repository is UNVALIDATED until
+it resolves to an artifact here. This adds the cheap special case: **when the
+outside claim is about a dependency, running the dependency is the artifact.**
+No briefing, no citation, no verification tier -- an import and a list.
+
+A test asserts the uncovered families stay uncovered, so if a future Presidio
+release adds them, the demo's narration fails in CI rather than on camera.
+
+### The one that did not survive
+
+*"A third of newly caught cases come from transcribing published specs"* was
+drafted alongside it and **cut**: it traces to no artifact, and unlike the
+coverage claim it is not checkable by running anything. Dropped rather than
+softened, per `115`.

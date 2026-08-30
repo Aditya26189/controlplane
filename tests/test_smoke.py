@@ -534,6 +534,8 @@ def test_every_script_has_a_smoke_test() -> None:
         "14_pilot_null_band.py",
         # test_smoke_pilot_seed_stability
         "15_pilot_seed_stability.py",
+        # test_smoke_presidio_coverage
+        "17_presidio_coverage.py",
         # test_smoke_the_smoke_check_itself
         "smoke.py",
         # test_smoke_verify_claims_only, test_verify_exits_non_zero_on_drift
@@ -948,3 +950,27 @@ def test_the_pilot_artifact_still_carries_its_scores() -> None:
     assert len(payload["scores"]["pilot"]) == 24
     assert len(payload["scores"]["question_ids"]) == 24
     assert payload["scores"]["reference_summary"]["n"] == 960
+
+
+def test_smoke_presidio_coverage(tmp_path: Path) -> None:
+    """`17_presidio_coverage.py` makes the "no recogniser exists" claim citable.
+
+    The claim was true and traced to nothing in this repository, which is the
+    import path DECISIONS 113 and 117 are about. A claim about a dependency is
+    checkable by running the dependency.
+    """
+    out = tmp_path / "presidio_coverage.json"
+    _run_bare(
+        "17_presidio_coverage.py",
+        "--config", str(PROJECT_ROOT / "config.yaml"),
+        "--out", str(out),
+    )
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["n_supported_entities"] > 0
+    assert payload["india_prefixed_entities"] == []
+    for family in ("UPI", "IFSC", "AADHAAR"):
+        assert family in payload["uncovered"], (
+            f"stock Presidio now covers {family}; the demo's coverage claim has "
+            "changed and the narration must change with it"
+        )
+    assert payload["presidio_version"] != "unknown"

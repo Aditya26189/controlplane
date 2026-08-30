@@ -230,6 +230,17 @@ def _beat_overlap(root: Path) -> Beat:
                 f"{run.get('detector_id', '')} (OUT OF SAMPLE)",
                 f"recall {_fmt_interval(recall)} -- {status}",
             ))
+    # The COVERAGE result, which is why stock recall is low. Not a tuning
+    # problem: the recognisers do not exist to load (DECISIONS 118).
+    coverage = _load(root, "presidio_coverage.json")
+    if coverage:
+        rows.append((
+            "stock Presidio coverage",
+            f"{coverage['n_supported_entities']} entity types, "
+            f"{len(coverage['india_prefixed_entities'])} of them Indian. "
+            f"No recogniser for: {', '.join(coverage['uncovered'])}",
+        ))
+
     if not rows:
         return Beat(
             4, "Hallucination and privacy overlap", "the two risks co-occur",
@@ -240,11 +251,11 @@ def _beat_overlap(root: Path) -> Beat:
         title="Hallucination and privacy in the same interaction",
         answers="a fabricated detail about a person is simultaneously a "
         "hallucination and a privacy concern",
-        rows=tuple(rows[:8]),
+        rows=tuple(rows[:9]),
         artifacts=(
             "results/pilot_run.json",
             "results/holdout/detectors.json",
-            "results/detectors.json",
+            "results/presidio_coverage.json",
         ),
         note=(
             "Recall is on hinglish-pii-200b, the HELD-OUT set -- 23 of 34 "
