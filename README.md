@@ -1,25 +1,74 @@
-# ControlPlane
+<div align="center">
 
-**A detector produces a score. A warrant is a separate, time-bounded,
-evidence-backed statement about what that score is worth on this distribution
-right now.** Everyone ships detectors. Almost nobody ships the second thing —
-so a guardrail that has quietly stopped working looks exactly like one that
-works, and the dashboard stays green either way. ControlPlane measures each
-detector on a named evaluation envelope, issues a warrant with bounds and an
-expiry when the evidence supports it, and **refuses one when it does not**;
-policy then reads the warrant rather than the score. It is the same idea as a
-TLS certificate: issued by something other than the server, bounded in time,
-revocable when the facts change — and nobody has ever thought the certificate
-makes the server good.
+<!-- Gradient banner line -->
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0d1117,50:1a1b27,100:2d333b&height=200&section=header&text=🛡️%20ControlPlane&fontSize=42&fontColor=e6edf3&animation=fadeIn&fontAlignY=35&desc=Warrant-Based%20Quality%20Assurance%20for%20LLM%20Guardrails&descSize=18&descAlignY=55&descColor=8b949e" width="100%" />
+
+<br/>
+
+**A detector produces a score. A warrant is a separate, time-bounded, evidence-backed statement about what that score is worth on this distribution right now.**
+
+<br/>
+
+<!-- Tech Stack Badges -->
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
+[![PyTorch](https://img.shields.io/badge/PyTorch-NF4-EE4C2C?style=flat&logo=pytorch&logoColor=white)](https://pytorch.org)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-Probe-F7931E?style=flat&logo=scikitlearn&logoColor=white)](https://scikit-learn.org)
+[![Qwen2.5-7B](https://img.shields.io/badge/Qwen2.5--7B-Instruct-7C3AED?style=flat)](https://huggingface.co/Qwen)
+[![Presidio](https://img.shields.io/badge/Presidio-PII-0078D4?style=flat&logo=microsoft&logoColor=white)](https://microsoft.github.io/presidio/)
+[![OPA/Rego](https://img.shields.io/badge/OPA-Rego_Policy-7D929E?style=flat)](https://www.openpolicyagent.org/)
+[![License MIT](https://img.shields.io/badge/License-MIT-22c55e?style=flat)](LICENSE)
+
+<br/>
+
+**Warrant Issuance · Detector Validation · Policy Composition · Drift Monitoring · Feasibility Bounds**
+
+<br/>
+
+[Quick Start](#-quickstart) •
+[Claim Table](#-the-claim-table) •
+[Architecture](#how-it-fits-together) •
+[Reproduction](#-reproduction) •
+[Documents](#-documents) •
+[Limitations](#%EF%B8%8F-limitations-and-open-items)
+
+<br/>
+
+<img src="https://img.shields.io/badge/Tests-771_passing-2da44e?style=for-the-badge&logo=pytest&logoColor=white" alt="771 tests" />
+&nbsp;
+<img src="https://img.shields.io/badge/Claims-31_verified-2da44e?style=for-the-badge" alt="31 claims verified" />
+&nbsp;
+<img src="https://img.shields.io/badge/AUROC-0.8256-6366f1?style=for-the-badge" alt="AUROC 0.8256" />
+&nbsp;
+<img src="https://img.shields.io/badge/GPU-T4_16GB-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="GPU T4" />
+
+</div>
+
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:0d1117,50:161b22,100:0d1117&height=2" width="100%" />
+
+<br/>
+
+Everyone ships detectors. Almost nobody ships the second thing — so a guardrail
+that has quietly stopped working looks exactly like one that works, and the
+dashboard stays green either way. ControlPlane measures each detector on a named
+evaluation envelope, issues a warrant with bounds and an expiry when the evidence
+supports it, and **refuses one when it does not**; policy then reads the warrant
+rather than the score. It is the same idea as a TLS certificate: issued by
+something other than the server, bounded in time, revocable when the facts
+change — and nobody has ever thought the certificate makes the server good.
+
+> [!NOTE]
+> **Built for the Accenture Innovation Challenge 2026** · Problem Statement 1 · *ControlPlane.ai*
+>
+> Team **Dominator** — Indian Institute of Technology Kharagpur
 
 ---
 
-## Quickstart
+## ⚡ Quickstart
 
-Under five minutes on a laptop. No GPU, no network after the clone.
+> Under five minutes on a laptop. No GPU, no network after the clone.
 
 ```bash
-git clone https://github.com/Aditya26189/controlplane.git
+git clone https://github.com/kksahu444/controlplane.git
 cd controlplane
 git fetch origin "refs/notes/*:refs/notes/*"     # see "Reading the history" below
 python -m venv .venv && . .venv/bin/activate     # Windows: .venv\Scripts\activate
@@ -35,36 +84,28 @@ from cached activations and reports SKIPPED without them.
 
 ---
 
-## What this is not
+## 🚫 What this is not
 
-Stating the scope is worth more than having it inferred.
+> Stating the scope is worth more than having it inferred.
 
-- **Not deployed.** No auth, no rate limiting, no HA, no deployment manifests.
-  There is no serving layer and adding one is explicitly out of scope.
-- **Not a verdict.** A detector is a trigger for spending an expensive check.
-  Nothing here blocks, filters or gates a user-facing response.
-- **Not a general result.** Measured on 2,400 TriviaQA items and hand-built PII
-  sets, one model family (Qwen2.5-7B-Instruct, NF4), no real production traffic.
-- **Not fully built.** Phase 9's action gate and Phase 6's price list were
-  specified and never written; five contract documents still cite a
-  `controlplane/economics/sizing.py` that does not exist. So **every cost,
-  headcount or ROI figure anywhere in this repository is a declared estimate**,
-  and says so. The feasibility bound below is the exception — it is derived from
-  measured rates and needs no cost model. `DECISIONS.md` 096 and 099, declared
-  in [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
-- **Not a claim about truthfulness.** The probe is a correlational classifier
-  over activations. It does not measure what a model believes.
+| | |
+|:---|:---|
+| 🔒 **Not deployed** | No auth, no rate limiting, no HA, no deployment manifests. There is no serving layer and adding one is explicitly out of scope. |
+| ⚖️ **Not a verdict** | A detector is a trigger for spending an expensive check. Nothing here blocks, filters or gates a user-facing response. |
+| 🔬 **Not a general result** | Measured on 2,400 TriviaQA items and hand-built PII sets, one model family (Qwen2.5-7B-Instruct, NF4), no real production traffic. |
+| 🚧 **Not fully built** | Phase 9's action gate and Phase 6's price list were specified and never written; five contract documents still cite a `controlplane/economics/sizing.py` that does not exist. So **every cost, headcount or ROI figure anywhere in this repository is a declared estimate**, and says so. The feasibility bound below is the exception — it is derived from measured rates and needs no cost model. `DECISIONS.md` 096 and 099, declared in [docs/LIMITATIONS.md](docs/LIMITATIONS.md). |
+| 🧠 **Not a claim about truthfulness** | The probe is a correlational classifier over activations. It does not measure what a model believes. |
 
 ---
 
-## The claim table
+## 📊 The claim table
 
 Every quantitative claim this repository makes, the artifact that contains it,
 and the field inside that artifact. `make verify` parses this table, resolves
 each field, and compares at the precision quoted. **A number edited by hand
 here fails the build.**
 
-All intervals are 95% bootstrap-percentile over questions, seed 1729.
+> All intervals are 95% bootstrap-percentile over questions, seed 1729.
 
 | Claim | Value | Interval | Artifact | Field | Regenerate |
 |---|---|---|---|---|---|
@@ -100,6 +141,11 @@ All intervals are 95% bootstrap-percentile over questions, seed 1729.
 | ...costing this multiple of the perfect-selector floor | 1.5941 | - | results/feasibility.json | profiles[operating_point_id=P-decision-support].achieved_risk.efficiency | python scripts/11_feasibility.py |
 | `customer_support` at the same measure | 1.1490 | - | results/feasibility.json | profiles[operating_point_id=P-customer-support].achieved_risk.efficiency | python scripts/11_feasibility.py |
 
+<details>
+<summary><strong>📖 How to read this table</strong></summary>
+
+<br/>
+
 **How to read the last three rows.** 39 of 56 cells are UNVALIDATED. That is
 not a gap in the work — it is the expected shape of the thing. UNVALIDATED is
 the modal state in any real deployment, and a system that cannot say *"this
@@ -122,23 +168,27 @@ accurate". It is that the number, its interval and its ceiling are all on the
 record, and that the same machinery **refuses** three of the detectors it was
 pointed at.
 
+</details>
+
 ---
 
-## Repo map
+## 🗂️ Repo map
 
-| path | what is in it |
-|---|---|
-| `controlplane/` | the package — model, store, validation, matrix, drift, policy, detectors, report |
-| `evalsets/` `results/` | frozen content-hashed evaluation sets; every artifact behind the table above, and `results/scores/` — the per-item scores it all reduces to |
-| `scripts/` `demo/` `notebooks/` | thin CLI wrappers, the two-pane demo runner, the Kaggle GPU notebook |
-| `tests/` | 771 tests, including the ones that enforce this README |
-| `docs/` | spec, methods, limitations, the case matrix, and the move mapping |
-| `DECISIONS.md` `round1/` | 118 append-only decision entries; the Round 1 submission, moved whole |
+```
+controlplane/          the package — model, store, validation, matrix, drift, policy, detectors, report
+evalsets/ & results/   frozen content-hashed evaluation sets; every artifact behind the table above
+scripts/ & demo/       thin CLI wrappers, the two-pane demo runner
+notebooks/             the Kaggle GPU notebook (generated, never hand-edited)
+tests/                 771 tests, including the ones that enforce this README
+docs/                  spec, methods, limitations, the case matrix, and the move mapping
+DECISIONS.md           118 append-only decision entries
+round1/                the Round 1 submission, moved whole
+```
 
 ### How it fits together
 
-Read left to right: the GPU stage runs once and caches, everything downstream
-reads from disk, and the last column is what a stranger can check without a GPU.
+> Read left to right: the GPU stage runs once and caches, everything downstream
+> reads from disk, and the last column is what a stranger can check without a GPU.
 
 ```mermaid
 flowchart LR
@@ -197,19 +247,24 @@ tour is [docs/CODE_TOUR.md](docs/CODE_TOUR.md).
 
 ---
 
-## Reproduction
+## 🔬 Reproduction
 
-| target | without make | requires | time | proves |
-|---|---|---|---|---|
-| `make smoke` | `python scripts/smoke.py` | CPU, no network | < 60s | the clone works and the package imports |
+| Target | Without `make` | Requires | Time | Proves |
+|:---|:---|:---|:---|:---|
+| `make smoke` | `python scripts/smoke.py` | CPU, no network | < 60s | The clone works and the package imports |
 | `make test` | `python -m pytest tests/ -q` | CPU | ~10 min | 771 tests green |
-| `make verify` | `python scripts/verify.py` | CPU | ~3 min | **every claim reproduces, and every metric recomputes from frozen scores** |
-| `make verify` (tier 3) | `python scripts/verify.py` | CPU + cached activations | ~4 min | the frozen scores re-derive from the activations |
-| `make extract` | `python scripts/00_extract.py --config config.yaml` | GPU, 16 GB | ~1 h | activations regenerate from the source model |
+| `make verify` | `python scripts/verify.py` | CPU | ~3 min | **Every claim reproduces, and every metric recomputes from frozen scores** |
+| `make verify` (tier 3) | `python scripts/verify.py` | CPU + cached activations | ~4 min | The frozen scores re-derive from the activations |
+| `make extract` | `python scripts/00_extract.py --config config.yaml` | GPU, 16 GB | ~1 h | Activations regenerate from the source model |
 
 Every recipe in the Makefile is a single command with no shell logic in it, so
 the middle column is exact rather than approximate. If you are on Windows
 without make, use it directly.
+
+<details>
+<summary><strong>🔍 <code>make verify</code> — the three tiers</strong></summary>
+
+<br/>
 
 `make verify` is the "prove it" button as a command line. Three checks,
 weakest first, each proving something the one before it cannot:
@@ -241,9 +296,11 @@ model to published number has no gap in it. The tested GPU path is
 [notebooks/run_on_kaggle.ipynb](notebooks/run_on_kaggle.ipynb), which is
 generated by `scripts/build_notebooks.py` and never hand-edited.
 
+</details>
+
 ---
 
-## Reading the history
+## 📜 Reading the history
 
 Run this once after cloning:
 
@@ -265,9 +322,11 @@ in a footnote. `DECISIONS.md` 081 carries the full argument.
 
 ---
 
-## Limitations and open items
+## ⚠️ Limitations and open items
 
-Read [docs/LIMITATIONS.md](docs/LIMITATIONS.md) before quoting anything here.
+> [!WARNING]
+> Read [docs/LIMITATIONS.md](docs/LIMITATIONS.md) before quoting anything here.
+
 The ones that would change how you read the table:
 
 - **Calibration drift is detectable at 25%, not at 10%.** Separating a 25%
@@ -290,49 +349,67 @@ The ones that would change how you read the table:
 
 ---
 
-## Documents
+## 📚 Documents
 
 [docs/README.md](docs/README.md) indexes all of them and routes by what you came
 for. The ones most readers want first:
 
-| document | what it answers |
-|---|---|
-| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | the system in eleven diagrams — objects, pipeline, warrant lifecycle, controls, policy, drift, verification |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | what the system is and how the pieces fit |
-| [docs/ONBOARDING.md](docs/ONBOARDING.md) | your first hour in this repository, in order |
-| [docs/SETUP.md](docs/SETUP.md) · [docs/RUNBOOK.md](docs/RUNBOOK.md) | getting it running; what every script reads and writes |
-| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | what a crash or a refusal actually means |
-| [docs/METHODS.md](docs/METHODS.md) | estimators, bootstraps, null bands and their derivations |
-| [docs/CASES.md](docs/CASES.md) | every case, the test covering it, the artifact demonstrating it |
-| [docs/LIMITATIONS.md](docs/LIMITATIONS.md) | scope, declared gaps, open items |
-| [DECISIONS.md](DECISIONS.md) | 118 append-only entries — "why did you do it that way?" |
-| [docs/ARTIFACTS.md](docs/ARTIFACTS.md) · [docs/TESTING.md](docs/TESTING.md) | every output file and its fields; what the suite defends |
-| [docs/CODE_TOUR.md](docs/CODE_TOUR.md) · [docs/GLOSSARY.md](docs/GLOSSARY.md) | the packages, file by file; the vocabulary, defined once |
-| [docs/FAQ.md](docs/FAQ.md) · [docs/JOURNEY.md](docs/JOURNEY.md) | reviewer questions; what the project did, phase by phase |
-| [docs/PATHS.md](docs/PATHS.md) | what moved on 2026-08-29 and where it went |
-| [docs/SPEC.md](docs/SPEC.md) | the technical specification |
-| [docs/PROPOSAL.md](docs/PROPOSAL.md) | the business proposal |
+| Document | What it answers |
+|:---|:---|
+| 📐 [DIAGRAMS.md](docs/DIAGRAMS.md) | The system in eleven diagrams — objects, pipeline, warrant lifecycle, controls, policy, drift, verification |
+| 🏗️ [ARCHITECTURE.md](docs/ARCHITECTURE.md) | What the system is and how the pieces fit |
+| 🚀 [ONBOARDING.md](docs/ONBOARDING.md) | Your first hour in this repository, in order |
+| ⚙️ [SETUP.md](docs/SETUP.md) · [RUNBOOK.md](docs/RUNBOOK.md) | Getting it running; what every script reads and writes |
+| 🔧 [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | What a crash or a refusal actually means |
+| 📏 [METHODS.md](docs/METHODS.md) | Estimators, bootstraps, null bands and their derivations |
+| 📋 [CASES.md](docs/CASES.md) | Every case, the test covering it, the artifact demonstrating it |
+| ⚠️ [LIMITATIONS.md](docs/LIMITATIONS.md) | Scope, declared gaps, open items |
+| 📝 [DECISIONS.md](DECISIONS.md) | 118 append-only entries — "why did you do it that way?" |
+| 📦 [ARTIFACTS.md](docs/ARTIFACTS.md) · [TESTING.md](docs/TESTING.md) | Every output file and its fields; what the suite defends |
+| 🗺️ [CODE_TOUR.md](docs/CODE_TOUR.md) · [GLOSSARY.md](docs/GLOSSARY.md) | The packages, file by file; the vocabulary, defined once |
+| ❓ [FAQ.md](docs/FAQ.md) · [JOURNEY.md](docs/JOURNEY.md) | Reviewer questions; what the project did, phase by phase |
+| 🔀 [PATHS.md](docs/PATHS.md) | What moved on 2026-08-29 and where it went |
+| 📄 [SPEC.md](docs/SPEC.md) | The technical specification |
+| 💼 [PROPOSAL.md](docs/PROPOSAL.md) | The business proposal |
 
 ---
 
-## Authors
+## 👥 Authors
 
-Team **Dominator**, Indian Institute of Technology Kharagpur — built for the
-Accenture Innovation Challenge 2026, problem statement 1, *ControlPlane.ai*.
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="https://github.com/Aditya26189">
+        <img src="https://github.com/Aditya26189.png" width="100px;" alt="Aditya Singh" style="border-radius:50%"/><br />
+        <sub><b>Aditya Singh</b></sub>
+      </a><br />
+      <sub>Mechanical Engineering, 2028</sub>
+    </td>
+    <td align="center" width="33%">
+      <a href="https://github.com/kksahu444">
+        <img src="https://github.com/kksahu444.png" width="100px;" alt="Krishnakant Sahu" style="border-radius:50%"/><br />
+        <sub><b>Krishnakant Sahu</b></sub>
+      </a><br />
+      <sub>Computer Science & Engineering, 2027</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="https://ui-avatars.com/api/?name=Upendra+Singh&background=1a1b27&color=e6edf3&size=100&rounded=true&bold=true" width="100px;" alt="Upendra Singh" style="border-radius:50%"/><br />
+      <sub><b>Upendra Singh</b></sub><br />
+      <sub>Mechanical Engineering, 2028</sub>
+    </td>
+  </tr>
+</table>
 
-| Author | | Programme |
-|---|---|---|
-| **Aditya Singh** | [@Aditya26189](https://github.com/Aditya26189) | Mechanical Engineering, 2028 |
-| **Krishnakant Sahu** | [@kksahu444](https://github.com/kksahu444) | Computer Science & Engineering, 2027 |
-| **Upendra Singh** | | Mechanical Engineering, 2028 |
-
-Listed alphabetically. The three of us worked on this jointly; per-commit
-attribution is in `git log` and in the repository's contributors graph, which
-are the authoritative record and are not summarised here.
+<p align="center">
+  <em>Listed alphabetically. The three of us worked on this jointly; per-commit attribution is in <code>git log</code> and in the repository's contributors graph, which are the authoritative record and are not summarised here.</em>
+</p>
 
 ---
 
-## Licence
+## 📄 Licence
 
-MIT licensed. Every dependency is MIT, Apache-2.0 or BSD; the stack is open and
-self-hostable, which is why Llama Guard and ShieldGemma are deliberately absent.
+<p align="center">
+  MIT licensed. Every dependency is MIT, Apache-2.0 or BSD; the stack is open and self-hostable, which is why Llama Guard and ShieldGemma are deliberately absent.
+</p>
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0d1117,50:1a1b27,100:2d333b&height=100&section=footer" width="100%" />
