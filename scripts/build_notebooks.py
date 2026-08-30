@@ -884,13 +884,17 @@ sys.path.insert(0, "/kaggle/working/controlplane")
 # metadata correctly listing the dataset. Find the manifest instead, and print
 # what IS mounted so the next failure diagnoses itself.
 INPUT = Path("/kaggle/input")
-candidates = sorted(INPUT.glob("*/MANIFEST.json")) if INPUT.exists() else []
+# rglob, not glob: Kaggle mounted this dataset at
+# /kaggle/input/datasets/<owner>/<slug>/, not the /kaggle/input/<slug>/
+# the docs imply. The depth is not worth predicting -- search for the
+# manifest wherever it landed.
+candidates = sorted(INPUT.rglob("MANIFEST.json")) if INPUT.exists() else []
 if not candidates:
     print("nothing mounted under /kaggle/input carries a MANIFEST.json.")
     print("what IS mounted:")
     if INPUT.exists():
-        for entry in sorted(INPUT.iterdir()):
-            print("   ", entry.name)
+        for entry in sorted(INPUT.rglob("*"))[:40]:
+            print("   ", entry.relative_to(INPUT))
     else:
         print("    (/kaggle/input does not exist)")
     raise SystemExit(
