@@ -313,5 +313,26 @@ for. The ones most readers want first:
 | [docs/SPEC.md](docs/SPEC.md) | the technical specification |
 | [docs/PROPOSAL.md](docs/PROPOSAL.md) | the business proposal |
 
+---
+
+## Authors
+
+Team **Dominator**, Indian Institute of Technology Kharagpur — built for the
+Accenture Innovation Challenge 2026, problem statement 1, *ControlPlane.ai*.
+
+| Author | | Programme |
+|---|---|---|
+| **Aditya Singh** | [@Aditya26189](https://github.com/Aditya26189) | Mechanical Engineering, 2028 |
+| **Krishnakant Sahu** | [@kksahu444](https://github.com/kksahu444) | Computer Science & Engineering, 2027 |
+| **Upendra Singh** | | Mechanical Engineering, 2028 |
+
+Listed alphabetically. The three of us worked on this jointly; per-commit
+attribution is in `git log` and in the repository's contributors graph, which
+are the authoritative record and are not summarised here.
+
+---
+
+## Licence
+
 MIT licensed. Every dependency is MIT, Apache-2.0 or BSD; the stack is open and
 self-hostable, which is why Llama Guard and ShieldGemma are deliberately absent.
