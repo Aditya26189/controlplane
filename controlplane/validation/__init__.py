@@ -22,17 +22,29 @@ from .stats import (
     threshold_for_flag_rate,
     weighted_error,
 )
+from .warrant_stats import (
+    Certification,
+    FPRMonitor,
+    certify_fpr,
+    cp_upper,
+    min_n_for,
+)
 
 __all__ = [
+    "Certification",
+    "FPRMonitor",
     "MeasurementError",
     "assert_polarity",
     "auroc",
     "bootstrap_interval",
+    "certify_fpr",
     "confusion_at",
+    "cp_upper",
     "estimated",
     "exact_count",
     "false_positive_rate_at",
     "flag_rate_at",
+    "min_n_for",
     "precision_at",
     "recall_at",
     "threshold_for_flag_rate",

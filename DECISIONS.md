@@ -4451,3 +4451,73 @@ longer true of every item. Now derived: `sorted({i.gold_checked for i in
 items})`. Third hardcoded date this session — the test in `105`, the freeze log
 line, and this — all of which went stale the instant a gold answer was
 corrected. Deriving costs one expression.
+
+## 107 - `warrant_stats` lands, and two of its guards were themselves unguarded
+
+The module supplying `certify_fpr` and `FPRMonitor` is now in the tree at
+`controlplane/validation/warrant_stats.py`. It arrived with the `lam_hi` clamp,
+the unequal-cluster refusal, `from_state`, the `fpr_certified` rename and the
+monotonicity argument already applied. Two defects survived that pass.
+
+### The NaN is real, and it is not reachable here
+
+`log1p(lam * (x - p0))` needs `lam * p0 < 1`. The default `lam_hi = 10.0`
+breaks it for any `p0 > 0.1`. Measured on the raw arithmetic, 300 items at a
+3x breach:
+
+| p0 | `lam_hi * p0` | worst `log1p` | wealth | revokes |
+|---|---|---|---|---|
+| 0.02 | 0.20 | -0.2231 | 3.52 | no (correctly, 300 items) |
+| 0.05 | 0.50 | -0.6931 | 1.05e4 | yes |
+| **0.10** | **1.00** | **-inf** | 2.3e13 | **yes** |
+| 0.15 | 1.50 | NaN | NaN | **never** |
+| 0.247 | 2.47 | NaN | NaN | **never** |
+
+**The brief's premise needed correcting.** It states the decision-support
+profile sits at FPR 0.247. `config.yaml` publishes `max_fpr` of **0.02, 0.05
+and 0.10**; 0.247 appears in `results/` only as an unrelated `ci_low`. So the
+silent death is a **latent** defect, not a live one: 0.10 is exactly the
+boundary, where the largest bet goes to `-inf` and dies harmlessly inside the
+mixture rather than poisoning it.
+
+The clamp stays, and the boundary is pinned by a test, because the defect
+becomes live the moment anyone adds a profile above 0.10 — and it fails by
+going quiet, which is the one way a revocation trigger must not fail.
+
+### `from_state` rebuilt the betting grid from defaults
+
+`_logw[i]` is the log wealth of the bet at `lams[i]`. `from_state` called
+`cls(p0=..., alpha=...)` and took the **default** `lam_lo`/`lam_hi`/`n_lam`,
+while `state()` never serialised them. Resuming a monitor built with any
+non-default grid therefore rebuilt a *different* grid of the same length,
+passed the `logw.shape != m.lams.shape` check, and carried on with every bet
+misattributed. Same shape, same dtype, nothing raised.
+
+Measured across 400 monitors resumed mid-stream, grid `[0.05, 1.5]` against
+defaults `[0.05, 10.0]`:
+
+> **the revocation decision differed in 41 of 400 (10.3%)**, and it differed in
+> the direction of revoking when the correctly-resumed monitor did not.
+
+That is the false-revocation guarantee the module exists to provide, broken by
+the method whose docstring says restarting "voids the false-revocation
+guarantee". The grid now travels in `state()`, and a state without it is
+**refused** rather than resumed on defaults — a resumable-looking state that
+silently reattaches wealth to the wrong bets is worse than one that will not
+load.
+
+### The `assert` was not a guard
+
+`update()` checked `assert np.isfinite(self._logw).all()`. `python -O` strips
+asserts, so the one check standing between a poisoned grid and a monitor that
+never revokes disappears under an optimisation flag. Now a
+`FloatingPointError` naming `n`, `p0` and `max(lam)*p0`.
+
+### What is still not done
+
+`certify_fpr` remains an FPR claim only. A detector scoring nothing certifies
+trivially at `k=0`, and the rename to `fpr_certified` documents that rather
+than fixing it — the recall floor is conjoined in the policy layer, and a test
+pins the name so it cannot drift back to `certified`. Session-level monitoring
+(the 0.2580 false-revocation rate on clustered traffic) is **not** addressed
+here and the claim must still be restated wherever it appears.
