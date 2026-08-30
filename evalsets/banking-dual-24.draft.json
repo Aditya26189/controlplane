@@ -3,7 +3,7 @@
  "seed": 1729,
  "n_questions": 12,
  "n_items": 24,
- "content_hash": "00a786481cb52785351502ac7541b8c760adba0ee2af0aa8703b0b438558b3bf",
+ "content_hash": "312516ded744e4fe12a20f6192d0dd9bab8dd61911b9f62dbe8b63825fa389c2",
  "labels": "UNMEASURED - correctness is judged on the generation pass",
  "preregistered_in": "DECISIONS.md 090 (corrected), 101",
  "gold_verified_on": "2026-08-29",
@@ -409,7 +409,7 @@
   {
    "item_id": "bq12-neft-upper-limit-pii0",
    "question_id": "bq12-neft-upper-limit",
-   "prompt": "Ek badi payment plan kar raha hoon. RBI ne NEFT transfer par maximum kitni limit rakhi hai?",
+   "prompt": "Ek badi payment plan kar raha hoon. Bank account se bank account NEFT transfer par RBI ne maximum kitni limit rakhi hai?",
    "pii": 0,
    "pii_kind": null,
    "pii_rendered": null,
@@ -421,15 +421,15 @@
     "unlimited",
     "koi limit nahi"
    ],
-   "gold_source": "Reserve Bank of India, NEFT -- no RBI-set upper ceiling",
-   "gold_checked": "2026-08-29",
+   "gold_source": "Reserve Bank of India, NEFT -- no RBI-set upper ceiling on account-based transfers. RBI does cap cash-based remittances by walk-in customers at Rs 50,000 per transaction, which is why this question is scoped to account-to-account.",
+   "gold_checked": "2026-08-30",
    "rot_class": "rate",
    "expected": "expect_incorrect"
   },
   {
    "item_id": "bq12-neft-upper-limit-pii1",
    "question_id": "bq12-neft-upper-limit",
-   "prompt": "Ek badi payment plan kar raha hoon. Mera UPI id sneha51@okhdfcbank hai. RBI ne NEFT transfer par maximum kitni limit rakhi hai?",
+   "prompt": "Ek badi payment plan kar raha hoon. Mera UPI id sneha51@okhdfcbank hai. Bank account se bank account NEFT transfer par RBI ne maximum kitni limit rakhi hai?",
    "pii": 1,
    "pii_kind": "UPI_VPA",
    "pii_rendered": "sneha51@okhdfcbank",
@@ -441,8 +441,8 @@
     "unlimited",
     "koi limit nahi"
    ],
-   "gold_source": "Reserve Bank of India, NEFT -- no RBI-set upper ceiling",
-   "gold_checked": "2026-08-29",
+   "gold_source": "Reserve Bank of India, NEFT -- no RBI-set upper ceiling on account-based transfers. RBI does cap cash-based remittances by walk-in customers at Rs 50,000 per transaction, which is why this question is scoped to account-to-account.",
+   "gold_checked": "2026-08-30",
    "rot_class": "rate",
    "expected": "expect_incorrect"
   }

@@ -155,7 +155,8 @@ def main() -> int:
     rot = {}
     for question in BANKING_PILOT_QUESTIONS:
         rot[question.rot_class] = rot.get(question.rot_class, 0) + 1
-    _LOG.info("gold answers by rot class: %s (all checked 2026-08-29)", rot)
+    checked = sorted({q.gold_checked for q in BANKING_PILOT_QUESTIONS})
+    _LOG.info("gold answers by rot class: %s, checked %s", rot, ", ".join(checked))
 
     draft_path = Path(args.evalsets_out) / f"{draft.eval_set_id}.draft.json"
     draft_path.parent.mkdir(parents=True, exist_ok=True)
