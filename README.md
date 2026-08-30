@@ -131,7 +131,7 @@ pointed at.
 | `controlplane/` | the package — model, store, validation, matrix, drift, policy, detectors, report |
 | `evalsets/` `results/` | frozen content-hashed evaluation sets; every artifact behind the table above, and `results/scores/` — the per-item scores it all reduces to |
 | `scripts/` `demo/` `notebooks/` | thin CLI wrappers, the two-pane demo runner, the Kaggle GPU notebook |
-| `tests/` | 668 tests, including the ones that enforce this README |
+| `tests/` | 672 tests, including the ones that enforce this README |
 | `docs/` | spec, methods, limitations, the case matrix, and the move mapping |
 | `DECISIONS.md` `round1/` | 97 append-only decision entries; the Round 1 submission, moved whole |
 
@@ -142,7 +142,7 @@ pointed at.
 | target | without make | requires | time | proves |
 |---|---|---|---|---|
 | `make smoke` | `python scripts/smoke.py` | CPU, no network | < 60s | the clone works and the package imports |
-| `make test` | `python -m pytest tests/ -q` | CPU | ~10 min | 668 tests green |
+| `make test` | `python -m pytest tests/ -q` | CPU | ~10 min | 672 tests green |
 | `make verify` | `python scripts/verify.py` | CPU | ~3 min | **every claim reproduces, and every metric recomputes from frozen scores** |
 | `make verify` (tier 3) | `python scripts/verify.py` | CPU + cached activations | ~4 min | the frozen scores re-derive from the activations |
 | `make extract` | `python scripts/00_extract.py --config config.yaml` | GPU, 16 GB | ~1 h | activations regenerate from the source model |
@@ -238,7 +238,7 @@ The ones that would change how you read the table:
 | [docs/METHODS.md](docs/METHODS.md) | estimators, bootstraps, null bands and their derivations |
 | [docs/CASES.md](docs/CASES.md) | every case, the test covering it, the artifact demonstrating it |
 | [docs/LIMITATIONS.md](docs/LIMITATIONS.md) | scope, declared gaps, open items |
-| [DECISIONS.md](DECISIONS.md) | 97 append-only entries — "why did you do it that way?" |
+| [DECISIONS.md](DECISIONS.md) | 110 append-only entries — "why did you do it that way?" |
 | [docs/PATHS.md](docs/PATHS.md) | what moved on 2026-08-29 and where it went |
 | [docs/SPEC.md](docs/SPEC.md) | the technical specification |
 | [docs/PROPOSAL.md](docs/PROPOSAL.md) | the business proposal |

@@ -134,7 +134,8 @@ def test_yield_vs_rate() -> None:
     estimated = Metric(
         "recall", 0.1416, MetricKind.ESTIMATED, n=600,
         ci_low=0.10, ci_high=0.19, ci_level=0.95, estimator="bootstrap-percentile-1000",
-    )
+            convention="two_sided_95",
+        )
     assert estimated.has_interval
     assert "n=600" in estimated.render() and "95% CI" in estimated.render()
 
@@ -144,24 +145,30 @@ def test_yield_vs_rate() -> None:
 
     # An estimate without one is a point estimate reaching a user.
     with pytest.raises(MetricError, match="must carry both bounds"):
-        Metric("recall", 0.14, MetricKind.ESTIMATED, n=600)
+        Metric("recall", 0.14, MetricKind.ESTIMATED, n=600, convention="two_sided_95")
 
 
 def test_estimated_metric_must_name_its_n_and_estimator() -> None:
     """Invariant 4: every interval names its n. And its construction."""
     with pytest.raises(MetricError, match="must name its n"):
         Metric("recall", 0.14, MetricKind.ESTIMATED, n=0, ci_low=0.1, ci_high=0.2,
-               ci_level=0.95, estimator="bootstrap")
+               ci_level=0.95, estimator="bootstrap",
+            convention="two_sided_95",
+        )
     with pytest.raises(MetricError, match="how its interval was produced"):
         Metric("recall", 0.14, MetricKind.ESTIMATED, n=600, ci_low=0.1, ci_high=0.2,
-               ci_level=0.95)
+               ci_level=0.95,
+            convention="two_sided_95",
+        )
 
 
 def test_value_outside_its_own_interval_is_rejected() -> None:
     """Usually means the estimate and the interval came from different data."""
     with pytest.raises(MetricError, match="outside its own interval"):
         Metric("recall", 0.42, MetricKind.ESTIMATED, n=600, ci_low=0.10, ci_high=0.19,
-               ci_level=0.95, estimator="bootstrap")
+               ci_level=0.95, estimator="bootstrap",
+            convention="two_sided_95",
+        )
 
 
 @pytest.mark.parametrize("name", ["f1", "F1", "f1_score", "macro_f1", "fbeta", "f_measure"])
@@ -169,7 +176,9 @@ def test_blended_scores_are_refused_by_name(name: str) -> None:
     """Invariant 5, enforced where a label is built, not only where it is typed."""
     with pytest.raises(MetricError, match="blended precision/recall"):
         Metric(name, 0.4, MetricKind.ESTIMATED, n=600, ci_low=0.3, ci_high=0.5,
-               ci_level=0.95, estimator="bootstrap")
+               ci_level=0.95, estimator="bootstrap",
+            convention="two_sided_95",
+        )
 
 
 def test_precision_and_recall_are_both_required() -> None:
@@ -194,7 +203,8 @@ def test_confirmed_errors_must_be_an_exact_count() -> None:
                 "confirmed_errors", 850, MetricKind.ESTIMATED, n=2984,
                 ci_low=800, ci_high=900, ci_level=0.95, unit="count",
                 estimator="bootstrap",
-            ),
+            convention="two_sided_95",
+        ),
         )
 
 

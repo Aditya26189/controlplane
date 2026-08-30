@@ -4805,3 +4805,121 @@ A healthy probe still trips a 0.70 rule one time in eight at 24 clusters. And
 against a 0.6x collapse from 0.313 to **0.169**, where recalibrating to 0.602
 takes it to **0.620**. Enlarging without recalibrating remains strictly worse
 than not enlarging.
+
+## 111 - The pilot cleared, and four things follow that the result does not say
+
+`110` settled the convention. This records what the cleared pilot actually
+licenses, and three defects found while checking it.
+
+### `868` was not a number this project owns
+
+The headline price was stated as *"868 items at DEFF 1.60"*. **This repository
+contains no DEFF of 1.60.** Its design effect is `0.67` -- a *Neyman variance
+reduction*, about 1.5x the other way -- and `PROPOSAL.md` already labels it
+"declared, not measured", while `SPEC.md` says *"Size it empirically from the
+observed score distribution; do not assume a factor."*
+
+The 1.60 is a **clustering** design effect, from an ICC table in a planning
+document, imported into a sentence about this repository's certification cost.
+Two different design effects pointing in opposite directions -- one inflates
+`n`, the other reduces variance -- combined into a number for a stage.
+
+Worse than assumed, then: borrowed. The certifiable figures are the ones
+`min_n_for` actually computes, and they carry no clustering correction:
+
+| convention | tail | n (clean, k=0) |
+|---|---|---|
+| one-sided 95% | 0.05 | **199** |
+| two-sided 95% | 0.025 | 245 |
+| one-sided, /3 profiles | 0.0167 | **271** |
+| two-sided, /3 profiles | 0.0083 | 317 |
+
+Any clustering inflation on top of these requires a **measured** ICC on the
+banking set, which does not exist. Until it does, the demo says 199 and 271 and
+says they are cluster-uncorrected, or it says nothing.
+
+### The convention guard, and the docstring at the centre of it
+
+`Metric` now **requires** `convention` on every `ESTIMATED` metric, one of
+`one_sided_95` or `two_sided_95`. Nine construction sites, all labelled. An
+unlabelled interval can no longer be created.
+
+While labelling them, `clopper_pearson`'s docstring turned out to read:
+
+> *The exact interval for 0/200 at 95% is `[0, 0.0149]`, which is the familiar
+> rule of three.*
+
+The code computes at `alpha/2` and returns **0.018275**. `0.0149` is the
+*one-sided* bound, and the rule of three approximates the one-sided case. So
+the function that produced the shipped two-sided intervals documented itself
+with the one-sided number -- a 23% understatement, in the docstring most likely
+to be read by someone calibrating a target.
+
+### A third statistic, because both gates are blind to the same thing
+
+The IQR ratio is a **scale** statistic. AUROC is a **rank** statistic. A
+wholesale **location** shift -- every score moving together, spread and
+ordering intact -- passes both and destroys the operating point.
+
+That is this project's own Round 2 finding: ranking survived the long-context
+shift and calibration did not. The pilot had two gates and was structurally
+incapable of catching the failure the project already documented.
+
+`13_pilot_run.py` now reports median shift in reference-IQR units. **Reported,
+not gated**, because no threshold was pre-registered and choosing one after
+seeing the value is `084`.
+
+### The pilot's scores are now persisted, because its own caveat is unexaminable without them
+
+The AUROC gate cleared by **0.0054**. A percentile bootstrap's lower bound moves
+with its seed, so the honest question is what fraction of seeds clear -- and
+`pilot_run.json` carried only the summary, so that question could not be asked
+without another GPU run. Twenty-four floats now travel with the verdict.
+
+### The n=240 threshold must be re-derived, and is pre-registered here
+
+Power at a **fixed** threshold gets *worse* as clusters increase, because the
+null band tightens around 1.0 while the constant does not move. Same shape as
+`103`, and the same shape as self-catch 8: a threshold carried across a change
+in the sampling unit.
+
+**Pre-registered now, before any 240-item set exists:** the saturation
+threshold at the full scale is the simulated p5 at that cluster count, from
+`scripts/14_pilot_null_band.py`, regenerated in the same commit as the set. It
+is not 0.439. Carrying 0.439 to 120 clusters would drop power against a 0.6x
+collapse to near zero while the false-alarm rate fell to 0.000 -- which reads
+as rigour and is blindness.
+
+### What the pilot licensed, and what it did not
+
+It established **feasibility**, not priority. `phase-8` is tagged with the gap
+named rather than the composed pair measured, because:
+
+- the AUROC gate cleared by 0.0054, and a bootstrap lower bound moves with its
+  seed by more than that;
+- `103` pre-registered that 12 clusters cannot distinguish a healthy probe from
+  a moderately collapsed one, and the IQR result reads identically under both;
+- the declared fallback in `090` exists for exactly this, and composition is
+  already demonstrated without the measured pair.
+
+Authoring 240 items on a gate that cleared inside its own noise is the error
+avoided at 1,355 items, repeated at a smaller scale. **Feasibility established,
+not exercised, margin stated** is the honest tag and the stronger artifact.
+
+### Guards that do not cover their own authoring path
+
+Three now, and they are one category:
+
+1. `from_state` was written to make *"never restart the monitor"* executable,
+   and silently reattached the wealth to a different betting grid -- the method
+   built to protect the guarantee was the one voiding it (`107`).
+2. The first fix for the zero-width interval deleted `AUROC 0.5015`, the finding
+   it was protecting (`109`).
+3. `_assert_cells_compile` was written to catch a newline-escape defect and its
+   own first draft contained that defect.
+
+The pattern: **a guard is authored through the same path it guards, and nothing
+guards the authoring.** The escape trap alone fired four times in one session,
+twice inside code written to prevent it. Reading is not a control -- which is
+`050`'s conclusion about `cmd | tail`, arrived at again from a different
+direction. Worth stating as a category rather than fixing three times.

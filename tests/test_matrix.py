@@ -222,7 +222,9 @@ def test_routing_adopts_the_new_warrant_bounds(config: Config) -> None:
     wide_metrics = dataclasses.replace(
         make_metrics(),
         recall=Metric("recall", 0.30, MetricKind.ESTIMATED, 600, 0.05, 0.55, 0.95,
-                      "rate", "bootstrap"),
+                      "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
     )
     wide = dataclasses.replace(
         make_warrant(detector_id="probe-wide", eval_set_id="envelope-a"),
@@ -252,7 +254,9 @@ def test_a_profile_suspends_when_bounds_fall_below_its_minimum(config: Config) -
         metrics=dataclasses.replace(
             make_metrics(),
             recall=Metric("recall", 0.034, MetricKind.ESTIMATED, 600, 0.0, 0.077,
-                          0.95, "rate", "bootstrap"),
+                          0.95, "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
         ),
     )
     matrix = _matrix_with(collapsed, envelopes=["envelope-long"])
@@ -282,7 +286,9 @@ def test_suspension_is_distinguishable_from_nothing_measured(config: Config) -> 
         metrics=dataclasses.replace(
             make_metrics(),
             recall=Metric("recall", 0.02, MetricKind.ESTIMATED, 600, 0.0, 0.05,
-                          0.95, "rate", "bootstrap"),
+                          0.95, "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
         ),
     )
     matrix = _matrix_with(
@@ -309,7 +315,9 @@ def test_profile_compares_against_the_interval_bound_not_the_point(config: Confi
     optimistic = dataclasses.replace(
         make_metrics(),
         recall=Metric("recall", 0.11, MetricKind.ESTIMATED, 600, 0.06, 0.19, 0.95,
-                      "rate", "bootstrap"),
+                      "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
     )
     accepted, reason = profile.accepts(optimistic)
     assert not accepted

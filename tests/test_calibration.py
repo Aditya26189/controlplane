@@ -27,7 +27,8 @@ def _flag_rate(value: float, low: float, high: float, n: int = 600) -> Metric:
         n=n,
         ci_level=0.95,
         estimator="bootstrap-percentile-1000 over questions, seed=1729",
-    )
+            convention="two_sided_95",
+        )
 
 
 def _operating_point(target: float | None = 0.05) -> OperatingPoint:

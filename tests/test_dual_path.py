@@ -162,7 +162,9 @@ def _warrant_with_recall(detector_id: str, envelope: str, low: float, value: flo
         metrics=dataclasses.replace(
             make_metrics(),
             recall=Metric("recall", value, MetricKind.ESTIMATED, 600, low, high,
-                          0.95, "rate", "bootstrap"),
+                          0.95, "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
         ),
     )
 
@@ -263,9 +265,13 @@ def test_lift_lower_bound_refuses_a_warrant_no_better_than_chance(
     collapsed = dataclasses.replace(
         make_metrics(),
         recall=Metric("recall", 0.034, MetricKind.ESTIMATED, 600, 0.0, 0.077,
-                      0.95, "rate", "bootstrap"),
+                      0.95, "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
         flag_rate=Metric("flag_rate", 0.05, MetricKind.ESTIMATED, 600, 0.03, 0.07,
-                         0.95, "rate", "bootstrap"),
+                         0.95, "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
     )
     assert collapsed.lift.ci_low <= MIN_LIFT_LOWER_BOUND
 
@@ -302,9 +308,13 @@ def test_a_useful_detector_still_issues(config: Config) -> None:
     useful = dataclasses.replace(
         make_metrics(),
         recall=Metric("recall", 0.216, MetricKind.ESTIMATED, 600, 0.129, 0.306,
-                      0.95, "rate", "bootstrap"),
+                      0.95, "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
         flag_rate=Metric("flag_rate", 0.05, MetricKind.ESTIMATED, 600, 0.03, 0.07,
-                         0.95, "rate", "bootstrap"),
+                         0.95, "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
     )
     assert useful.lift.ci_low > 1.0
 
@@ -336,7 +346,9 @@ def test_single_class_envelope_skips_the_lift_criterion(config: Config) -> None:
         make_metrics(),
         auroc=None, recall=None, precision=None,
         fpr_hard_negatives=Metric("fpr_hard_negatives", 0.0, MetricKind.ESTIMATED,
-                                  200, 0.0, 0.018, 0.95, "rate", "Clopper-Pearson"),
+                                  200, 0.0, 0.018, 0.95, "rate", "Clopper-Pearson",
+            convention="two_sided_95",
+        ),
     )
     warrant = issue_or_refuse(
         config,

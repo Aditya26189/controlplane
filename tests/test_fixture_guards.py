@@ -165,9 +165,13 @@ def test_lift_on_an_enriched_set_is_near_its_ceiling_not_near_useless(
     metrics = dataclasses.replace(
         make_metrics(),
         recall=Metric("recall", 0.794, MetricKind.ESTIMATED, 200, 0.698, 0.885,
-                      0.95, "rate", "bootstrap"),
+                      0.95, "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
         flag_rate=Metric("flag_rate", 0.62, MetricKind.ESTIMATED, 200, 0.51, 0.73,
-                         0.95, "rate", "bootstrap"),
+                         0.95, "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
         base_rate=0.51,
     )
     assert metrics.lift.value == pytest.approx(0.794 / 0.62, rel=1e-6)
@@ -262,7 +266,8 @@ def test_the_type_already_forbids_a_kind_flip(config: Config) -> None:
                 MetricKind.ESTIMATED, n=200, ci_low=0.0,
                 ci_high=normal.confirmed_errors.value + 1, ci_level=0.95,
                 unit="count", estimator="bootstrap",
-            ),
+            convention="two_sided_95",
+        ),
         )
 
 
@@ -307,7 +312,9 @@ def test_routing_tiebreak_is_stated_not_incidental(config: Config) -> None:
             metrics=dataclasses.replace(
                 make_metrics(),
                 recall=Metric("recall", 0.25, MetricKind.ESTIMATED, 600, 0.20, 0.30,
-                              0.95, "rate", "bootstrap"),
+                              0.95, "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
             ),
         )
 
@@ -329,7 +336,9 @@ def test_an_unvalidated_cell_never_outranks_a_measured_one(config: Config) -> No
         metrics=dataclasses.replace(
             make_metrics(),
             recall=Metric("recall", 0.15, MetricKind.ESTIMATED, 600, 0.11, 0.20,
-                          0.95, "rate", "bootstrap"),
+                          0.95, "rate", "bootstrap",
+            convention="two_sided_95",
+        ),
         ),
     )
     matrix = _matrix(

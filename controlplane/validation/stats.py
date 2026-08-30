@@ -390,10 +390,16 @@ def clopper_pearson(successes: int, n: int, ci: float) -> tuple[float, float]:
     observations. That is the loudest possible false claim in a project whose
     entire thesis is that unbacked claims are the problem.
 
-    The exact interval for 0/200 at 95% is ``[0, 0.0149]``, which is the
-    familiar rule of three: with no events in ``n`` trials the upper bound is
-    about ``3/n``. Saying "at most 1.5%, from 200 observations" is both true and
-    useful; saying "0.0%" is neither.
+    **Two-sided**, at ``alpha/2`` in each tail. For 0/200 at 95% that is
+    ``[0, 0.018275]``. The rule-of-three approximation ``3/n = 0.015`` is the
+    *one-sided* bound and this docstring quoted it as though it were what the
+    code returns -- a 23% understatement, in the docstring of the function at
+    the centre of the convention confusion (``DECISIONS.md`` 110). The one-sided
+    bound lives in ``warrant_stats.cp_upper``, deliberately, because that is
+    what a warrant claims.
+
+    Saying "at most 1.8%, from 200 observations" is both true and useful;
+    saying "0.0%" is neither.
 
     Quantity: a binomial proportion. Propagation: Clopper-Pearson, inverting the
     binomial CDF via the Beta distribution, which has guaranteed coverage at the
@@ -519,6 +525,9 @@ def estimated(
         ci_level=ci,
         unit=unit,
         estimator=estimator,
+        # Both branches are two-sided: the percentile bootstrap takes
+        # (1-ci)/2 from each tail, and clopper_pearson uses alpha/2.
+        convention="two_sided_95",
     )
 
 

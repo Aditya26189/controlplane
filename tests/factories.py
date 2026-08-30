@@ -123,10 +123,10 @@ def make_metrics(
     """
     boot = "bootstrap-percentile-1000"
     return WarrantMetrics(
-        auroc=Metric("auroc", 0.8551, MetricKind.ESTIMATED, 600, 0.8203, 0.8874, 0.95, "ratio", boot),
-        recall=Metric("recall", recall, MetricKind.ESTIMATED, 600, recall - 0.04, recall + 0.05, 0.95, "rate", boot),
-        precision=Metric("precision", precision, MetricKind.ESTIMATED, 600, precision - 0.045, precision + 0.045, 0.95, "rate", boot),
-        flag_rate=Metric("flag_rate", flag_rate, MetricKind.ESTIMATED, 600, flag_rate - 0.003, flag_rate + 0.003, 0.95, "rate", boot),
+        auroc=Metric("auroc", 0.8551, MetricKind.ESTIMATED, 600, 0.8203, 0.8874, 0.95, "ratio", boot, convention="two_sided_95"),
+        recall=Metric("recall", recall, MetricKind.ESTIMATED, 600, recall - 0.04, recall + 0.05, 0.95, "rate", boot, convention="two_sided_95"),
+        precision=Metric("precision", precision, MetricKind.ESTIMATED, 600, precision - 0.045, precision + 0.045, 0.95, "rate", boot, convention="two_sided_95"),
+        flag_rate=Metric("flag_rate", flag_rate, MetricKind.ESTIMATED, 600, flag_rate - 0.003, flag_rate + 0.003, 0.95, "rate", boot, convention="two_sided_95"),
         confirmed_errors=Metric("confirmed_errors", confirmed_errors, MetricKind.EXACT, 2984, unit="count"),
         base_rate=0.1517,
     )

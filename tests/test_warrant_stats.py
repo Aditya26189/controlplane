@@ -417,3 +417,61 @@ def test_no_committed_artifact_carries_a_zero_width_rate_interval() -> None:
         "zero-width rate intervals in committed artifacts:\n  "
         + "\n  ".join(sorted(set(offenders)))
     )
+
+
+# --------------------------------------------------------------------------- #
+# The interval convention must be declared -- DECISIONS 110, 111
+# --------------------------------------------------------------------------- #
+
+
+def test_an_estimated_metric_cannot_be_created_unlabelled() -> None:
+    """The forward guard. 868 and 1,016 both looked right without it."""
+    from controlplane.model import MetricKind
+    from controlplane.model.metrics import Metric, MetricError
+
+    with pytest.raises(MetricError, match="interval convention"):
+        Metric("recall", 0.3, MetricKind.ESTIMATED, 600, 0.2, 0.4, 0.95, "rate", "boot")
+
+    ok = Metric(
+        "recall", 0.3, MetricKind.ESTIMATED, 600, 0.2, 0.4, 0.95, "rate", "boot",
+        convention="two_sided_95",
+    )
+    assert ok.convention == "two_sided_95"
+
+
+def test_an_unknown_convention_is_refused() -> None:
+    """'95%' is not a convention; it is the ambiguity being removed."""
+    from controlplane.model import MetricKind
+    from controlplane.model.metrics import Metric, MetricError
+
+    with pytest.raises(MetricError, match="interval convention"):
+        Metric(
+            "recall", 0.3, MetricKind.ESTIMATED, 600, 0.2, 0.4, 0.95, "rate", "boot",
+            convention="95%",
+        )
+
+
+def test_an_exact_count_needs_no_convention() -> None:
+    """An exact count has no interval, so it has no tails to declare."""
+    from controlplane.model import MetricKind
+    from controlplane.model.metrics import Metric
+
+    assert Metric("confirmed_errors", 850, MetricKind.EXACT, 850, unit="count").convention is None
+
+
+def test_the_shipped_clopper_pearson_is_two_sided_and_says_so() -> None:
+    """The docstring quoted 0.0149 -- the ONE-sided value -- for two-sided code.
+
+    That is a 23% understatement in the docstring of the function at the centre
+    of the convention confusion, and it is how a reader calibrates a target
+    against the wrong bound.
+    """
+    from controlplane.validation.stats import clopper_pearson
+    from controlplane.validation.warrant_stats import cp_upper
+
+    low, high = clopper_pearson(0, 200, 0.95)
+    assert low == 0.0
+    assert high == pytest.approx(0.018275340355136237, abs=1e-12)
+    # And the one-sided bound, which is a different number for a different job.
+    assert cp_upper(0, 200, 0.05) == pytest.approx(0.014867039231272, abs=1e-12)
+    assert high / cp_upper(0, 200, 0.05) == pytest.approx(1.229, abs=0.01)

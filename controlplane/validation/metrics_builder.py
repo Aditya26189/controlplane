@@ -137,6 +137,7 @@ def build_warrant_metrics(
                     ci_high=1.0,
                     ci_level=ci,
                     unit="rate",
+                    convention="two_sided_95",
                     estimator=(
                         f"undefined: 0 of {n_items} items flagged at this "
                         "threshold, so precision is 0/0. The interval is "

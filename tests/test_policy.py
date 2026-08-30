@@ -140,6 +140,7 @@ def warrant(
         recall=Metric(
             "recall", recall, MetricKind.ESTIMATED, n_test,
             recall - 0.04, recall + 0.05, 0.95, "rate", "bootstrap-percentile-1000",
+            convention="two_sided_95",
         ),
     )
     realised = Metric(
@@ -149,7 +150,8 @@ def warrant(
         target_flag_rate * 0.99 if calibration_status is CalibrationStatus.CALIBRATED else target_flag_rate * 1.9,
         target_flag_rate * 1.01 if calibration_status is CalibrationStatus.CALIBRATED else target_flag_rate * 2.1,
         0.95, "rate", "bootstrap-percentile-1000",
-    )
+            convention="two_sided_95",
+        )
     return dataclasses.replace(
         base,
         operating_point=point,

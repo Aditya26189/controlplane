@@ -228,6 +228,29 @@ def main() -> int:
         "SATURATED" if saturated else "spread is consistent with ranking",
     )
 
+    # THE THIRD STATISTIC, and the one the other two cannot see. The IQR ratio
+    # is a scale statistic; AUROC is a rank statistic. A wholesale LOCATION
+    # shift -- every score moving together, spread and ordering intact -- passes
+    # both and destroys the operating point. That is not hypothetical: it is
+    # this project's own Round 2 finding, where ranking survived the
+    # long-context shift and calibration did not.
+    #
+    # Reported in reference-IQR units so it is comparable across probes, and
+    # reported rather than gated, because no threshold for it has been
+    # pre-registered and inventing one after seeing the number is the error
+    # DECISIONS 084 is about.
+    location_shift = (
+        float(np.median(pilot_scores) - np.median(reference_scores)) / reference_iqr
+        if reference_iqr
+        else float("nan")
+    )
+    _LOG.info(
+        "location: pilot median %.4f vs reference %.4f = %+.4f reference-IQRs "
+        "(REPORTED, not gated -- no threshold pre-registered)",
+        float(np.median(pilot_scores)), float(np.median(reference_scores)),
+        location_shift,
+    )
+
     from controlplane.validation.stats import auroc as auroc_of
     from controlplane.validation.stats import bootstrap_interval
 
@@ -266,6 +289,39 @@ def main() -> int:
     _LOG.info("wrote the labelled set to %s", args.evalsets_dir)
 
     payload = {
+        # The scores themselves, because the pilot's own caveats cannot be
+        # examined without them. The AUROC gate cleared by 0.0054 and a
+        # percentile bootstrap's lower bound moves with its seed, so the honest
+        # question is what fraction of seeds clear -- and that cannot be asked
+        # from a summary. 24 floats; the alternative is another GPU run.
+        "scores": {
+            "pilot": [float(x) for x in pilot_scores],
+            "labels": [int(x) for x in labels],
+            "question_ids": [i.question_id for i in evalset.items],
+            "reference_summary": {
+                "n": int(reference_scores.size),
+                "median": float(np.median(reference_scores)),
+                "iqr": float(reference_iqr),
+                "p25": float(np.percentile(reference_scores, 25)),
+                "p75": float(np.percentile(reference_scores, 75)),
+            },
+            "note": (
+                "pilot scores in full; the reference is summarised because only "
+                "its median and IQR enter the two ratio statistics."
+            ),
+        },
+        "location_shift": {
+            "value_reference_iqrs": location_shift,
+            "gated": False,
+            "why": (
+                "The IQR ratio is a SCALE statistic and AUROC is a RANK "
+                "statistic. Neither sees a wholesale location shift, which "
+                "leaves spread and ordering intact and moves the operating "
+                "point -- this project's Round 2 finding exactly. Reported "
+                "rather than gated because no threshold was pre-registered, "
+                "and choosing one after seeing the value is DECISIONS 084."
+            ),
+        },
         "eval_set_id": evalset.eval_set_id,
         "envelope_id": evalset.envelope_id,
         "draft_content_hash": draft.content_hash,

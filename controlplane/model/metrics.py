@@ -45,6 +45,12 @@ _BLENDED_NAME = re.compile(
 )
 
 
+#: The two interval conventions this codebase produces. A warrant bound is
+#: one-sided, because "FPR <= x at 95%" is a one-sided claim. A descriptive
+#: interval is two-sided. DECISIONS.md 110.
+_CONVENTIONS = frozenset({"one_sided_95", "two_sided_95"})
+
+
 @dataclasses.dataclass(frozen=True)
 class Metric:
     """One measured quantity, carrying what is and is not known about it.
@@ -65,6 +71,16 @@ class Metric:
         estimator: How the interval was produced, e.g.
             ``"bootstrap-percentile-1000"``. An interval whose construction is
             unstated is not reproducible.
+        convention: ``"two_sided_95"`` or ``"one_sided_95"``. **Required for
+            ``ESTIMATED``**, because the two are 23% apart at n=200 and both
+            look like "95%". The shipped hard-negative bound is
+            ``cp_upper(0, 200, alpha=0.025)`` -- two-sided -- while
+            ``warrant_stats.cp_upper`` is one-sided by design, and eyeballing a
+            certification target off the wrong one moves the demo's refusal
+            figure by 17% (``DECISIONS.md`` 110). A warrant bound is one-sided
+            because *"FPR <= x at 95%"* is a one-sided claim; a descriptive
+            interval is two-sided. Having both is correct. Having both
+            unlabelled is the defect.
 
     Raises:
         MetricError: If the metric would misrepresent its own kind.
@@ -79,6 +95,7 @@ class Metric:
     ci_level: Optional[float] = None
     unit: str = "rate"
     estimator: Optional[str] = None
+    convention: Optional[str] = None
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -90,6 +107,15 @@ class Metric:
                 "wasted review and a false negative costs a user acting on a wrong "
                 "answer, and a blended score fixes that exchange rate silently. "
                 "Report precision and recall separately."
+            )
+        if self.kind is MetricKind.ESTIMATED and self.convention not in _CONVENTIONS:
+            raise MetricError(
+                f"{self.name}: an ESTIMATED metric must declare its interval "
+                f"convention, one of {sorted(_CONVENTIONS)}; got "
+                f"{self.convention!r}. A two-sided 95% upper limit is a 97.5% "
+                "one-sided bound wearing a 95% label, and the two are 23% apart "
+                "at n=200. Both are correct objects for different jobs; an "
+                "unlabelled one is neither (DECISIONS.md 110)."
             )
         if not math.isfinite(self.value):
             raise MetricError(f"{self.name}: value must be finite, got {self.value}")
@@ -381,6 +407,9 @@ class WarrantMetrics:
             ci_level=self.recall.ci_level,
             unit="ratio",
             estimator=context,
+            # Lift is recall/f, so it inherits recall's convention: dividing an
+            # interval by a constant does not change which tails it came from.
+            convention=self.recall.convention,
         )
 
     @property
