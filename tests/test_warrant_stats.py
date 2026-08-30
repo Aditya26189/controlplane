@@ -38,6 +38,7 @@ from controlplane.validation.warrant_stats import (
     min_n_for,
 )
 
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
 PROJECT_CONFIG = "config.yaml"
 ALPHA = 0.05
 
@@ -475,3 +476,70 @@ def test_the_shipped_clopper_pearson_is_two_sided_and_says_so() -> None:
     # And the one-sided bound, which is a different number for a different job.
     assert cp_upper(0, 200, 0.05) == pytest.approx(0.014867039231272, abs=1e-12)
     assert high / cp_upper(0, 200, 0.05) == pytest.approx(1.229, abs=0.01)
+
+
+def test_a_thin_margin_is_priced_not_disclosed() -> None:
+    """DECISIONS 114: the pilot's gate clears in a minority of bootstrap seeds.
+
+    Asserted against the **committed artifact**, not a cheap recomputation. The
+    fraction is sensitive to the resample count -- at 400 resamples the bound's
+    own sd inflates to 0.025 and the fraction drifts to 0.50 -- so a reduced
+    sweep does not reproduce the finding and must not be used to claim it. The
+    artifact is built at 400 seeds x 1000 resamples by
+    `scripts/15_pilot_seed_stability.py`.
+
+    The margin check below IS settings-robust, which is why it is separate: the
+    published bound clears by less than the seed spread at any sweep size, and
+    that is the fact the honest sentence rests on.
+    """
+    import json
+
+    artifact = PROJECT_ROOT / "results" / "pilot_seed_stability.json"
+    if not artifact.exists():
+        pytest.skip("seed-stability artifact not generated yet")
+    payload = json.loads(artifact.read_text(encoding="utf-8"))
+    stability = payload["stability"]
+
+    assert stability["n_clusters"] == 12
+    assert stability["clears_fraction"] < 0.5, (
+        f"the committed artifact reports {stability['clears_fraction']:.0%} of "
+        "seeds clearing; DECISIONS 114 calls it a minority outcome"
+    )
+    assert stability["mean"] < stability["bar"], (
+        "the mean lower bound is no longer below the bar; 114's reading needs "
+        "revisiting"
+    )
+    assert "minority" in payload["verdict"]
+
+
+def test_the_published_margin_is_thinner_than_its_own_seed_spread() -> None:
+    """The settings-robust half, computed rather than read.
+
+    Whatever the sweep size, the pilot's 0.0054 margin sits inside the
+    seed-to-seed sd of the bound it was measured on. That is what makes
+    "it cleared" a statement about the seed.
+    """
+    import json
+
+    from controlplane.validation.stats import auroc, bootstrap_seed_stability
+
+    payload = json.loads(
+        (PROJECT_ROOT / "results" / "pilot_run.json").read_text(encoding="utf-8")
+    )
+    if "scores" not in payload:
+        pytest.skip("pilot artifact predates score persistence")
+    scores = payload["scores"]
+    result = bootstrap_seed_stability(
+        np.asarray(scores["labels"], dtype=int),
+        np.asarray(scores["pilot"], dtype=float),
+        np.asarray(scores["question_ids"]),
+        statistic=auroc,
+        bar=payload["auroc"]["min_lower_ci_for_issuance"],
+        n_seeds=30,
+        n_resamples=300,
+        published=payload["auroc"]["ci_low"],
+    )
+    margin = payload["auroc"]["ci_low"] - result.bar
+    assert margin < result.sd, (
+        f"margin {margin:.4f} is no longer inside the seed sd {result.sd:.4f}"
+    )

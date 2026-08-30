@@ -4975,3 +4975,158 @@ what *"reproducible from frozen artifacts, no GPU, no network"* already
 requires. The injected-drift disclosure stands: at 500 interactions/week and a
 2% audit rate the monitor could not fire organically, and saying so costs
 nothing.
+
+## 113 - Advice documents are an unguarded import path, and the first backfilled interval
+
+Three corrections, one of which is a category `111` did not cover.
+
+### The document-side case of 111
+
+`111` recorded that a guard is authored through the same path it guards. The
+`DEFF 1.60` retraction is that pattern applied to **documents**, and it is the
+more dangerous half.
+
+`1.60` came from an ICC table in a planning document, where it was a
+**hypothetical** illustrating why the upper bound of an ICC interval must be
+used rather than the point estimate. It was never a measurement. It then
+appeared in a section about this project's `n=258` negatives, surrounded by
+this project's numbers, unmarked as illustrative -- and read across the
+document boundary it was indistinguishable from a project quantity.
+
+**The repository's invariant 8 requires every number to trace to an artifact.
+Advice documents sit outside that system.** A number crossing that boundary
+loses the context that made it hypothetical, and arrives looking measured.
+
+Same route brought `prEN 18284` as the Article 15 standard, which is dataset
+governance rather than accuracy and would have discredited the citation in
+front of anyone who knows the work programme.
+
+**The rule: a number arriving from outside the repository is UNVALIDATED until
+it resolves to an artifact here, exactly like a warrant cell.** Not wrong --
+unvalidated, which is the modal state and must not collapse into either of the
+others. It gets used only after it is either measured here or explicitly
+labelled as imported and hypothetical.
+
+This is the fifteenth self-catch and the first that happened to a *document*
+rather than to code: a plausible number, correctly computed for its original
+purpose, answering a different question in its new home. It is a better example
+than another code bug, because it is the failure mode the product sells against
+and it happened in the medium the customer reads.
+
+### `lam * p0` at the boundary profile, corrected
+
+`112`'s table reported the **pre-clamp nominal**:
+
+| profile | p0 | lam_hi | lam*p0 | clamped |
+|---|---|---|---|---|
+| customer_support | 0.02 | 10.000 | 0.200 | no |
+| internal_knowledge | 0.05 | 10.000 | 0.500 | no |
+| decision_support | 0.10 | **9.000** | **0.900** | **yes** |
+
+`112` said `1.00` for decision support. The clamp *is* live in that path, so
+the effective product is `0.900` and the boundary is never reached. The
+corrected reading is stronger, not weaker -- but a table of nominal values
+labelled as effective ones is the same defect as everything else here.
+
+### The first interval backfilled, and it was the one that mattered
+
+`110` deferred the 631-interval sweep. One entry could not wait:
+
+`fpr_hard_negatives` is **warrant-facing** -- `routing.py` compares its
+`ci_high` against the profile's declared maximum. It was computed on the
+descriptive two-sided convention:
+
+    hinglish-pii-200 hard negatives, 0/200 events
+      shipped   [0.0000, 0.018275]   two-sided 95%
+      correct   [0.0000, 0.014867]   one-sided 95%
+
+`0.014867` is also the rule of three, `3/200 = 0.015` -- which is the number
+`clopper_pearson`'s docstring quoted all along, for a bound the code was not
+returning. The docstring was right about the object the warrant needs and wrong
+about what the function produced.
+
+The direction was **safe**: 0.0183 is looser, so the detector looked worse than
+it is. But it was inconsistent with the convention declared in `110`, and it is
+in the status brief.
+
+`estimated()` now takes a `convention` argument and refuses to produce a
+one-sided bound without the binomial counts, because there is no one-sided
+percentile bootstrap that would mean the same thing, and relabelling a
+two-sided one is the error the convention exists to stop.
+
+### The symmetric case, named and not yet done
+
+`recall.ci_low` is compared against `min_recall` in the same routing code. That
+is a one-sided **lower** bound claim with the same argument, and it is still
+computed two-sided. Listed here so it is a known gap rather than a discovery.
+
+## 114 - The pilot's verdict is a minority outcome across bootstrap seeds
+
+**The margin, priced.** `111` persisted the pilot's 24 scores precisely so this
+question could be asked without another GPU run. Asked, it changes the reading
+of the whole result.
+
+### The measurement
+
+`results/pilot_seed_stability.json`, 400 seeds, 1000 cluster resamples each,
+resampling the 12 questions:
+
+| quantity | value |
+|---|---|
+| AUROC lower bound, mean across seeds | **0.5478** |
+| seed-to-seed sd | **0.0166** |
+| range | [0.4997, 0.5858] |
+| issuance bar | 0.55 |
+| **clears the bar in** | **38.0% of seeds** |
+| published draw | 0.5554, at the **66th percentile** |
+
+**The mean lower bound is below the bar.** The reported
+`branch = clears_the_pilot` is a *minority* outcome, and the published draw was
+a favourable one.
+
+### What this does and does not overturn
+
+It does **not** overturn the other two gates. 7 of 12 questions wrong is a
+count, not an estimate, and it is squarely inside `[3, 9]`. The IQR ratio of
+0.7360 is a ratio of two IQRs on fixed data, with no resampling in it.
+
+It overturns the **third** gate, which was the only one that carried an
+interval, and therefore the only one whose verdict could move with a seed. The
+margin was 0.0054 against a spread of 0.0166 -- a third of one standard
+deviation. That is not a near-miss; it is a coin that had already been flipped
+once when it was reported.
+
+### The correct statement
+
+> The pilot is in band and its score spread is healthy. Its AUROC lower bound
+> clears the 0.55 issuance bar **in 38% of bootstrap seeds**, mean 0.5478.
+> On the draw that was run it cleared, at 0.5554.
+
+That is longer than "clears the pilot" and it is the sentence the evidence
+supports. `090`'s branch machinery is unchanged: this is not a fourth branch,
+it is the honest reading of the third gate's input.
+
+### Why `phase-8` is not retagged
+
+The tag is a point-in-time record and it named this as the open question in its
+own annotation -- *"the pilot's scores are now persisted so that question can be
+asked without another GPU run; it has not been asked yet."* It has now been
+asked, and the answer lives here and in README open items. Moving the tag would
+rewrite a record that was accurate when written; appending the answer is the
+same discipline as the log itself.
+
+The decision the tag encodes is **strengthened**, not weakened. "Do not author
+240 items on this" was argued from a 0.0054 margin against an estimated seed
+sd. The margin is now measured, the sd is 0.0166, and the gate fails more often
+than it passes.
+
+### The generalisation
+
+`bootstrap_seed_stability` is in `stats.py` rather than in this script, because
+this is not a property of the pilot. **Any gate compared against a bootstrap
+bound has a seed distribution, and any margin thinner than that bound's own sd
+is a statement about the seed.** The selection-aware widening in `083` is the
+same family: an interval conditioned on something nobody priced.
+
+Every gate in this project that compares a bound to a threshold now has a
+question attached to it that has been asked exactly once.

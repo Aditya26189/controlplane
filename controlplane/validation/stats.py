@@ -20,6 +20,7 @@ and raises nothing.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from typing import Callable, Optional, Sequence
 
@@ -28,6 +29,8 @@ import numpy as np
 from ..model import Metric, MetricKind
 
 __all__ = [
+    "SeedStability",
+    "bootstrap_seed_stability",
     "MeasurementError",
     "clopper_pearson",
     "assert_polarity",
@@ -442,6 +445,7 @@ def estimated(
     unit: str = "rate",
     binomial_events: Optional[int] = None,
     binomial_trials: Optional[int] = None,
+    convention: str = "two_sided_95",
 ) -> Metric:
     """Compute a statistic and its bootstrap interval as one :class:`Metric`.
 
@@ -465,11 +469,51 @@ def estimated(
             :func:`clopper_pearson` for why a zero-width bootstrap interval is
             the worst possible output here.
         binomial_trials: Denominator for the same fallback.
+        convention: ``"two_sided_95"`` (default, descriptive) or
+            ``"one_sided_95"``. A **warrant-facing** bound must be one-sided:
+            the claim is *"FPR <= x at 95%"*, and a two-sided upper limit is a
+            97.5% one-sided bound wearing a 95% label. At 0/200 the two are
+            0.014867 and 0.018275 -- 23% apart (``DECISIONS.md`` 110, 113).
+            One-sided requires the binomial counts, because there is no
+            one-sided percentile bootstrap here that would mean the same thing.
 
     Returns:
         An ``ESTIMATED`` metric carrying bounds, ``n`` and its estimator.
     """
     value = float(statistic(labels, scores))
+
+    if convention == "one_sided_95":
+        if binomial_events is None or binomial_trials is None:
+            raise MeasurementError(
+                f"{name}: a one-sided bound needs the binomial counts. The "
+                "percentile bootstrap is two-sided by construction, and "
+                "relabelling it would be the error this convention exists to "
+                "stop."
+            )
+        from .warrant_stats import cp_upper
+
+        # Lower is 0 by construction: a one-sided upper bound makes no claim
+        # about the lower end, and reporting a bootstrap lower beside an exact
+        # upper would be two conventions inside one interval.
+        upper = cp_upper(int(binomial_events), int(binomial_trials), 1.0 - ci)
+        return Metric(
+            name=name,
+            value=value,
+            kind=MetricKind.ESTIMATED,
+            n=int(np.asarray(labels).size),
+            ci_low=0.0,
+            ci_high=max(upper, value),
+            ci_level=ci,
+            unit=unit,
+            estimator=(
+                f"Clopper-Pearson ONE-SIDED upper bound "
+                f"({int(binomial_events)}/{int(binomial_trials)} events, "
+                f"alpha={1.0 - ci:.3f} in one tail); compared against a "
+                "declared maximum, so it is the object the warrant claims"
+            ),
+            convention="one_sided_95",
+        )
+
     low, high, n_effective = bootstrap_interval(
         statistic,
         labels,
@@ -539,3 +583,115 @@ def exact_count(name: str, value: int, n: int) -> Metric:
     call sites should not look alike (``CLAUDE.md``, yield versus rate).
     """
     return Metric(name=name, value=float(value), kind=MetricKind.EXACT, n=n, unit="count")
+
+
+@dataclasses.dataclass(frozen=True)
+class SeedStability:
+    """How often a gate clears, across bootstrap seeds rather than on one draw.
+
+    Args:
+        bar: The threshold the bound is compared against.
+        n_seeds: Seeds swept.
+        n_resamples: Bootstrap resamples per seed.
+        n_clusters: Resampling unit count.
+        mean, sd, minimum, maximum: Of the bound across seeds.
+        clears_fraction: Share of seeds whose bound clears ``bar``. **This is
+            the verdict**; a single draw is one sample from it.
+        published: The bound actually reported, if given.
+        published_percentile: Where that draw sits in the seed distribution.
+    """
+
+    bar: float
+    n_seeds: int
+    n_resamples: int
+    n_clusters: int
+    mean: float
+    sd: float
+    minimum: float
+    maximum: float
+    clears_fraction: float
+    published: Optional[float] = None
+    published_percentile: Optional[float] = None
+
+    def to_payload(self) -> dict:
+        return dataclasses.asdict(self)
+
+
+def bootstrap_seed_stability(
+    labels: np.ndarray,
+    scores: np.ndarray,
+    groups: np.ndarray,
+    *,
+    statistic: Callable[[np.ndarray, np.ndarray], float],
+    bar: float,
+    ci: float = 0.95,
+    n_seeds: int = 400,
+    n_resamples: int = 1000,
+    published: Optional[float] = None,
+) -> SeedStability:
+    """Sweep the bootstrap seed and report how often the gate clears.
+
+    **Why this is not optional at a thin margin.** A percentile bootstrap's
+    bound is itself a random variable: resampling is a draw, and the reported
+    interval is one realisation of it. When a gate clears by less than the
+    seed-to-seed standard deviation of its own bound, "it cleared" describes
+    the seed as much as the detector.
+
+    The banking pilot cleared its 0.55 AUROC bar at 0.5554 -- by 0.0054,
+    against a measured seed sd of 0.0166. Swept, it clears in 38% of seeds and
+    its mean bound is 0.5478, *below* the bar. The published draw sat at the
+    66th percentile. One draw at +0.0054 is a coin already flipped once
+    (``DECISIONS.md`` 114).
+
+    Args:
+        labels: 0/1 labels.
+        scores: Detector scores.
+        groups: Cluster ids; resampling is over these, not over rows.
+        statistic: Callable taking ``(labels, scores)``.
+        bar: The threshold the lower bound must clear.
+        ci: Coverage, e.g. 0.95. The lower bound is the ``(1-ci)/2`` percentile.
+        n_seeds: Seeds swept.
+        n_resamples: Resamples per seed.
+        published: The bound actually reported, to locate in the distribution.
+
+    Returns:
+        A :class:`SeedStability`.
+    """
+    labels = np.asarray(labels)
+    scores = np.asarray(scores, dtype=float)
+    groups = np.asarray(groups)
+    clusters = np.unique(groups)
+    index = {c: np.flatnonzero(groups == c) for c in clusters}
+    tail = (1.0 - ci) / 2.0 * 100.0
+
+    lows = []
+    for seed in range(n_seeds):
+        rng = np.random.default_rng(seed)
+        values = []
+        for _ in range(n_resamples):
+            picked = rng.choice(clusters, size=clusters.size, replace=True)
+            rows = np.concatenate([index[c] for c in picked])
+            y, x = labels[rows], scores[rows]
+            if len(set(y.tolist())) > 1:
+                values.append(statistic(y, x))
+        if values:
+            lows.append(float(np.percentile(values, tail)))
+    low_array = np.asarray(lows, dtype=float)
+
+    percentile = None
+    if published is not None and low_array.size:
+        percentile = float((low_array < published).mean() * 100.0)
+
+    return SeedStability(
+        bar=float(bar),
+        n_seeds=int(n_seeds),
+        n_resamples=int(n_resamples),
+        n_clusters=int(clusters.size),
+        mean=float(low_array.mean()),
+        sd=float(low_array.std()),
+        minimum=float(low_array.min()),
+        maximum=float(low_array.max()),
+        clears_fraction=float((low_array >= bar).mean()),
+        published=published,
+        published_percentile=percentile,
+    )

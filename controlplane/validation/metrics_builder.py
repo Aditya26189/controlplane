@@ -172,6 +172,12 @@ def build_warrant_metrics(
             n_resamples=boot, ci=ci, seed=seed, groups=groups,
             binomial_events=int(np.sum((scores >= threshold) & (labels == 0))),
             binomial_trials=int(np.sum(labels == 0)),
+            # The hard-negative bound is WARRANT-FACING: routing.py compares
+            # its ci_high against the profile's declared maximum, so it is the
+            # object the warrant claims and must be one-sided (DECISIONS 113).
+            # The within-set `fpr` on a non-hard-negative envelope is
+            # descriptive and stays two-sided.
+            convention="one_sided_95" if is_hard_negative_set else "two_sided_95",
         )
 
     return WarrantMetrics(

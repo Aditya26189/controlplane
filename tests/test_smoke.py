@@ -532,6 +532,8 @@ def test_every_script_has_a_smoke_test() -> None:
         "12_pilot_freeze.py",
         # test_smoke_pilot_null_band
         "14_pilot_null_band.py",
+        # test_smoke_pilot_seed_stability
+        "15_pilot_seed_stability.py",
         # test_smoke_the_smoke_check_itself
         "smoke.py",
         # test_smoke_verify_claims_only, test_verify_exits_non_zero_on_drift
@@ -910,3 +912,39 @@ def test_smoke_pilot_null_band(tmp_path: Path) -> None:
         f"recalibrating at n=30 did not beat the frozen threshold "
         f"({recal_30} vs {frozen_30})"
     )
+
+
+def test_smoke_pilot_seed_stability(tmp_path: Path) -> None:
+    """`15_pilot_seed_stability.py` prices the pilot's margin, DECISIONS 114.
+
+    Seeds and resamples are dropped hard to keep this seconds long; the
+    committed artifact is built at 400 x 1000. What is asserted is the
+    contract, not the value: the artifact names the fraction of seeds that
+    clear, because that fraction is the verdict.
+    """
+    out = tmp_path / "pilot_seed_stability.json"
+    _run_bare(
+        "15_pilot_seed_stability.py",
+        "--config", str(PROJECT_ROOT / "config.yaml"),
+        "--seeds", "12",
+        "--resamples", "120",
+        "--out", str(out),
+    )
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    stability = payload["stability"]
+    assert stability["n_clusters"] == 12
+    assert 0.0 <= stability["clears_fraction"] <= 1.0
+    assert stability["sd"] > 0.0, "a seed sweep with zero spread swept nothing"
+    assert stability["published"] is not None
+    assert "minority" in payload["verdict"] or "majority" in payload["verdict"]
+
+
+def test_the_pilot_artifact_still_carries_its_scores() -> None:
+    """Without them, DECISIONS 114's question needs another GPU run to ask."""
+    payload = json.loads(
+        (PROJECT_ROOT / "results" / "pilot_run.json").read_text(encoding="utf-8")
+    )
+    assert "scores" in payload, "pilot_run.json lost its scores block"
+    assert len(payload["scores"]["pilot"]) == 24
+    assert len(payload["scores"]["question_ids"]) == 24
+    assert payload["scores"]["reference_summary"]["n"] == 960
