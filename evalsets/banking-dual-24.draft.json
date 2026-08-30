@@ -5,8 +5,11 @@
  "n_items": 24,
  "content_hash": "312516ded744e4fe12a20f6192d0dd9bab8dd61911b9f62dbe8b63825fa389c2",
  "labels": "UNMEASURED - correctness is judged on the generation pass",
- "preregistered_in": "DECISIONS.md 090 (corrected), 101",
- "gold_verified_on": "2026-08-29",
+ "preregistered_in": "DECISIONS.md 090 (corrected), 101, 105",
+ "gold_verified_on": [
+  "2026-08-29",
+  "2026-08-30"
+ ],
  "items": [
   {
    "item_id": "bq01-neft-full-form-pii0",
