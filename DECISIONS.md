@@ -4398,3 +4398,56 @@ policy rather than bank-set fees.
 answer broke the check that exists to ensure gold answers get verified. Fixed
 to assert a well-formed, non-future, not-older-than-authoring date per item.
 A check that fires when you do the right thing trains people to skip it.
+
+## 106 - The pilot's draft hash was recorded but never checked
+
+**Found while wiring the pilot into the GPU run**, one commit after `105`
+re-froze the draft — which is exactly the situation that makes it dangerous.
+
+### The defect
+
+`13_pilot_run.py` rebuilds the draft from `BANKING_PILOT_QUESTIONS` rather than
+loading `evalsets/banking-dual-24.draft.json`. That is the right way round: the
+code is the authority and the file is its record.
+
+It then wrote `draft.content_hash` into the artifact **and never compared it to
+the frozen file**. So if the questions and the freeze had drifted apart, the run
+would have scored the rebuilt prompts and recorded their hash — truthfully —
+while the committed freeze said something else. Every downstream consistency
+check would pass, because the artifact is internally consistent. The only thing
+wrong is that the prompts scored are not the prompts anyone reviewed.
+
+`100` names this shape: **a check that did not report is a check that did not
+run.** The hash was *written*, not *checked*, and a written hash reads exactly
+like a verified one.
+
+### Why it was live right now
+
+`105` corrected a gold answer and moved the draft hash
+`00a786481cb52785` to `312516ded744e4fe`. Correct the question, forget to
+re-freeze, and the next GPU run scores the old prompts under the new hash — on
+a machine that clones from `main` and cannot be inspected while it runs. The
+window between changing a question and re-freezing is precisely when nothing
+was watching.
+
+### The fix
+
+`assert_draft_matches_frozen(draft, path)` compares the rebuilt hash to the
+frozen file and raises `DraftDivergedError` on mismatch. Called in
+`13_pilot_run.py` **before the model loads**, because the alternative is
+discovering it after 2.7 GPU-hours — the same lesson as the `load_model`
+signature bug, which also failed at a boundary that could have been checked in
+milliseconds.
+
+**A missing freeze is a failure, not a pass.** A run that cannot find the file
+it is supposed to check against has verified nothing, and defaulting to "no
+file, carry on" would reintroduce the defect under a different name.
+
+### Also fixed: a second typed date
+
+`PilotDraft.to_payload` wrote `"gold_verified_on": "2026-08-29"` as a literal.
+The moment one gold answer was re-verified that field described a date no
+longer true of every item. Now derived: `sorted({i.gold_checked for i in
+items})`. Third hardcoded date this session — the test in `105`, the freeze log
+line, and this — all of which went stale the instant a gold answer was
+corrected. Deriving costs one expression.

@@ -66,6 +66,8 @@ __all__ = [
     "MIN_AUROC_LOWER_CI",
     "PilotVerdict",
     "SATURATION_IQR_RATIO",
+    "DraftDivergedError",
+    "assert_draft_matches_frozen",
     "build_banking_dual_pilot",
     "decide_branch",
     "evalset_from_draft",
@@ -431,8 +433,12 @@ class PilotDraft:
             "n_items": len(self.items),
             "content_hash": self.content_hash,
             "labels": "UNMEASURED - correctness is judged on the generation pass",
-            "preregistered_in": "DECISIONS.md 090 (corrected), 101",
-            "gold_verified_on": "2026-08-29",
+            "preregistered_in": "DECISIONS.md 090 (corrected), 101, 105",
+            # Derived, not typed. This was the literal "2026-08-29" until
+            # bq12-neft-upper-limit was re-verified on its own (DECISIONS 105)
+            # and the field silently began describing a date no longer true of
+            # every item.
+            "gold_verified_on": sorted({i.gold_checked for i in self.items}),
             "items": [
                 {
                     "item_id": i.item_id,
@@ -450,6 +456,75 @@ class PilotDraft:
                 for i in self.items
             ],
         }
+
+
+class DraftDivergedError(RuntimeError):
+    """The prompts about to be scored are not the prompts that were frozen."""
+
+
+def assert_draft_matches_frozen(draft: "PilotDraft", path) -> str:
+    """Refuse to score a rebuilt draft that has drifted from the frozen file.
+
+    ``13_pilot_run.py`` rebuilds the draft from code rather than loading the
+    JSON, which is right -- the code is the authority and the file is its
+    record. But it then recorded ``draft.content_hash`` into the artifact
+    **without ever comparing it to the frozen file**, so a divergence between
+    ``BANKING_PILOT_QUESTIONS`` and ``evalsets/banking-dual-24.draft.json``
+    would have produced a run that scored one set of prompts and reported the
+    hash of... the same set, truthfully, while the committed freeze said
+    something else entirely. The hash was *written*, not *checked*, which is
+    the defect ``DECISIONS.md`` 100 names: a check that did not report is a
+    check that did not run.
+
+    It matters most in exactly the situation that just occurred -- a gold
+    answer corrected (``105``) and the draft re-frozen. Get the order wrong and
+    a GPU run scores the old prompts under the new hash, on a machine that
+    clones from ``main`` and cannot be inspected while it runs.
+
+    Args:
+        draft: The draft rebuilt from ``BANKING_PILOT_QUESTIONS``.
+        path: The frozen ``*.draft.json``.
+
+    Returns:
+        The verified content hash.
+
+    Raises:
+        DraftDivergedError: If the file is missing, unreadable, or carries a
+            different hash. Missing is a failure, not a pass: a run that cannot
+            find its freeze has not verified anything.
+    """
+    import json
+    from pathlib import Path as _Path
+
+    path = _Path(path)
+    if not path.is_file():
+        raise DraftDivergedError(
+            f"no frozen draft at {path}. The rebuilt draft hashes to "
+            f"{draft.content_hash}, but there is nothing to check it against, "
+            "and an unverifiable freeze is not a freeze. Run "
+            "scripts/12_pilot_freeze.py and commit the result."
+        )
+    try:
+        frozen = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise DraftDivergedError(f"frozen draft at {path} is unreadable: {exc}") from exc
+
+    recorded = frozen.get("content_hash")
+    if recorded != draft.content_hash:
+        raise DraftDivergedError(
+            chr(10).join(
+                (
+                    "the pilot draft has diverged from its freeze.",
+                    f"  rebuilt from code    : {draft.content_hash}",
+                    f"  frozen at {path.name} : {recorded}",
+                    "The prompts this run would score are NOT the prompts "
+                    "that were frozen and reviewed. Re-run "
+                    "scripts/12_pilot_freeze.py and commit the re-frozen "
+                    "draft before spending GPU quota.",
+                )
+            )
+        )
+    return draft.content_hash
 
 
 def build_banking_dual_pilot(
