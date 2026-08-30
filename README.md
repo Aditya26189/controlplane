@@ -135,6 +135,66 @@ pointed at.
 | `docs/` | spec, methods, limitations, the case matrix, and the move mapping |
 | `DECISIONS.md` `round1/` | 97 append-only decision entries; the Round 1 submission, moved whole |
 
+### How it fits together
+
+Read left to right: the GPU stage runs once and caches, everything downstream
+reads from disk, and the last column is what a stranger can check without a GPU.
+
+```mermaid
+flowchart LR
+    subgraph IN["INPUTS — versioned, hashed"]
+        CFG["config.yaml<br/>one workload, one seed"]
+        EVS["evalsets/<br/>frozen, content-hashed"]
+        POL["policies/<br/>Rego bundles"]
+    end
+
+    subgraph PKG["controlplane/ — all logic lives here"]
+        EX["extract/<br/>GPU, once"]
+        DET["detectors/<br/>probe · presidio · pii-reference"]
+        VAL["validation/<br/>five controls · issue_or_refuse"]
+        MOD["model/<br/>warrant · metrics · certificate"]
+        MTX["matrix/ + drift/<br/>detector x envelope · PSI · revocation"]
+        PLC["policy/<br/>load-time resolution · compose"]
+        ECO["economics/<br/>feasibility bound"]
+        REP["report/<br/>claims · results · beats"]
+        STO["store/<br/>hash-chained ledger"]
+    end
+
+    subgraph OUT["OUTPUTS — the evidence"]
+        ART["results/*.json<br/>warrants, metrics, controls"]
+        SCO["results/scores/<br/>per-item, committed"]
+        DOC["README claim table<br/>results/RESULTS.md"]
+    end
+
+    subgraph CHK["CHECKS — what proves it"]
+        SMK["scripts/smoke.py"]
+        VFY["scripts/verify.py<br/>three tiers"]
+        TST["tests/"]
+    end
+
+    CFG --> EX & VAL & PLC
+    EVS --> VAL
+    POL --> PLC
+    EX --> DET --> VAL
+    MOD --- VAL
+    VAL --> ART --> MTX --> PLC --> ART
+    VAL --> SCO
+    ART --> ECO & REP --> DOC
+    VAL & PLC --> STO
+    SCO --> VFY
+    DOC --> VFY
+    SMK & TST -.-> PKG
+
+    style EX fill:#d1242f22,stroke:#d1242f
+    style SCO fill:#2da44e22,stroke:#2da44e
+    style VFY fill:#2da44e22,stroke:#2da44e
+```
+
+`scripts/` and `demo/` are thin wrappers around the middle column and hold no
+logic of their own. The stage-by-stage version, the warrant lifecycle and seven
+other diagrams are in [docs/DIAGRAMS.md](docs/DIAGRAMS.md); the package-by-package
+tour is [docs/CODE_TOUR.md](docs/CODE_TOUR.md).
+
 ---
 
 ## Reproduction
