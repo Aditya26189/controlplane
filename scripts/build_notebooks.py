@@ -886,18 +886,17 @@ sys.path.insert(0, "/kaggle/working/controlplane")
 INPUT = Path("/kaggle/input")
 candidates = sorted(INPUT.glob("*/MANIFEST.json")) if INPUT.exists() else []
 if not candidates:
-    listing = (
-        "
-".join(f"    {d.name}/" for d in sorted(INPUT.iterdir()))
-        if INPUT.exists() else "    (/kaggle/input does not exist)"
-    )
+    print("nothing mounted under /kaggle/input carries a MANIFEST.json.")
+    print("what IS mounted:")
+    if INPUT.exists():
+        for entry in sorted(INPUT.iterdir()):
+            print("   ", entry.name)
+    else:
+        print("    (/kaggle/input does not exist)")
     raise SystemExit(
-        "no attached dataset carries a MANIFEST.json. Add Input -> Datasets -> "
+        "Add Input -> Datasets -> "
         "aditya103856/controlplane-reference-caches, then re-run. Refusing to "
-        "re-extract: that is the three-hour path this notebook replaces.
-"
-        f"  what is mounted:
-{listing}"
+        "re-extract: that is the three-hour path this notebook replaces."
     )
 SOURCE = candidates[0].parent
 print("reference caches mounted at", SOURCE)
@@ -1020,6 +1019,84 @@ for name in ("pilot_run.json", "pilot_envelope.json"):
     }
 
 
+def _strip_magics(lines: list[str]) -> list[str]:
+    """Replace IPython magics with ``pass``, without mangling Python.
+
+    Two traps, both found by running this guard on notebooks that were already
+    correct:
+
+    ``pass`` rather than a blank line, at the **same indent**. A magic is often
+    the only statement in an ``if`` body, and blanking it turns a valid cell
+    into "expected an indented block".
+
+    A leading ``%`` is only a magic at the start of a *logical* line. Inside an
+    open bracket it is the modulo/format operator, and
+    ``% (name, major, minor),`` continuing a ``"..." % (...)`` expression is
+    not a magic however much it looks like one. Bracket depth is tracked so
+    continuations are left alone.
+
+    Args:
+        lines: The cell's source, already split on newlines.
+
+    Returns:
+        The same lines with top-level magics replaced.
+    """
+    out: list[str] = []
+    depth = 0
+    for line in lines:
+        stripped = line.lstrip()
+        if depth == 0 and stripped.startswith(("!", "%")):
+            out.append(line[: len(line) - len(stripped)] + "pass")
+        else:
+            out.append(line)
+        # Crude but sufficient: string literals in these cells do not carry
+        # unbalanced brackets, and a miscount only costs a false positive that
+        # the numbered traceback makes obvious.
+        depth += line.count("(") + line.count("[") + line.count("{")
+        depth -= line.count(")") + line.count("]") + line.count("}")
+        depth = max(depth, 0)
+    return out
+
+
+def _assert_cells_compile(notebook: dict, name: str) -> None:
+    """Every code cell must parse before the notebook is written.
+
+    A generated cell is assembled from nested string literals, and escaping
+    survives one layer and not the next: a backslash-n meant to be two
+    characters inside the generated source arrives as a real newline, splitting
+    a string literal across lines. That shipped twice. The second time it cost
+    a Kaggle round trip to discover an IndentationError that ``compile()``
+    reports in microseconds -- and then it happened a third time, in the first
+    draft of *this function*, which is the argument for it existing.
+
+    Cells are compiled with IPython magics stripped, since ``!pip`` and ``%``
+    are notebook syntax rather than Python.
+
+    Args:
+        notebook: The nbformat dict about to be written.
+        name: Filename, for the error message.
+
+    Raises:
+        SyntaxError: With the cell index and the offending source, numbered.
+    """
+    newline = chr(10)
+    for index, cell in enumerate(notebook["cells"]):
+        if cell["cell_type"] != "code":
+            continue
+        source = "".join(cell["source"])
+        cleaned = newline.join(_strip_magics(source.split(newline)))
+        try:
+            compile(cleaned, f"{name}:cell{index}", "exec")
+        except SyntaxError as exc:
+            numbered = newline.join(
+                f"{i:>4}| {line}"
+                for i, line in enumerate(source.split(newline), 1)
+            )
+            raise SyntaxError(
+                f"{name} cell {index} does not compile: {exc}{newline}{numbered}"
+            ) from exc
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default=str(PROJECT_ROOT / "notebooks"))
@@ -1031,6 +1108,8 @@ def main(argv: list[str] | None = None) -> int:
         ("run_on_kaggle.ipynb", build_kaggle_notebook),
         ("run_pilot_on_kaggle.ipynb", build_pilot_notebook),
     ):
+        notebook = builder()
+        _assert_cells_compile(notebook, name)
         path = out / name
         path.write_text(
             json.dumps(builder(), indent=1, ensure_ascii=False) + "\n",
