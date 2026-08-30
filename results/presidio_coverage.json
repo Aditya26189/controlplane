@@ -1,12 +1,10 @@
 {
   "provenance": {
-    "timestamp_utc": "2026-08-30T14:26:56+00:00",
-    "git_commit": "7aa4b6323b0e94f3f0cf767d658f8a448b1f12dc",
+    "timestamp_utc": "2026-08-30T14:48:34+00:00",
+    "git_commit": "9cc34d367fa5173abff97ee6de39deafc931da35",
     "git_branch": "main",
-    "dirty": true,
-    "dirty_paths": [
-      "scripts/17_presidio_coverage.py"
-    ],
+    "dirty": false,
+    "dirty_paths": [],
     "dirty_excludes": "results",
     "python": "3.12.10",
     "libraries": {
