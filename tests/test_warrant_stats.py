@@ -1,16 +1,30 @@
 """Certification at issuance, and the anytime-valid revocation trigger.
 
-Gate A of the handoff plan. The plan's premise needed one correction before the
-test could be written: it states *"the decision-support profile is at FPR
-0.247"*, and this repository has no such profile. `config.yaml` publishes three
-operating points at `max_fpr` **0.02 / 0.05 / 0.10**, and 0.247 appears in
-`results/` only as an unrelated `ci_low`. That matters, because the NaN the
-clamp prevents needs ``lam_hi * p0 > 1`` and 0.10 is exactly the boundary --
-see :func:`test_the_clamp_is_load_bearing_above_the_boundary`, which measures
-where the failure actually starts rather than asserting where it was predicted.
+Gate A of the handoff plan, with its premise corrected twice.
+
+The brief states *"the decision-support profile is at FPR 0.247"*. There is no
+such profile: `config.yaml` declares `max_fpr_hard_negatives` of **0.02 / 0.05 /
+0.10**, and 0.24668 is the FPR that profile achieves on the
+`triviaqa-2400-t960` **hallucination envelope** (`results/paired_comparison.json`).
+Two different rates on two different eval sets.
+
+**Which of them is `FPRMonitor.p0` is undecided, because nothing feeds it yet.**
+`FPRMonitor` and `certify_fpr` are exported and called from nowhere. That
+matters for the clamp: at `lam_hi=10` the NaN needs `lam*p0 > 1`, so
+
+    declared ceilings   0.02 / 0.05 / 0.10   ->  0.20 / 0.50 / 1.00   safe
+    envelope rates      0.0152 / 0.0436 / 0.2467 -> 0.15 / 0.44 / 2.47   NaN
+
+If the estimand is the declared ceiling the clamp is prophylactic; if it is the
+envelope rate, decision-support is dead on arrival. Both are parametrised below
+so neither reading can regress silently, and `DECISIONS.md` 110 records that
+the choice must be made before the monitor is wired.
 """
 
 from __future__ import annotations
+
+import json
+import pathlib
 
 import numpy as np
 import pytest
@@ -29,9 +43,26 @@ ALPHA = 0.05
 
 
 def _published_operating_points() -> list[tuple[str, float]]:
-    """The three profiles' FPR budgets, read from config rather than typed."""
+    """Every rate that could plausibly be the monitor's p0, read not typed.
+
+    Both candidate estimands, because which one feeds ``FPRMonitor.p0`` is not
+    settled (see the module docstring). Testing only the declared ceilings
+    would leave the envelope rates -- the ones that actually reach the NaN --
+    unexercised.
+    """
     config = load_config(PROJECT_CONFIG)
-    return [(name, float(p.max_fpr)) for name, p in config.profiles.items()]
+    points = [
+        (f"{name}/declared-ceiling", float(p.max_fpr_hard_negatives))
+        for name, p in config.profiles.items()
+    ]
+    # Measured achieved FPR at each operating point, from the ROC geometry.
+    payload = json.loads(
+        (pathlib.Path(__file__).resolve().parents[1]
+         / "results" / "paired_comparison.json").read_text(encoding="utf-8")
+    )
+    for point in payload["roc"]["points"]:
+        points.append((f"{point['operating_point_id']}/envelope", float(point["fpr"])))
+    return points
 
 
 # --------------------------------------------------------------------------- #

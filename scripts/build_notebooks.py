@@ -799,6 +799,211 @@ for path in sorted(staging.rglob("*")):
     }
 
 
+REFERENCE_DATASET = "controlplane-reference-caches"
+
+
+def build_pilot_notebook() -> dict:
+    """The banking pilot ALONE, against cached reference activations.
+
+    **Why this exists.** The pilot sat at the end of a three-hour monolith with
+    no checkpoint. Nine GPU-hours were spent across three attempts and it
+    produced no pilot result: once on a wrong argument list, once on an OOM
+    caused by the extraction never releasing the 7B model, and once before
+    that. Each attempt re-ran a three-hour extraction whose output had not
+    changed in order to reach a stage that takes twenty minutes.
+
+    The activations are a pure function of (model, eval set, layer). They do
+    not need recomputing to score a different set of prompts, so they are
+    published as a Kaggle dataset and attached read-only. This turns the pilot
+    into a twenty-minute job that can be retried.
+
+    The manifest travels with the caches and is **checked**, not trusted: the
+    eval-set content hashes in the dataset must match the ones this checkout
+    builds, or the reference scores would come from a different envelope than
+    the one the warrant names.
+    """
+    cells = [
+        markdown(
+            """
+# ControlPlane.ai — the banking pilot, standalone
+
+Runs `scripts/13_pilot_run.py` **only**, against reference activations attached
+as a dataset instead of re-extracted. Twenty minutes rather than three hours.
+
+**Attach the dataset before running:** `aditya103856/controlplane-reference-caches`
+(Add Input → Datasets). It carries `cache-triviaqa-600.npz` and the eval sets
+the reference probe is fitted on, under a manifest of SHA-256s and content
+hashes.
+
+Nothing here re-extracts. If the caches are wrong, the run refuses rather than
+recomputing them — recomputing is the three-hour path this notebook exists to
+avoid, and it should be a deliberate choice, not a fallback.
+"""
+        ),
+        code(
+            """
+import subprocess, sys, os
+from pathlib import Path
+
+CLONE_URL = "https://github.com/Aditya26189/controlplane.git"
+CLONE_BRANCH = "main"
+
+os.chdir("/kaggle/working")
+if not Path("controlplane").exists():
+    subprocess.run(["git", "clone", "--depth", "1", "--branch", CLONE_BRANCH,
+                    CLONE_URL, "controlplane"], check=True)
+os.chdir("/kaggle/working/controlplane")
+print(subprocess.run(["git", "log", "--oneline", "-1"], capture_output=True,
+                     text=True).stdout.strip())
+"""
+        ),
+        code(
+            """
+!pip install -q bitsandbytes accelerate 2>&1 | tail -2
+"""
+        ),
+        markdown(
+            """
+## 1 — Attach the caches, and check them
+
+The manifest is verified against this checkout. A cache built from a different
+eval set would still load and still produce numbers; only the content hash
+catches that, and it is the same argument as the pilot's own draft-hash guard.
+"""
+        ),
+        code(
+            """
+import hashlib, json, shutil, sys
+from pathlib import Path
+
+sys.path.insert(0, "/kaggle/working/controlplane")
+
+SOURCE = Path("/kaggle/input/controlplane-reference-caches")
+if not SOURCE.exists():
+    raise SystemExit(
+        f"{SOURCE} is not attached. Add Input -> Datasets -> "
+        "aditya103856/controlplane-reference-caches, then re-run. Refusing to "
+        "re-extract: that is the three-hour path this notebook replaces."
+    )
+
+manifest = json.loads((SOURCE / "MANIFEST.json").read_text())
+print("caches built from commit", manifest["built_from_commit"][:8])
+
+Path("results").mkdir(exist_ok=True)
+Path("evalsets").mkdir(exist_ok=True)
+for item in sorted(SOURCE.iterdir()):
+    if item.suffix == ".npz":
+        shutil.copy2(item, Path("results") / item.name)
+    elif item.suffix == ".json" and item.name != "MANIFEST.json":
+        shutil.copy2(item, Path("evalsets") / item.name)
+
+# SHA-256 of every cache, against the manifest. Cheap, and the alternative is
+# discovering a truncated upload after the model has loaded.
+for name, meta in manifest["files"].items():
+    digest = hashlib.sha256((Path("results") / name).read_bytes()).hexdigest()
+    if digest != meta["sha256"]:
+        raise SystemExit(f"{name} sha256 {digest} != manifest {meta['sha256']}")
+    print(f"  {name:<34} {meta['bytes'] / 2**20:7.1f} MiB  sha256 ok")
+
+# The eval sets must be the ones THIS checkout believes in, or the reference
+# scores describe a different envelope than the warrant names.
+from controlplane.evalsets.registry import load_evalset
+
+for eval_set_id, meta in manifest["evalsets"].items():
+    local = Path("evalsets") / f"{eval_set_id}.json"
+    if not local.exists():
+        continue
+    got = load_evalset(local).content_hash
+    if got != meta["content_hash"]:
+        raise SystemExit(
+            f"{eval_set_id}: content hash {got[:16]} != manifest "
+            f"{meta['content_hash'][:16]}. The cached activations were "
+            "extracted from a different eval set."
+        )
+    print(f"  {eval_set_id:<34} content hash ok ({meta['n_items']} items)")
+"""
+        ),
+        markdown(
+            """
+## 2 — The GPU is untouched
+
+No extraction ran in this kernel, so the card should be empty. Checked anyway,
+because the assumption that it was free is what cost the 2026-08-30 run: the
+full notebook held 11.00 GiB of a 14.56 GiB card in the kernel process while
+the pilot tried to load its own copy in a subprocess.
+"""
+        ),
+        code(
+            """
+import torch
+
+free = {i: torch.cuda.mem_get_info(i)[0] / 2**30 for i in range(torch.cuda.device_count())}
+print({i: f"{g:.1f} GiB free" for i, g in free.items()})
+
+NEEDED_GIB = 6.0
+if not free:
+    raise SystemExit("no GPU visible; the pilot generates and extracts and needs one")
+if max(free.values()) < NEEDED_GIB:
+    raise SystemExit(
+        f"only {max(free.values()):.1f} GiB free; the pilot needs about "
+        f"{NEEDED_GIB} GiB. Restart the kernel."
+    )
+"""
+        ),
+        markdown(
+            """
+## 3 — The pilot
+
+Generates 24 answers, judges them against gold aliases, checks `101`'s
+acceptance band **before** scoring anything, extracts question-time
+activations, and computes the IQR ratio against the reference envelope.
+
+It reports a branch; it does not take one. Its first act is to verify that the
+draft it rebuilt from `BANKING_PILOT_QUESTIONS` matches the committed freeze —
+that guard passed on the 2026-08-30 run at hash `312516ded744e4fe`, before the
+OOM killed the stage after it.
+"""
+        ),
+        code(
+            """
+import subprocess, sys
+
+stage = ["scripts/13_pilot_run.py", "--config", "config.yaml",
+         "--cache", "results/cache-triviaqa-600.npz"]
+print(">>>", " ".join(stage))
+done = subprocess.run([sys.executable, *stage], text=True, capture_output=True)
+print(done.stdout[-8000:])
+if done.returncode != 0:
+    print(done.stderr[-8000:])
+    raise SystemExit("pilot failed")
+"""
+        ),
+        code(
+            """
+from pathlib import Path
+
+for name in ("pilot_run.json", "pilot_envelope.json"):
+    path = Path("results") / name
+    print("=" * 70)
+    print(name, "--", "present" if path.exists() else "ABSENT")
+    if path.exists():
+        print(path.read_text()[:3000])
+"""
+        ),
+    ]
+    return {
+        "cells": cells,
+        "metadata": {
+            "kernelspec": {"display_name": "Python 3", "language": "python",
+                           "name": "python3"},
+            "language_info": {"name": "python", "version": "3.11"},
+            "accelerator": "GPU",
+        },
+        "nbformat": 4,
+        "nbformat_minor": 5,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default=str(PROJECT_ROOT / "notebooks"))
@@ -806,12 +1011,16 @@ def main(argv: list[str] | None = None) -> int:
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    path = out / "run_on_kaggle.ipynb"
-    path.write_text(
-        json.dumps(build_kaggle_notebook(), indent=1, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    print(f"wrote {path}")
+    for name, builder in (
+        ("run_on_kaggle.ipynb", build_kaggle_notebook),
+        ("run_pilot_on_kaggle.ipynb", build_pilot_notebook),
+    ):
+        path = out / name
+        path.write_text(
+            json.dumps(builder(), indent=1, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        print(f"wrote {path}")
     return 0
 
 

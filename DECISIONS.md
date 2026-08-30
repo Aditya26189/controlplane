@@ -4701,3 +4701,107 @@ The claim table is the control that works. Two invariants were reasoned about
 carefully and the reasoning still produced a regression; what caught it was a
 mechanical check that every README number still resolves to an artifact. That
 is the argument for `CLAUDE.md`'s eighth invariant in a single incident.
+
+## 110 - What the monitor watches is undecided, the interval convention is now chosen, and the pilot gets a resume point
+
+Three things settled together because one investigation produced all of them.
+
+### `max_fpr` is renamed, on a measured reproduction rate of 2/2
+
+`profile.max_fpr` is now `profile.max_fpr_hard_negatives`, matching what every
+use site in the code already called it.
+
+The unqualified name is a ceiling on the **hard-negative** set. It was read as a
+ceiling on the **envelope** FPR by two independent readers within one hour --
+both of whom then asserted that P-decision-support at 0.24668 was "2.47x over
+its 0.10 budget". It is not: those are different rates on different eval sets,
+and the policy artifact already declares *"no hard-negative FPR ceiling declared
+on this envelope"* on every row.
+
+A name that produces the same misreading in everyone who reads it is a defect
+with a reproduction rate, and this one's is 2 of 2.
+
+### What feeds `FPRMonitor.p0` is not decided, and that is now the finding
+
+The NaN needs `lam_hi * p0 > 1`. Which rate is the estimand decides whether the
+bug is live:
+
+| candidate | customer support | internal knowledge | decision support |
+|---|---|---|---|
+| declared hard-negative ceiling | 0.02 → 0.20 | 0.05 → 0.50 | 0.10 → **1.00** |
+| achieved envelope FPR | 0.0152 → 0.15 | 0.0436 → 0.44 | **0.2467 → 2.47** |
+
+`grep` settles it: **`FPRMonitor` and `certify_fpr` are called from nowhere.**
+They appear only in `controlplane/validation/__init__.py`'s exports. Nothing
+feeds `p0`, so the clamp is **prophylactic** and the estimand is an open choice
+made at the cheapest possible moment -- before anything depends on it.
+
+Both readings are parametrised in the Gate A test, so neither can regress
+silently while the choice is pending. **The monitor must not be wired until the
+estimand is declared**, because the two differ by 16x at decision support and
+one of them is fatal at the default grid.
+
+### The interval convention: one-sided for warrants, two-sided for description
+
+`0.018275` was traced to `cp_upper(0, 200, alpha=0.025)` -- a two-sided 95%
+interval -- while `warrant_stats.cp_upper` is one-sided. The gap is 23% at
+n=200, and it propagates straight into the number the demo says out loud:
+
+| convention | tail | n required | with DEFF 1.60, 50/50 split |
+|---|---|---|---|
+| one-sided 95% | 0.05 | **199** | |
+| two-sided 95% upper (shipped) | 0.025 | 245 | |
+| one-sided, Bonferroni /3 | 0.0167 | 271 | **868** |
+| two-sided, Bonferroni /3 | 0.0083 | 317 | **1,016** |
+
+**868 versus 1,016 -- a 17% move on a convention nobody had chosen.**
+
+**Warrant bounds are one-sided.** The warrant claims *"FPR <= x at 95%"*, which
+is a one-sided claim, and a one-sided bound is its matching object. A two-sided
+interval's upper limit is a 97.5% one-sided bound wearing a 95% label: more
+conservative, and the stated confidence differs from the actual one.
+
+**Descriptive intervals stay two-sided.** *"Here is our uncertainty about
+recall"* is genuinely two-sided.
+
+The mistake was never having both -- it was having both **unlabelled**. Every
+interval carries its convention, and the fix is labelling rather than
+standardising. Outstanding: the `convention` tag on `Metric`, and
+`docs/INTERVAL_METHODS.md` with a convention column over all 631 intervals.
+
+### The pilot gets a resume point
+
+Three three-hour runs, nine GPU-hours, zero pilot results: a wrong argument
+list, an OOM, and one before those. Each re-ran an extraction whose output had
+not changed, to reach a stage that takes twenty minutes.
+
+The activations are a pure function of (model, eval set, layer), so they are
+published as the Kaggle dataset `controlplane-reference-caches` and attached
+read-only. `notebooks/run_pilot_on_kaggle.ipynb` runs `13_pilot_run.py` alone
+against them.
+
+**The manifest is checked, not trusted.** SHA-256 per cache, and the eval-set
+content hashes must match what the checkout builds -- a cache extracted from a
+different eval set would load fine and produce numbers describing an envelope
+the warrant does not name. Same argument as the pilot's own draft-hash guard,
+which passed on the failed run at `312516ded744e4fe` before the OOM killed the
+stage after it.
+
+The OOM was the symptom. The absence of a checkpoint was the defect.
+
+### The n=24 correction, with the trap restated
+
+If the pilot grows to **24 clusters** -- 24 questions, 48 items, not a
+relabelling of the current 24 items over 12 questions, which is the error `090`
+corrected -- the resolution statement changes:
+
+| clusters | items | 95% null band | p5 | FA @ 0.70 | FA @ 0.439 |
+|---|---|---|---|---|---|
+| 12 | 24 | [0.394, 1.540] | 0.454 | 0.271 | 0.042 |
+| **24** | **48** | **[0.547, 1.429]** | **0.602** | **0.133** | 0.005 |
+
+A healthy probe still trips a 0.70 rule one time in eight at 24 clusters. And
+`103`'s trap applies unchanged: holding 0.439 at 24 clusters drops power
+against a 0.6x collapse from 0.313 to **0.169**, where recalibrating to 0.602
+takes it to **0.620**. Enlarging without recalibrating remains strictly worse
+than not enlarging.

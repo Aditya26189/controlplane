@@ -118,7 +118,8 @@ def _matrix(*warrants, envelopes=None) -> WarrantMatrix:
 
 
 PROFILE = Profile(
-    name="customer_support", min_recall=0.05, max_fpr=0.50, inline_budget_ms=200
+    name="customer_support", min_recall=0.05, max_fpr_hard_negatives=0.50,
+    inline_budget_ms=200
 )
 
 POLICY_HASH = ladder_policy_hash(
