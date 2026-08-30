@@ -184,7 +184,19 @@ def main() -> int:
         batch_size=args.batch_size,
         chunk_tokens=config.model.prefill_chunk_tokens,
     )
-    pilot_features = pooled[args.variant.split("-", 1)[1]]
+    # extract_activations keys by the FULL variant ("T1-last_token"), not the
+    # bare aggregation -- the tier prefix is part of the identity, because the
+    # same aggregation at a different tier is a different feature. This read
+    # `pooled[args.variant.split("-", 1)[1]]` and raised KeyError('last_token')
+    # AFTER generating 24 answers and extracting their activations, which is
+    # the most expensive possible place to discover a dictionary key.
+    if args.variant not in pooled:
+        raise KeyError(
+            f"{args.variant!r} not in extracted features {sorted(pooled)}. "
+            "extract_activations returns 'T1-<aggregation>'; the tier prefix "
+            "is part of the key."
+        )
+    pilot_features = pooled[args.variant]
 
     reference_set = load_evalset(Path(args.evalsets_dir) / f"{args.reference}.json")
     cache = ExtractionCache.load(args.cache)

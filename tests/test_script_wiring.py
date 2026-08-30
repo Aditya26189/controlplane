@@ -201,3 +201,45 @@ def test_the_guard_actually_inspects_something() -> None:
         f"only {len(resolved)} controlplane calls resolved in 13_pilot_run.py; "
         "the guard is not seeing what it claims to check"
     )
+
+
+def test_the_pilot_looks_up_features_by_the_key_extraction_actually_returns() -> None:
+    """A dictionary key, checked without a GPU.
+
+    ``extract_activations`` returns ``{"T1-<aggregation>": array}``. The pilot
+    asked for ``pooled["last_token"]`` and raised ``KeyError`` **after**
+    generating 24 answers and extracting their activations -- the most
+    expensive possible place to discover a key mismatch, and one no signature
+    check can catch because both sides are valid Python.
+
+    So this asserts the contract from the producing side and the consuming side
+    at once: the documented key format, and that the script does not strip the
+    tier prefix before looking it up.
+    """
+    import inspect
+    import re
+
+    from controlplane.extract import activations
+
+    source = inspect.getsource(activations.extract_activations)
+    assert 'f"T1-{name}"' in source, (
+        "extract_activations no longer keys by 'T1-<aggregation>'; the pilot's "
+        "lookup and this test both encode that contract"
+    )
+
+    # Comments stripped first: the fix's own comment quotes the broken line, and
+    # matching that would make this test fail on the presence of its own
+    # explanation.
+    script = chr(10).join(
+        line.split("#", 1)[0]
+        for line in (PROJECT_ROOT / "scripts" / "13_pilot_run.py")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    )
+    assert not re.search(
+        r"pooled\[\s*args\.variant\.split", script
+    ), (
+        "13_pilot_run.py strips the tier prefix before indexing `pooled`, which "
+        "raises KeyError after the GPU work is already done"
+    )
+    assert "pooled[args.variant]" in script
