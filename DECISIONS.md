@@ -5196,3 +5196,68 @@ register were verified by the **project author against primary sources**, not
 by this repository and not by me. Recording that is the difference between a
 provenance chain and a laundering step -- and a register that claimed repo
 authority for a fact it cannot check would be the same defect one level up.
+
+## 116 - The register's own provenance column had the defect the register exists to prevent
+
+**Self-catch sixteen, and the third instance of `111`'s category.**
+
+`115` created `docs/EXTERNAL_FIGURES.md` to stop external numbers entering the
+proposal with their provenance stripped. Its first version tagged its entries
+**`verified+primary`** and said they were verified by the project author
+against primary sources.
+
+**Nobody had reached a primary source.** What was consulted was law-firm
+briefings, LexisNexis summaries and news reporting -- not the Autoriteit
+Persoonsgegevens decision, not the Official Journal text, not the BCCRT
+judgment. Caught by the author, on the register they had just supplied the
+content for.
+
+So the guard against provenance-stripping was itself asserting a provenance
+nobody held. `111`'s category is *a guard authored through the same path it
+guards*; this is its third instance and its second in prose, after `113`'s
+`DEFF 1.60`.
+
+### The tiers that actually exist
+
+| tier | meaning |
+|---|---|
+| `secondary+crosschecked` | searched, corroborated consistently across independent outlets |
+| `secondary+relayed` | passed in without independent verification, including figures flagged unverified when first raised |
+
+There is **no `primary` tier in use**, and a test asserts the string appears
+exactly once in the file -- in the paragraph retracting it. Adding a primary
+tier now requires someone to have read an issuing body's text, which is the
+point.
+
+**A `secondary+relayed` figure may be mentioned and must never be
+load-bearing.** Moffatt's `CA$812.02`, Foodinho, Armilla, Verisk and the "~40%
+of GDPR fines annulled or challenged" all move to relayed. The Uber entry
+consequently states the appeal **without** the 40% figure: the appealable-in-
+principle point stands on its own, and leaning on an unchecked aggregate to
+strengthen it would be the same trade `113` refused.
+
+### The Omnibus, restated twice over
+
+Two corrections, both from checking:
+
+**It is a proposal, not law.** Regulation (EU) 2026/1744 is in force; the
+Digital Omnibus is in the ordinary legislative procedure with substantive
+amendments expected and the EDPB and EDPS pushing against this provision.
+Standing beside an enacted regulation, an unmarked proposal reads as enacted.
+
+**The strong framing is the critics' reading.** The broad reading -- a
+prohibition-with-exceptions becoming an authorisation-subject-to-conditions --
+is contested. The narrow reading (Gibson Dunn, Kennedys, Ius Laboris) has it as
+a targeted clarification of the contract-necessity test in 22(2)(a), preserving
+the Article 22(3) safeguards.
+
+**The argument is restructured to survive both**, which costs nothing because
+it already did:
+
+- broad: relying on the permission requires demonstrating the conditions hold;
+- narrow: relying on contract-necessity still requires demonstrating that test,
+  and 22(3) still requires human involvement that can be contested.
+
+A controller shows its working either way. Staking the pitch on the contested
+reading would have made it depend on an outcome two supervisory authorities are
+actively opposing -- an unforced dependency on someone else's argument winning.

@@ -9,127 +9,80 @@
 >
 > **A figure not in this register does not go in the proposal.**
 
-## Provenance of this register
+---
 
-Every entry below was **verified by the project author against the cited
-sources on 2026-08-30**. It was *not* verified by this repository, and not by
-the assistant that wrote this file. Recording that distinction is the point:
-a register claiming repo authority for facts the repo cannot check would be
-the same defect one level up (`DECISIONS.md` 115).
+## Provenance — and a correction to this section
 
-`verified+primary` means the author reached the issuing body's own text —
-a tribunal decision, a regulator's announcement, a regulation in the OJ.
-`verified+secondary` means corroborated only through vendor or trade press,
-and it is cited **as a claim by that party**, never as fact.
+An earlier version of this file said these figures were
+**`verified+primary`**, verified by the project author against primary sources.
+
+**That was an overclaim, and it was caught by the author.** What was actually
+consulted was law-firm briefings, LexisNexis summaries and news reporting — not
+the Autoriteit Persoonsgegevens decision, not the Official Journal text, not
+the BCCRT judgment. **Nothing in this register reaches `primary`.**
+
+This matters more than a label. The register exists to stop a number arriving
+with its provenance stripped, and its own provenance column was doing exactly
+that — asserting a tier nobody had reached. **That is the `DEFF 1.60` defect,
+occurring inside the guard built to prevent it**, which is the third instance
+of `DECISIONS.md` 111's category and the second in prose.
+
+### The two tiers that actually exist here
+
+| tier | meaning |
+|---|---|
+| **`secondary+crosschecked`** | the author searched it and found it corroborated consistently across independent outlets |
+| **`secondary+relayed`** | passed into this project without independent verification — including figures flagged as unverified when first raised |
+
+There is no `primary` tier in use. If a figure ever needs one, it means someone
+read the issuing body's own text, and this table gains a row on that day.
+
+**A `secondary+relayed` figure may be *mentioned* but must never be
+load-bearing.** If an argument fails without it, either promote it by actually
+checking it, or restructure the argument.
 
 ---
 
-## The Article 22 anchor
+## `secondary+crosschecked`
 
 ### Uber — Autoriteit Persoonsgegevens, 21 August 2026 — €824,990,000
-
-**`verified+primary`** (the AP's own announcement; CNIL co-operation under
-one-stop-shop corroborated via LexisNexis).
 
 Fully automated decisions about drivers — accounts deactivated on suspicion of
 fraud or on persistently low ratings — with a separate finding that Uber did
 not sufficiently inform drivers the decisions were automated. Conduct period
-2018–2022. Second-largest GDPR penalty ever, behind Meta's €1.2bn.
+2018–2022. Second-largest GDPR penalty. **Uber has appealed** and disputes the
+amount as disproportionate.
 
-Roughly **1.85% of 2025 turnover, about 46% of the 4% statutory ceiling**. The
-realised percentage is the number to quote; the ceiling is what everyone else
-quotes and it is weaker because it is hypothetical.
+Roughly **1.85% of turnover, about 46% of the 4% statutory ceiling**. Quote the
+realised percentage; the ceiling is what everyone else quotes and it is weaker
+for being hypothetical.
 
-**Two caveats that must travel with it.** Omitting either invites a reader who
-follows the citation to supply it themselves, which is worse than saying it:
+**Why this anchor.** It is the decision-support profile almost exactly: a score
+crossing a threshold, an action taken, no human in the loop, no route to
+contest.
 
-1. **Uber has appealed** and disputes the amount as disproportionate. An
-   analysis from May 2026 found nearly **40% of the €7.1bn in announced GDPR
-   fines** had been annulled or remained under legal challenge. Cite it as an
-   **opening position, not a transfer of funds.**
-2. **Article 22 itself is moving** — see the Digital Omnibus entry below.
+The **~40% of announced GDPR fines annulled or under challenge** figure that
+would normally accompany this is **`secondary+relayed`** — see below — so the
+appeal is stated on its own, as a fact about this case, without leaning on an
+aggregate nobody here has checked.
 
-**Why this anchor and not Foodinho.** It is the decision-support profile almost
-exactly: a score crossing a threshold, an action taken, no human in the loop,
-no route to contest.
+### Regulation (EU) 2026/1744 — AI Act timing, and Recital 40
 
-### Foodinho S.r.l. (Glovo group) — Garante, 22 November 2024 — €5,000,000
+Published in the OJ **24 July 2026**, in force **27 July 2026**. Defers Annex
+III high-risk obligations to **2 December 2027** and Annex I to **2 August
+2028**. **Article 50 transparency did not move.**
 
-**`verified+primary`.** 35,000+ couriers; a prior €2.6M in July 2021 (EDPB
-newsroom). Article 22 element corroborated.
-
-**Accurate, and demoted.** Superseded as the anchor by Uber on recency and
-scale. Retained here because a demoted figure that stays in the register cannot
-be quietly re-promoted without passing this gate again.
-
----
-
-## The Digital Omnibus — and why it is an argument, not a caveat
-
-Published **19 November 2025**. Would convert Article 22 from a **right held by
-the individual** into a **list of conditions under which automated processing
-is permitted**.
-
-**`verified+primary`** (Commission publication).
-
-Stated *first*, before the Uber figure, so the anchor's legal instability is
-disclosed rather than discovered. Then landed as the second and stronger
-argument for the product:
-
-> A right generates a **fine** when it is breached. A permission list generates
-> a **standing evidence obligation** — the controller must demonstrate it meets
-> the conditions, continuously, for as long as it processes.
->
-> A demonstrated, time-bounded, revocable condition is what a warrant *is*.
-
-So the ground shifting under the anchor does not weaken the pitch. It moves the
-market from *"pay when you are caught"* to *"show your working, continuously"*,
-which is a larger and more durable one.
-
----
-
-## Insurance
-
-### Armilla / Lloyd's — April 2025 standalone AI liability policy
-
-**`verified+secondary` — vendor and trade press only. Cite as a vendor claim.**
-
-Chaucer leading the binder; coverage naming hallucinations, model drift,
-mechanical failures and deviations from expected behaviour. Limits expanded to
-**$25M per insured** by early 2026. Vanguard AI launched 10 February 2026
-($25M+ AI aggregate, $10M cyber).
-
-Never write "the market prices this at $25M". Write "Armilla and Chaucer state
-that…".
-
-### Verisk generative-AI exclusion endorsements — effective 1 January 2026
-
-**`verified+secondary`.** The counterweight, and it strengthens the argument
-rather than undermining it: general coverage is **narrowing** at the same time
-specialist capacity is **pricing AI performance**. Both movements point at the
-same gap — nobody can price what nobody can measure.
-
----
-
-## Standards and supervisory guidance
-
-### EU AI Act timing — Regulation (EU) 2026/1744
-
-**`verified+primary`.** Published in the OJ **24 July 2026**, in force
-**27 July 2026**. Defers Annex III high-risk obligations to **2 December 2027**
-and Annex I to **2 August 2028**. **Article 50 transparency did not move.**
-
-**Recital 40 gives TWO reasons** for the deferral, and quoting one is
-catchable: delayed availability of **standards, common specifications and
-guidance**, *and* delayed establishment of **national competent authorities**.
+**Recital 40 gives TWO reasons**, and quoting one is catchable: delayed
+availability of **standards, common specifications and guidance**, *and*
+delayed establishment of **national competent authorities**.
 
 The first is the load-bearing half — enacted EU law formally recording that the
 measurement tooling was not ready — but it is quoted with the second present,
-not instead of it.
+never instead of it.
+
+**This is in force.** That distinction carries the weight in the section below.
 
 ### Article 15 accuracy and robustness — `prEN 18229-2`
-
-**`verified+primary`** (CEN/CENELEC JTC 21 work programme).
 
 - Accuracy/robustness: **`prEN 18229-2`**
 - NLP evaluation methodology: **`prEN ISO/IEC 23282`**
@@ -138,82 +91,168 @@ not instead of it.
 
 **`prEN 18284` was cited for Article 15 in an earlier draft and is wrong.** It
 would discredit the citation in front of anyone who knows the work programme.
-Neither of the correct standards is finished or OJ-cited, which is the point
-being made.
+Neither correct standard is finished or OJ-cited, which is the point being
+made.
 
-### ISO/IEC 42001 — clause numbers
+### SR 11-7 — superseded by SR 26-2
 
-**`verified+secondary`, and the standard is paywalled.**
+**"Superseded" is the safer verb**; an earlier draft said "rescinded". SR 26-2
+also rescinded SR 21-8 and several OCC bulletins.
 
-A.6.2.4, A.6.2.5, A.6.2.6, A.6.2.7, A.6.2.8 and Clauses 9.1 / 8.4 / 10.2
-corroborate across independent secondary sources. But those sources give the
-Annex A control count as **38, 39 and 42** — three different numbers for a
-countable property of the same document, which is the tell that none of them
-is reading the text.
+### RBI NEFT — ₹50,000 cash-remittance carve-out
 
-**Cite by function, not by number**: *"the deployment control requiring
-documented release criteria"*. That preserves the mapping argument and is
-unfalsifiable by phone. If a clause number is load-bearing, buy the standard.
+No RBI ceiling on account-to-account NEFT; **cash-based remittances by walk-in
+customers are capped at ₹50,000 per transaction** (Indo-Nepal Remittance
+Facility separately capped at the same figure).
 
-### "350+ certified organisations" — **`dropped`**
+Not a proposal figure — it corrected a pilot gold answer (`DECISIONS.md` 105).
+Registered because it arrived by the same import path and belongs under the
+same discipline.
 
-ISO/IEC 42001 is not yet in the ISO Survey and **no official worldwide
-certificate count exists**. The ~350 figure traces to press-release
-compilations.
+---
 
-Reword to *"a few hundred organisations by public count, with no official
-registry."* Adoption skewing to cloud/AI platforms and professional services
-**strengthens** the argument that the certificate travels with the
-**organisation** rather than with the detector.
+## `secondary+relayed` — mentionable, never load-bearing
 
-### SR 11-7 — superseded, not rescinded
+### Moffatt v. Air Canada, 2024 BCCRT 149 — CA$812.02
 
-**`verified+primary`.** **SR 26-2 superseded SR 11-7**, and also rescinded
-SR 21-8 and several OCC bulletins. **"Superseded" is the safer verb**; an
-earlier draft said "rescinded 17 April 2026".
+CA$650.88 damages + CA$36.14 pre-judgment interest + CA$125 tribunal fees.
+**Flagged as unverified each time it was raised.** Corroboration by Dentons,
+Lexology, Manatt and the ABA was itself relayed, not checked.
+
+Usable as an illustration that a deployer was held liable for its chatbot's
+statement. **Not** usable for the precise amount without checking the judgment.
+
+### Foodinho S.r.l. (Glovo group) — Garante, 22 November 2024 — €5,000,000
+
+35,000+ couriers; prior €2.6M July 2021. **Demoted** as the Article 22 anchor
+in favour of Uber, and retained here so it cannot be quietly re-promoted
+without passing this gate again.
+
+### Armilla / Lloyd's, and Verisk
+
+Armilla: April 2025 standalone AI liability policy, Chaucer leading the binder,
+coverage naming hallucinations and model drift, limits to **$25M per insured**
+by early 2026. Verisk: generative-AI exclusion endorsements effective
+**1 January 2026**.
+
+**Vendor and trade press, relayed.** Never write "the market prices this at
+$25M". Write "Armilla and Chaucer state that…", or leave it out.
+
+The *shape* of the argument survives without the numbers: general coverage
+narrowing while specialist capacity prices AI performance, both pointing at the
+same gap — nobody can price what nobody can measure.
+
+### "~40% of announced GDPR fines annulled or under challenge"
+
+From aggregator coverage inside the Uber search results. Directionally useful,
+unchecked. **Do not put a percentage on stage.** The appealable-in-principle
+point stands without it.
+
+---
+
+## The Digital Omnibus — a proposal, and an argument robust to both readings
+
+**Status: a proposal, not law.** Published 19 November 2025, in the ordinary
+legislative procedure, substantive amendments expected. It would replace
+Article 22(1)–(2).
+
+**This distinction is load-bearing.** Regulation (EU) 2026/1744 above is *in
+force*. Standing next to it, an unmarked proposal reads as though it has the
+same status, and a reader who checks will find it does not. Mark it every time.
+
+### Two readings, and the argument must survive both
+
+**The broad reading** (critics; EDPB and EDPS objecting): it turns a
+prohibition-with-exceptions into an **authorisation subject to conditions**,
+becoming a default permission wherever a contract is involved. Both bodies
+recommend retaining the prohibition-in-principle language.
+
+**The narrow reading** (Gibson Dunn, Kennedys, Ius Laboris): a targeted
+clarification of the contract-necessity test in 22(2)(a), **preserving the
+Article 22(3) safeguards** — including the right to human intervention and to
+contest.
+
+**Do not stake the argument on the broad reading.** It is the contested one,
+and it may not survive the procedure.
+
+### The argument that holds either way
+
+- Under the **broad** reading, a controller relying on the permission must
+  demonstrate the conditions are met.
+- Under the **narrow** reading, a controller relying on contract-necessity must
+  *still* demonstrate that test is satisfied, and 22(3) *still* requires
+  meaningful human involvement that can be contested.
+
+> **A controller has to show its working either way.** A right generates a
+> fine when it is breached. A condition — on either reading — generates a
+> **standing evidence obligation**: demonstrate, continuously, for as long as
+> you process.
+>
+> A demonstrated, time-bounded, revocable condition is what a warrant *is*.
+
+Saying the argument survives whichever interpretation prevails is stronger than
+needing the contested one to win.
 
 ---
 
 ## Dropped and unverified
 
+### "350+ certified organisations" — **`dropped`**
+
+ISO/IEC 42001 is not yet in the ISO Survey and **no official worldwide
+certificate count exists**. The figure traces to press-release compilations.
+
+Reword to *"a few hundred organisations by public count, with no official
+registry."* Adoption skewing to cloud/AI platforms and professional services
+**strengthens** the argument that the certificate travels with the
+**organisation**, not with the detector.
+
+### ISO/IEC 42001 clause numbers — **cite by function, not by number**
+
+A.6.2.4–A.6.2.8 and Clauses 9.1 / 8.4 / 10.2 recur across secondary sources.
+But those sources give the Annex A control count as **38, 39 and 42** — three
+different numbers for a countable property of the same document, which is the
+tell that none of them is reading the text.
+
+Cite by function: *"the deployment control requiring documented release
+criteria"*. Preserves the mapping argument, unfalsifiable by phone. If a clause
+number is load-bearing, buy the standard.
+
 ### IBM / Ponemon breach cost — **`dropped`**
 
-Vendor-sponsored, and the headline is a **mean, not a median**. Nothing in the
-argument rests on it. If used at all, label it vendor-sponsored, say it is a
-mean, and prefer the component decomposition.
+Vendor-sponsored, and the headline is a **mean, not a median**. Nothing rests
+on it.
 
-### The "1.000 false-positive rate" claim — **`unverified`, do not ship as written**
+### The "1.000 false-positive rate" claim — **`unverified`, do not ship**
 
 An earlier draft said *"one shipped product posting a 1.000 false-positive rate
 on long-context inputs."* The clearest published 100% FPR result is **CAPTURE
-(arXiv 2505.12368)**, and the sentence is wrong on two counts:
+(arXiv 2505.12368)**, and the sentence is wrong twice:
 
 - **PromptGuard is Meta's open-weights model, not a shipped commercial
   product.**
 - The condition was **context-aware over-defense benchmarking**, not
   long-context inputs.
 
-Either trace it to its actual source and restate the condition precisely, or
-replace with **BELLS-O (arXiv 2606.20668, June 2026)** — independent, 28
-systems across 17 providers, reporting FPR alongside latency and cost.
+Trace it and restate the condition precisely, or replace with **BELLS-O (arXiv
+2606.20668, June 2026)** — independent, 28 systems across 17 providers,
+reporting FPR alongside latency and cost.
 
-### EU Platform Work Directive — human decision-making for account
-suspension/termination from 2 December 2026 — **`unverified`. Do not use.**
+### EU Platform Work Directive — human decision-making for account suspension from 2 December 2026 — **`unverified`. Do not use.**
 
-Single non-primary source. If true it is a hard date worth its own check,
-because it would be a second Article 22-shaped obligation with a near horizon.
+Single non-primary source. If true it is a hard date worth its own check.
 
 ---
 
 ## Rule
 
 `PROPOSAL.md` admits three classes of number: **measured**, **derived**,
-**declared estimate**. This file defines the fourth, **external**, and the rule
-that governs it:
+**declared estimate**. This file defines the fourth, **external**:
 
 > **No section of the proposal is written until every external figure in it is
-> `verified+primary` or `verified+secondary`.** A figure still `unverified`
-> when its section is written is **dropped**, not softened.
+> `secondary+crosschecked` or better.** A `secondary+relayed` figure may be
+> mentioned but must not be load-bearing. A figure still `unverified` when its
+> section is written is **dropped, not softened.**
 
 Softening is how `DEFF 1.60` survived: a number that could not carry its claim
 was given a hedge instead of a decision.
