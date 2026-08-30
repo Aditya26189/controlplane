@@ -94,6 +94,18 @@ docs/
   CASES.md         the case matrix — every case, its test, its artifact
   PATHS.md         the 2026-08-29 move mapping, old path to new
   PROPOSAL.md      the business proposal
+  README.md        index: which document answers which question
+  DIAGRAMS.md      the system in diagrams, including the Round 1 to Round 2 journey
+  ONBOARDING.md    the first hour, in order
+  SETUP.md         laptop, GPU notebook, offline machine
+  RUNBOOK.md       every script: what it reads, what it writes, when to run it
+  TROUBLESHOOTING.md  what each exception and each refusal actually means
+  ARTIFACTS.md     every file in results/ and evalsets/, and its fields
+  TESTING.md       what the suite defends, suite by suite
+  CODE_TOUR.md     what is in each package under controlplane/
+  GLOSSARY.md      warrant, envelope, estimand, null band — defined once
+  FAQ.md           reviewer questions, each answered with the artifact that settles it
+  JOURNEY.md       what the project did, phase by phase, and what changed our mind
 controlplane/
   model/           Finding, OperatingPoint, Warrant, Certificate, enums
   store/           SQLite, hash chain, retention, queries
@@ -213,6 +225,14 @@ already written by then and only needs tidying. The Phase 12
 audit is unchanged: every invariant enforced somewhere in code, every number in
 `README.md` traceable to `results/`, every statistical claim carrying its
 propagation.
+
+**Orientation pages carry no measured numbers.** `docs/DIAGRAMS.md`,
+`ONBOARDING.md`, `SETUP.md`, `RUNBOOK.md`, `TROUBLESHOOTING.md`,
+`ARTIFACTS.md`, `TESTING.md`, `CODE_TOUR.md`, `GLOSSARY.md`, `FAQ.md` and
+`JOURNEY.md` describe structure, procedure and vocabulary, and point at the
+claim table and `results/` for every value. They change with the code rather
+than with the run, so a re-run cannot leave them stating a stale figure — and
+nothing in them needs to be re-verified when a number moves.
 
 ## Definition of done
 
