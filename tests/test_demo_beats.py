@@ -38,12 +38,39 @@ def test_the_refusal_beat_carries_the_uninflated_numbers() -> None:
     DECISIONS 113: the inflated 868 was built on a design effect imported from
     a planning document. The beat must not quietly reacquire one.
     """
+    from controlplane.config import load_config
+    from controlplane.validation.warrant_stats import min_n_for
+
+    config = load_config(str(PROJECT_ROOT / "config.yaml"))
+    budget = float(config.profiles["customer_support"].max_fpr_hard_negatives)
+    n_profiles = len(config.profiles)
+
     beat = next(b for b in BEATS if b.number == 1)
     values = {label: value for label, value in beat.rows}
-    assert values["clean negatives for ONE profile"] == "199"
-    assert values["across THREE profiles (Bonferroni)"] == "271"
+    # Recomputed from config, not pinned to a literal. A literal here is how
+    # the beat came to claim 199/271 off a planning document's 0.015 when this
+    # repository declares 0.02 and the answer is 149/203 (DECISIONS 117).
+    assert values["clean negatives for ONE profile"] == str(min_n_for(budget, 0.05))
+    assert values[f"across {n_profiles} profiles (Bonferroni)"] == str(
+        min_n_for(budget, 0.05 / n_profiles)
+    )
+    assert str(budget) in values[f"customer_support hard-negative FPR ceiling"]
     assert "cluster-uncorrected" in (beat.note or "")
     assert "868" not in str(beat.rows)
+
+
+def test_the_refusal_beat_does_not_reintroduce_an_imported_budget() -> None:
+    """0.015 is not this repository's number, and 199/271 follow from it."""
+    beat = next(b for b in BEATS if b.number == 1)
+    text = str(beat.rows)
+    assert "0.015" not in text, (
+        "the refusal beat carries 0.015, which is a planning document's figure; "
+        "config.yaml declares 0.02"
+    )
+    for imported in ("199", "271"):
+        assert imported not in text, (
+            f"{imported} follows from the imported 0.015 budget, not from config"
+        )
 
 
 def test_the_profile_beat_shows_one_score_and_three_actions() -> None:

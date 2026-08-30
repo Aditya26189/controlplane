@@ -5261,3 +5261,49 @@ it already did:
 A controller shows its working either way. Staking the pitch on the contested
 reading would have made it depend on an outcome two supervisory authorities are
 actively opposing -- an unforced dependency on someone else's argument winning.
+
+## 117 - The refusal beat imported its own budget, on submission day
+
+**Self-catch seventeen, and the fourth instance of the document import path
+(`113`) — this time inside the beat whose subject is that path.**
+
+`demo/show_beats.py` beat 1 hardcoded a customer-support FPR budget of
+**0.015** and printed **199** and **271** clean negatives.
+
+`config.yaml` declares `customer_support.max_fpr_hard_negatives = 0.02`. The
+correct figures are **149** and **203**.
+
+**0.015 is not this repository's number.** It is a planning document's, and it
+crossed the boundary the same way `DEFF 1.60` and `prEN 18284` did. It then
+survived a full test suite, because the test asserted the literals `"199"` and
+`"271"` — a test written from the same wrong source pins the error instead of
+catching it.
+
+That is the whole failure in one artifact: a number from elsewhere, plausible,
+correctly computed for a different question, in the sentence the demo says
+first — and a guard that agreed with it because it was written from the same
+place.
+
+### The fix, and why it is structural
+
+The budget is now **read from `config.yaml`**, and the test **recomputes**
+`min_n_for` from that config rather than comparing against a literal. A second
+test asserts `0.015`, `199` and `271` do not appear in the beat at all.
+
+`CLAUDE.md` already forbids hardcoded constants and says everything comes from
+`config.yaml`. This is that rule holding in the one place nobody applied it,
+because a demo string does not look like a constant.
+
+### What it cost, and what it did not
+
+Caught before recording, by asking which of two plausible budgets was the real
+one. The narration would otherwise have opened on a number 33% too large,
+sourced from outside the repository, in a five-minute video about numbers
+sourced from outside the repository.
+
+Four instances now: `DEFF 1.60`, `prEN 18284`, the register's own provenance
+tier (`116`), and this. The rate is not falling, and the honest reading is that
+**an import path with no gate produces roughly one defect per document that
+crosses it.** Every fix so far has been local. The general form — a check that
+a number in a rendered artifact traces to `config.yaml` or `results/` — is not
+built, and is the largest remaining hole in the discipline this project sells.

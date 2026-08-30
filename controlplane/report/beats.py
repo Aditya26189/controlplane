@@ -83,13 +83,31 @@ def _fmt_interval(metric: Optional[dict]) -> str:
 
 
 def _beat_refusal(root: Path) -> Beat:
-    """What the system refuses to certify, and the price of fixing it."""
+    """What the system refuses to certify, and the price of fixing it.
+
+    The budget is READ FROM ``config.yaml``, never typed. An earlier version of
+    this beat hardcoded 0.015 -- a figure from a planning document, not from
+    this repository, which declares 0.02. It put 199 and 271 on screen where
+    the truth is 149 and 203, inside the beat whose subject is numbers crossing
+    a document boundary and arriving looking measured (``DECISIONS.md`` 113,
+    117). Reading the config is what makes that unrepeatable.
+    """
+    from ..config import load_config
     from ..validation.warrant_stats import min_n_for
 
+    config = load_config(str(root / "config.yaml"))
+    profiles = config.profiles
+    name = "customer_support" if "customer_support" in profiles else next(iter(profiles))
+    budget = float(profiles[name].max_fpr_hard_negatives)
+    n_profiles = len(profiles)
+
     rows = [
-        ("customer-support FPR budget", "0.015"),
-        ("clean negatives for ONE profile", f"{min_n_for(0.015, 0.05)}"),
-        ("across THREE profiles (Bonferroni)", f"{min_n_for(0.015, 0.05 / 3)}"),
+        (f"{name} hard-negative FPR ceiling", f"{budget} (declared in config.yaml)"),
+        ("clean negatives for ONE profile", f"{min_n_for(budget, 0.05)}"),
+        (
+            f"across {n_profiles} profiles (Bonferroni)",
+            f"{min_n_for(budget, 0.05 / n_profiles)}",
+        ),
         ("convention", "one-sided 95%, per DECISIONS 110"),
     ]
     return Beat(
@@ -187,17 +205,31 @@ def _beat_overlap(root: Path) -> Beat:
             f"[{band.get('low')}, {band.get('high')}] -- "
             f"{'IN BAND' if band.get('in_band') else 'OUT OF BAND'}",
         ))
-    detectors = _load(root, "detectors.json")
-    if detectors:
-        for run in detectors.get("runs", []):
+    # The OUT-OF-SAMPLE holdout, not the fitted set. 11 of 34 custom patterns
+    # are spec-derived and the rest were fitted on hinglish-pii-200, so that
+    # set cannot support a claim about generalisation (DECISIONS 086, 087).
+    # hinglish-pii-200b is the held-out one, and it is the number worth showing.
+    holdout = None
+    path = root / "results" / "holdout" / "detectors.json"
+    if path.is_file():
+        try:
+            holdout = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            holdout = None
+    if holdout:
+        for run in holdout.get("runs", []):
             recall = (run.get("metrics") or {}).get("recall")
+            # Each detector appears twice -- once on the PII set and once on
+            # hard negatives, where recall is undefined because there are no
+            # positives. Showing the undefined row would put "absent" on screen
+            # next to a real number and invite the reader to average them.
+            if not recall:
+                continue
             status = (run.get("warrant") or {}).get("status")
-            det = run.get("detector_id", "")
-            if "presidio" in det or "pii-reference" in det:
-                rows.append((
-                    f"{det} on {run.get('eval_set_id')}",
-                    f"recall {_fmt_interval(recall)} -- {status}",
-                ))
+            rows.append((
+                f"{run.get('detector_id', '')} (OUT OF SAMPLE)",
+                f"recall {_fmt_interval(recall)} -- {status}",
+            ))
     if not rows:
         return Beat(
             4, "Hallucination and privacy overlap", "the two risks co-occur",
@@ -209,11 +241,17 @@ def _beat_overlap(root: Path) -> Beat:
         answers="a fabricated detail about a person is simultaneously a "
         "hallucination and a privacy concern",
         rows=tuple(rows[:8]),
-        artifacts=("results/pilot_run.json", "results/detectors.json"),
+        artifacts=(
+            "results/pilot_run.json",
+            "results/holdout/detectors.json",
+            "results/detectors.json",
+        ),
         note=(
-            "The pilot's privacy axis is identifier-presence-in-PROMPT, which "
-            "is not the output-side quantity a production path measures "
-            "(DECISIONS 104). Declared, not glossed."
+            "Recall is on hinglish-pii-200b, the HELD-OUT set -- 23 of 34 "
+            "custom patterns were fitted on the other one, so only this set "
+            "supports a generalisation claim (DECISIONS 086, 087). The pilot's "
+            "privacy axis is identifier-presence-in-PROMPT, not the output-side "
+            "quantity a production path measures (DECISIONS 104)."
         ),
     )
 
