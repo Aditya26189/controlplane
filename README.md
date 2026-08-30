@@ -454,9 +454,6 @@ for. The ones most readers want first:
 &nbsp;
 <img src="https://img.shields.io/badge/IIT-Kharagpur-d1242f?style=for-the-badge&labelColor=1a1b27" alt="IIT Kharagpur"/>
 
-<br/><br/>
-
-<em>Listed alphabetically. The three of us worked on this jointly; per-commit attribution is in <code>git log</code> and in the repository's contributors graph, which are the authoritative record and are not summarised here.</em>
 
 </div>
 
