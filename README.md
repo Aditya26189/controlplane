@@ -131,9 +131,69 @@ pointed at.
 | `controlplane/` | the package — model, store, validation, matrix, drift, policy, detectors, report |
 | `evalsets/` `results/` | frozen content-hashed evaluation sets; every artifact behind the table above, and `results/scores/` — the per-item scores it all reduces to |
 | `scripts/` `demo/` `notebooks/` | thin CLI wrappers, the two-pane demo runner, the Kaggle GPU notebook |
-| `tests/` | 718 tests, including the ones that enforce this README |
+| `tests/` | 771 tests, including the ones that enforce this README |
 | `docs/` | spec, methods, limitations, the case matrix, and the move mapping |
-| `DECISIONS.md` `round1/` | 97 append-only decision entries; the Round 1 submission, moved whole |
+| `DECISIONS.md` `round1/` | 118 append-only decision entries; the Round 1 submission, moved whole |
+
+### How it fits together
+
+Read left to right: the GPU stage runs once and caches, everything downstream
+reads from disk, and the last column is what a stranger can check without a GPU.
+
+```mermaid
+flowchart LR
+    subgraph IN["INPUTS — versioned, hashed"]
+        CFG["config.yaml<br/>one workload, one seed"]
+        EVS["evalsets/<br/>frozen, content-hashed"]
+        POL["policies/<br/>Rego bundles"]
+    end
+
+    subgraph PKG["controlplane/ — all logic lives here"]
+        EX["extract/<br/>GPU, once"]
+        DET["detectors/<br/>probe · presidio · pii-reference"]
+        VAL["validation/<br/>five controls · issue_or_refuse"]
+        MOD["model/<br/>warrant · metrics · certificate"]
+        MTX["matrix/ + drift/<br/>detector x envelope · PSI · revocation"]
+        PLC["policy/<br/>load-time resolution · compose"]
+        ECO["economics/<br/>feasibility bound"]
+        REP["report/<br/>claims · results · beats"]
+        STO["store/<br/>hash-chained ledger"]
+    end
+
+    subgraph OUT["OUTPUTS — the evidence"]
+        ART["results/*.json<br/>warrants, metrics, controls"]
+        SCO["results/scores/<br/>per-item, committed"]
+        DOC["README claim table<br/>results/RESULTS.md"]
+    end
+
+    subgraph CHK["CHECKS — what proves it"]
+        SMK["scripts/smoke.py"]
+        VFY["scripts/verify.py<br/>three tiers"]
+        TST["tests/"]
+    end
+
+    CFG --> EX & VAL & PLC
+    EVS --> VAL
+    POL --> PLC
+    EX --> DET --> VAL
+    MOD --- VAL
+    VAL --> ART --> MTX --> PLC --> ART
+    VAL --> SCO
+    ART --> ECO & REP --> DOC
+    VAL & PLC --> STO
+    SCO --> VFY
+    DOC --> VFY
+    SMK & TST -.-> PKG
+
+    style EX fill:#d1242f22,stroke:#d1242f
+    style SCO fill:#2da44e22,stroke:#2da44e
+    style VFY fill:#2da44e22,stroke:#2da44e
+```
+
+`scripts/` and `demo/` are thin wrappers around the middle column and hold no
+logic of their own. The stage-by-stage version, the warrant lifecycle and seven
+other diagrams are in [docs/DIAGRAMS.md](docs/DIAGRAMS.md); the package-by-package
+tour is [docs/CODE_TOUR.md](docs/CODE_TOUR.md).
 
 ---
 
@@ -142,7 +202,7 @@ pointed at.
 | target | without make | requires | time | proves |
 |---|---|---|---|---|
 | `make smoke` | `python scripts/smoke.py` | CPU, no network | < 60s | the clone works and the package imports |
-| `make test` | `python -m pytest tests/ -q` | CPU | ~10 min | 718 tests green |
+| `make test` | `python -m pytest tests/ -q` | CPU | ~10 min | 771 tests green |
 | `make verify` | `python scripts/verify.py` | CPU | ~3 min | **every claim reproduces, and every metric recomputes from frozen scores** |
 | `make verify` (tier 3) | `python scripts/verify.py` | CPU + cached activations | ~4 min | the frozen scores re-derive from the activations |
 | `make extract` | `python scripts/00_extract.py --config config.yaml` | GPU, 16 GB | ~1 h | activations regenerate from the source model |
@@ -232,16 +292,47 @@ The ones that would change how you read the table:
 
 ## Documents
 
+[docs/README.md](docs/README.md) indexes all of them and routes by what you came
+for. The ones most readers want first:
+
 | document | what it answers |
 |---|---|
+| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | the system in eleven diagrams — objects, pipeline, warrant lifecycle, controls, policy, drift, verification |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | what the system is and how the pieces fit |
+| [docs/ONBOARDING.md](docs/ONBOARDING.md) | your first hour in this repository, in order |
+| [docs/SETUP.md](docs/SETUP.md) · [docs/RUNBOOK.md](docs/RUNBOOK.md) | getting it running; what every script reads and writes |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | what a crash or a refusal actually means |
 | [docs/METHODS.md](docs/METHODS.md) | estimators, bootstraps, null bands and their derivations |
 | [docs/CASES.md](docs/CASES.md) | every case, the test covering it, the artifact demonstrating it |
 | [docs/LIMITATIONS.md](docs/LIMITATIONS.md) | scope, declared gaps, open items |
 | [DECISIONS.md](DECISIONS.md) | 118 append-only entries — "why did you do it that way?" |
+| [docs/ARTIFACTS.md](docs/ARTIFACTS.md) · [docs/TESTING.md](docs/TESTING.md) | every output file and its fields; what the suite defends |
+| [docs/CODE_TOUR.md](docs/CODE_TOUR.md) · [docs/GLOSSARY.md](docs/GLOSSARY.md) | the packages, file by file; the vocabulary, defined once |
+| [docs/FAQ.md](docs/FAQ.md) · [docs/JOURNEY.md](docs/JOURNEY.md) | reviewer questions; what the project did, phase by phase |
 | [docs/PATHS.md](docs/PATHS.md) | what moved on 2026-08-29 and where it went |
 | [docs/SPEC.md](docs/SPEC.md) | the technical specification |
 | [docs/PROPOSAL.md](docs/PROPOSAL.md) | the business proposal |
+
+---
+
+## Authors
+
+Team **Dominator**, Indian Institute of Technology Kharagpur — built for the
+Accenture Innovation Challenge 2026, problem statement 1, *ControlPlane.ai*.
+
+| Author | | Programme |
+|---|---|---|
+| **Aditya Singh** | [@Aditya26189](https://github.com/Aditya26189) | Mechanical Engineering, 2028 |
+| **Krishnakant Sahu** | [@kksahu444](https://github.com/kksahu444) | Computer Science & Engineering, 2027 |
+| **Upendra Singh** | | Mechanical Engineering, 2028 |
+
+Listed alphabetically. The three of us worked on this jointly; per-commit
+attribution is in `git log` and in the repository's contributors graph, which
+are the authoritative record and are not summarised here.
+
+---
+
+## Licence
 
 MIT licensed. Every dependency is MIT, Apache-2.0 or BSD; the stack is open and
 self-hostable, which is why Llama Guard and ShieldGemma are deliberately absent.
