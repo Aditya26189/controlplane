@@ -454,6 +454,7 @@ for. The ones most readers want first:
 &nbsp;
 <img src="https://img.shields.io/badge/IIT-Kharagpur-d1242f?style=for-the-badge&labelColor=1a1b27" alt="IIT Kharagpur"/>
 
+
 </div>
 
 <img src="https://capsule-render.vercel.app/api?type=rect&color=0:0d1117,50:161b22,100:0d1117&height=2" width="100%" />
