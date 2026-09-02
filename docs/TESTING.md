@@ -15,11 +15,11 @@ sh scripts/run.sh python -m pytest tests/ -q  # when you need the real exit stat
 the second time shortly after it was documented — which is why the wrapper
 exists rather than the rule.
 
-**Contents:** [The four kinds](#the-four-kinds-of-test-here) · [Suite by suite](#suite-by-suite) · [Tests that guard documents](#the-tests-that-guard-documents) · [Adding a test](#adding-a-test)
+**Contents:** [The five kinds](#the-five-kinds-of-test-here) · [Suite by suite](#suite-by-suite) · [Tests that guard documents](#the-tests-that-guard-documents) · [Adding a test](#adding-a-test)
 
 ---
 
-## The four kinds of test here
+## The five kinds of test here
 
 1. **Construction guards.** A record that would misrepresent what is known about
    it cannot be built. A rate without an interval, a count with one, a refusal
@@ -33,7 +33,11 @@ exists rather than the rule.
 3. **Gate tests.** Named in [TASKS.md](TASKS.md) before the phase was built.
    `test_hash_chain`, `test_warrant_key`, `test_yield_vs_rate`,
    `test_no_override`, `test_three_states`.
-4. **Document gates.** Tests that read the repository's own prose and fail when
+4. **Class scans.** A test that fails on the *next* instance rather than the one
+   just fixed. The AST scan for `assert` statements in library code is one: the
+   fix was eleven edits, but the test is what stops the twelfth. Fixing
+   instances one at a time is how a class of defect survives.
+5. **Document gates.** Tests that read the repository's own prose and fail when
    it drifts from the artifacts or from the register that governs it.
 
 ---
@@ -95,6 +99,8 @@ exists rather than the rule.
 
 | Suite | Defends |
 |---|---|
+| `test_optimized_guards.py` | No `assert` survives in `controlplane/` — an AST scan over every module, plus the claim-table guard executed in a subprocess with `python -O` actually set. A guard the optimiser deletes is a guard that does not exist where it matters |
+| `test_reproduce_tolerance.py` | The reproduction comparison accepts last-ulp float noise and **nothing wider** — a difference at the published precision must still fail, and the tolerance constant itself is asserted to stay tight |
 | `test_smoke.py` | Every script actually runs |
 | `test_script_wiring.py` | Every call a script makes into `controlplane/` binds to a **real signature** — the largest suite, because a thin wrapper that calls a renamed function fails only when someone runs it |
 | `test_config.py` | Config loading, hashing, layer resolution, provenance |
