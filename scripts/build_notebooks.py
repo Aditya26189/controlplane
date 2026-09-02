@@ -733,7 +733,11 @@ for stage in STAGES:
 from pathlib import Path
 
 matrix = Path("results/warrant_matrix.md")
-print(matrix.read_text() if matrix.exists() else "no warrant matrix written")
+print(
+    matrix.read_text(encoding="utf-8")
+    if matrix.exists()
+    else "no warrant matrix written"
+)
 """
         ),
         markdown(
@@ -905,7 +909,7 @@ if not candidates:
 SOURCE = candidates[0].parent
 print("reference caches mounted at", SOURCE)
 
-manifest = json.loads((SOURCE / "MANIFEST.json").read_text())
+manifest = json.loads((SOURCE / "MANIFEST.json").read_text(encoding="utf-8"))
 print("caches built from commit", manifest["built_from_commit"][:8])
 
 Path("results").mkdir(exist_ok=True)
@@ -1006,7 +1010,7 @@ for name in ("pilot_run.json", "pilot_envelope.json"):
     print("=" * 70)
     print(name, "--", "present" if path.exists() else "ABSENT")
     if path.exists():
-        print(path.read_text()[:3000])
+        print(path.read_text(encoding="utf-8")[:3000])
 """
         ),
     ]
