@@ -5387,3 +5387,45 @@ to the package.
 today. The guards are the product; a guard whose existence depends on how the
 interpreter was invoked is not evidence of anything, and the cost of removing
 that dependency was an afternoon.
+
+---
+
+## 120 - The reproduction check compares within a tolerance, not bitwise
+
+Tier 2 and tier 3 of `make verify` re-derive every metrics block and compared
+the result to the committed artifact with `!=` on floats. On a second machine
+that reported DRIFT:
+
+    flag_rate.ci_high: committed 0.006129271330669258
+                       recomputed 0.006129271330669257
+
+One unit in the last place. A bootstrap percentile reduces over arrays whose
+summation order depends on the BLAS build and the CPU, so a *correct*
+re-derivation differs in the last bits. Bitwise equality was therefore not a
+strict check -- it was a check that fails on the wrong thing, and it fails on
+the machine that matters most: a reviewer's, on a fresh clone, which is the
+entire audience for the frozen scores.
+
+**The tolerance and why it is safe.** `values_agree` compares floats at
+`rel_tol=1e-12`, `abs_tol=1e-15`. Published values are quoted to four decimals,
+so the tolerance is eight orders of magnitude tighter than the precision of the
+claim being checked, while a double's last ulp near 1.0 is ~2.2e-16. Any real
+drift -- a changed estimator, seed, split, threshold or dataset -- moves a
+metric by vastly more than 1e-12. Nothing that matters hides underneath it.
+
+The risk of a tolerance is that it swallows the drift it exists to catch, so
+the negative cases carry the argument: `tests/test_reproduce_tolerance.py`
+requires that a difference at the published precision fails, that a difference
+a hundred times the tolerance fails, and that the constant itself stays at or
+below 1e-10 -- the point at which it would stop being float noise.
+
+Non-numeric values are still compared exactly, and a JSON boolean never
+compares equal to a number, because `True == 1.0` in Python and a type change
+in an artifact is drift rather than noise.
+
+**The objection.** *"You loosened a check to make a failing test pass."* The
+check was failing on a correct re-derivation, which is the definition of a
+false positive; the alternative was to pin a BLAS build, which would trade a
+false alarm for a much larger portability claim. The tolerance is stated in the
+code, cited here, and guarded by tests that fail if it is ever widened to where
+it could hide a real change.

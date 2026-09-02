@@ -18,6 +18,7 @@ be the exact failure this project is about.
 from __future__ import annotations
 
 import json
+import math
 import shutil
 import subprocess
 import sys
@@ -28,6 +29,7 @@ from typing import Optional
 
 __all__ = [
     "ReproductionReport",
+    "values_agree",
     "VariantDiff",
     "reproduce_frozen_set",
     "reproduce_from_scores",
@@ -36,6 +38,63 @@ __all__ = [
 
 #: Metrics compared for every variant. Each is checked at point, low and high.
 COMPARED = ("auroc", "recall", "precision", "flag_rate")
+
+#: How close two floats must be to count as the same number here.
+#:
+#: Bitwise equality was the first rule and it was wrong, in the direction that
+#: matters: it fails on a *correct* re-derivation. Summation order in a bootstrap
+#: percentile depends on the BLAS build and the CPU, so the same code on the same
+#: data can differ in the last unit in the last place -- observed as
+#: ``0.006129271330669258`` against ``0.006129271330669257`` on a second machine.
+#: A verifier that a reviewer cannot run on their own laptop proves nothing, and
+#: "it drifted" is exactly the wrong thing to tell them when it did not.
+#:
+#: The tolerance is chosen to be far tighter than any published precision and far
+#: looser than one ulp. Values here are quoted to four decimals, so a relative
+#: 1e-12 is eight orders of magnitude stricter than the claim being checked, while
+#: a double's last ulp near 1.0 is ~2.2e-16. Any real drift -- a changed
+#: estimator, seed, split or dataset -- moves a metric by vastly more than this;
+#: nothing that matters hides under it. ``DECISIONS.md`` 120.
+REPRODUCTION_REL_TOL = 1e-12
+
+#: Absolute floor, for metrics legitimately at or near zero where a relative
+#: tolerance degenerates.
+REPRODUCTION_ABS_TOL = 1e-15
+
+
+def values_agree(was: object, now: object) -> bool:
+    """Do two recorded metric bounds agree, allowing last-ulp float noise?
+
+    Non-numeric values (``None``, strings, booleans) are compared exactly: only
+    floating-point arithmetic has the reordering problem this tolerance exists
+    for, and widening the comparison for anything else would weaken the check
+    without cause. ``bool`` is excluded deliberately -- it is an ``int`` in
+    Python, and ``True`` should never be read as ``1.0``.
+
+    Args:
+        was: The committed value.
+        now: The recomputed value.
+
+    Returns:
+        True when the two are the same value, within
+        :data:`REPRODUCTION_REL_TOL` / :data:`REPRODUCTION_ABS_TOL` for floats.
+    """
+    numeric = (int, float)
+    if isinstance(was, bool) != isinstance(now, bool):
+        # One is a JSON boolean and the other is a number. That is a change of
+        # type in the artifact, which is drift, not float noise.
+        return False
+    if isinstance(was, bool):
+        return was == now
+    if isinstance(was, numeric) and isinstance(now, numeric):
+        return math.isclose(
+            float(was),
+            float(now),
+            rel_tol=REPRODUCTION_REL_TOL,
+            abs_tol=REPRODUCTION_ABS_TOL,
+        )
+    return was == now
+
 
 #: The three probe aggregations validated on the frozen TriviaQA envelope.
 VARIANTS = ("T1-last_token", "T1-max_rolling_means", "T1-mean_pool")
@@ -94,7 +153,7 @@ def _compare(committed: dict, recomputed: dict, variant: str) -> VariantDiff:
         if was is None:
             continue
         for bound in ("value", "ci_low", "ci_high"):
-            if was.get(bound) != now.get(bound):
+            if not values_agree(was.get(bound), now.get(bound)):
                 diff.mismatches.append(
                     f"{name}.{bound}: {was.get(bound)!r} -> {now.get(bound)!r}"
                 )
@@ -303,7 +362,7 @@ def reproduce_from_scores(root: Path, config=None) -> ReproductionReport:
                 if was is None:
                     continue
                 for bound in ("value", "ci_low", "ci_high"):
-                    if was.get(bound) != now.get(bound):
+                    if not values_agree(was.get(bound), now.get(bound)):
                         diff.mismatches.append(
                             f"{name}.{bound}: committed {was.get(bound)!r}, "
                             f"recomputed {now.get(bound)!r}"
