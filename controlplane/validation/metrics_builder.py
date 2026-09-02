@@ -246,24 +246,30 @@ def assert_metric_shape_compatible(
 
     only_left = sorted(set(left) - set(right))
     only_right = sorted(set(right) - set(left))
-    assert not only_left and not only_right, (
-        f"metric sets differ in which metrics exist: {first_name} has "
-        f"{only_left or 'nothing extra'}, {second_name} has "
-        f"{only_right or 'nothing extra'}. The two paths are not measuring the "
-        "same thing, so no comparison between them is meaningful."
-    )
+    # Raised rather than asserted throughout: `python -O` strips assert
+    # statements, and these are the guards that stop a fixture path and a
+    # measured path being compared when they are not measuring the same thing
+    # (`DECISIONS.md` 119). The exception type is unchanged.
+    if only_left or only_right:
+        raise AssertionError(
+            f"metric sets differ in which metrics exist: {first_name} has "
+            f"{only_left or 'nothing extra'}, {second_name} has "
+            f"{only_right or 'nothing extra'}. The two paths are not measuring "
+            "the same thing, so no comparison between them is meaningful."
+        )
 
     for name in sorted(left):
-        assert left[name] == right[name], (
-            f"metric {name!r} has a different shape on the two paths: "
-            f"{first_name} is kind={left[name][0]} unit={left[name][1]} "
-            f"interval={left[name][2]}, {second_name} is kind={right[name][0]} "
-            f"unit={right[name][1]} interval={right[name][2]}"
-        )
+        if left[name] != right[name]:
+            raise AssertionError(
+                f"metric {name!r} has a different shape on the two paths: "
+                f"{first_name} is kind={left[name][0]} unit={left[name][1]} "
+                f"interval={left[name][2]}, {second_name} is kind={right[name][0]} "
+                f"unit={right[name][1]} interval={right[name][2]}"
+            )
 
     for metrics, label in ((first, first_name), (second, second_name)):
         for metric in metrics.all_metrics():
-            if metric.kind is MetricKind.ESTIMATED:
-                assert metric.has_interval, (
+            if metric.kind is MetricKind.ESTIMATED and not metric.has_interval:
+                raise AssertionError(
                     f"{label}: estimated metric {metric.name!r} carries no interval"
                 )

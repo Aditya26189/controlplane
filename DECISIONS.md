@@ -5355,3 +5355,35 @@ release adds them, the demo's narration fails in CI rather than on camera.
 drafted alongside it and **cut**: it traces to no artifact, and unlike the
 coverage claim it is not checkable by running anything. Dropped rather than
 softened, per `115`.
+
+---
+
+## 119 - A guard written as `assert` is a guard that does not exist under `-O`
+
+`python -O` removes every `assert` statement. Eleven of them were doing real
+work in `controlplane/`, and two of those were inside the verifier: `check_claims`
+refuses a README with no claim table, because an empty table passes every check
+it contains. Under `-O` that refusal is deleted and an empty table verifies
+clean.
+
+This is the third instance of one class. The first was the monitor's finiteness
+check, converted to an explicit exception when a `NaN` wealth value was found
+passing as *"not above the revocation threshold"*. Fixing instances one at a
+time is how a class survives, so the fix here is the scan rather than the
+eleven edits: `tests/test_optimized_guards.py` walks the AST of every module
+under `controlplane/` and fails on any `Assert` node, and separately executes
+the claim-table guard in a subprocess with `-O` actually set.
+
+**The exception type is unchanged.** `raise AssertionError(...)` is not
+stripped -- only the `assert` *statement* is -- so callers and tests that
+expect `AssertionError` are unaffected. This was deliberate: the alternative,
+introducing a new exception type per site, would have been a larger and riskier
+change for no gain in what is caught.
+
+Tests may still assert. They are never run under `-O`, and the scan is scoped
+to the package.
+
+**The objection.** *"Nobody runs this with `-O`."* Nobody runs it that way
+today. The guards are the product; a guard whose existence depends on how the
+interpreter was invoked is not evidence of anything, and the cost of removing
+that dependency was an afternoon.

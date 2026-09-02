@@ -289,5 +289,8 @@ def choose_threshold(
                 n_candidates=len(candidates),
             )
 
-    assert best is not None, "candidate sweep was empty"
+    if best is None:
+        # Raised rather than asserted: stripped under `python -O`
+        # (`DECISIONS.md` 119).
+        raise AssertionError("candidate sweep was empty")
     return best

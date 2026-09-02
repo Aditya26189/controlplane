@@ -291,7 +291,11 @@ def select_regularisation(
         if best is None or value > best[0]:
             best = (value, C)
 
-    assert best is not None
+    if best is None:
+        # Raised rather than asserted: stripped under `python -O`, and a None
+        # here becomes an unreadable AttributeError two lines down
+        # (`DECISIONS.md` 119).
+        raise AssertionError("regularisation sweep produced no candidate")
     chosen_C = best[1]
     probe = LinearProbe(
         chosen_C, class_weight=class_weight, standardize=standardize, seed=seed

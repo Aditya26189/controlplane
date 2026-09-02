@@ -198,7 +198,8 @@ class DemoSession:
         from ..detectors.probe import LinearProbe
         from ..validation.evalsets import TRAIN, split_by_question
 
-        assert self._run is not None
+        if self._run is None:
+            raise AssertionError("prepare() must run before the probe is refitted")
         splits = split_by_question(self.evalset, seed=self.config.seed)
         features = self.cache.matrix(self.variant)
         probe = LinearProbe(
@@ -266,8 +267,11 @@ class DemoSession:
         as the right pane's. It differs only in what it can say about them.
         """
         now = now or utc_now()
-        assert self._scores is not None
-        assert self._monitor is not None, "prepare() must run before the stream"
+        # Raised rather than asserted: `python -O` strips assert statements, and
+        # a demo that silently runs with no monitor is worse than one that stops
+        # (`DECISIONS.md` 119).
+        if self._scores is None or self._monitor is None:
+            raise AssertionError("prepare() must run before the stream")
         # The window advances on every request, before anything is certified.
         # Feeding it after certification would let a request be certified
         # against a verdict that did not include it.
@@ -339,7 +343,8 @@ class DemoSession:
         # of it and must not certify a stability it has not measured. A Beat 4
         # that needs to show a revocation needs a segment at least as long as
         # the window (DECISIONS.md 075).
-        assert self._monitor is not None
+        if self._monitor is None:
+            raise AssertionError("prepare() must run before a verdict is read")
         verdict = self._monitor.verdict()
         psi_by_feature = {name: r.psi for name, r in verdict.per_feature.items()}
         if psi_by_feature and verdict.driver is not None:

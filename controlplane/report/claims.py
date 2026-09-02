@@ -311,13 +311,20 @@ def check_claims(root: Path, readme: Optional[Path] = None) -> list[ClaimResult]
             otherwise pass trivially, which is the failure this exists to stop.
     """
     readme = readme or (root / "README.md")
-    assert readme.is_file(), f"{readme} does not exist"
+    # Raised rather than asserted: `python -O` strips assert statements, and
+    # these two guards are the reason an empty or missing table cannot pass
+    # trivially. A verifier whose own guards vanish under an optimisation flag
+    # is the failure this project is about (`DECISIONS.md` 119).
+    if not readme.is_file():
+        raise AssertionError(f"{readme} does not exist")
     claims = parse_claim_table(readme)
-    assert claims, (
-        f"no claim table found in {readme.name}. Expected a markdown table whose "
-        "first column header is 'Claim' and which has an 'Artifact' column. An "
-        "empty table passes every check, so this is an error rather than a pass."
-    )
+    if not claims:
+        raise AssertionError(
+            f"no claim table found in {readme.name}. Expected a markdown table "
+            "whose first column header is 'Claim' and which has an 'Artifact' "
+            "column. An empty table passes every check, so this is an error "
+            "rather than a pass."
+        )
     return [_check_one(c, root) for c in claims]
 
 
