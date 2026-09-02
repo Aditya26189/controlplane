@@ -1,5 +1,7 @@
 # ONBOARDING.md — your first hour
 
+<sub>[🏠 Project README](../README.md) · [📚 Documentation index](README.md) · [🗺️ Diagrams](DIAGRAMS.md) · [📖 Glossary](GLOSSARY.md)</sub>
+
 Written for someone who has just cloned this and has to be useful today. Read
 the parts in order; each one is sized to what it costs.
 

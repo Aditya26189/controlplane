@@ -1,5 +1,7 @@
 # TROUBLESHOOTING.md — what a failure means
 
+<sub>[🏠 Project README](../README.md) · [📚 Documentation index](README.md) · [🗺️ Diagrams](DIAGRAMS.md) · [📖 Glossary](GLOSSARY.md)</sub>
+
 This codebase crashes on purpose. A silent wrong answer is worse than a stack
 trace, so most of what looks like a bug here is a boundary refusing to let a
 misleading number through.

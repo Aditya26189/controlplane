@@ -1,5 +1,7 @@
 # DIAGRAMS.md — the system in pictures
 
+<sub>[🏠 Project README](../README.md) · [📚 Documentation index](README.md) · [🗺️ Diagrams](DIAGRAMS.md) · [📖 Glossary](GLOSSARY.md)</sub>
+
 Eleven diagrams, in the order a reader needs them: what the system *is*, how
 a number gets made, what happens to it afterwards, how the repository proves any
 of it, and where every directory sits. Every diagram names the code it describes.

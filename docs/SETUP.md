@@ -1,5 +1,7 @@
 # SETUP.md — getting it running
 
+<sub>[🏠 Project README](../README.md) · [📚 Documentation index](README.md) · [🗺️ Diagrams](DIAGRAMS.md) · [📖 Glossary](GLOSSARY.md)</sub>
+
 Three environments, in order of how likely you are to need them: a laptop
 (everything except extraction), a GPU notebook (extraction), and an offline
 machine (both, with the downloads done in advance).

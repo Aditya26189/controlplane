@@ -1,5 +1,7 @@
 # RUNBOOK.md — every script, what it reads, what it writes
 
+<sub>[🏠 Project README](../README.md) · [📚 Documentation index](README.md) · [🗺️ Diagrams](DIAGRAMS.md) · [📖 Glossary](GLOSSARY.md)</sub>
+
 `scripts/` holds thin CLI wrappers. They parse arguments, call
 `controlplane/`, and write files; **no logic lives in them**, which is why this
 page can describe them by their inputs and outputs without lying.
@@ -8,7 +10,7 @@ Every script takes `--config config.yaml` unless noted. Every artifact it
 writes carries a `provenance` block — config hash, git commit, dirty flag,
 library versions, device, timestamp.
 
-**Contents:** [Entry points](#the-entry-points) · [The measurement chain](#the-measurement-chain) · [The banking pilot](#the-banking-pilot) · [Maintenance](#maintenance-scripts) · [Order of operations](#order-of-operations) · [Rules](#rules-that-apply-to-every-run) · [Contract drift](#contract-drift-found-during-this-documentation-pass)
+**Contents:** [Entry points](#the-entry-points) · [The measurement chain](#the-measurement-chain) · [The banking pilot](#the-banking-pilot) · [Maintenance](#maintenance-scripts) · [Order of operations](#order-of-operations) · [Rules](#rules-that-apply-to-every-run) · [Contract drift](#contract-drift-found-during-this-documentation-pass--now-reconciled)
 
 ---
 

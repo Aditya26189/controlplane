@@ -1,5 +1,7 @@
 # CODE_TOUR.md — what is in each package
 
+<sub>[🏠 Project README](../README.md) · [📚 Documentation index](README.md) · [🗺️ Diagrams](DIAGRAMS.md) · [📖 Glossary](GLOSSARY.md)</sub>
+
 A map of `controlplane/`, package by package, with the file you want for each
 job. Descriptions follow the modules' own docstrings; where a module exists to
 prevent a specific failure, that failure is named.

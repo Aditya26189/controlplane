@@ -1,5 +1,7 @@
 # TESTING.md — what the suite defends
 
+<sub>[🏠 Project README](../README.md) · [📚 Documentation index](README.md) · [🗺️ Diagrams](DIAGRAMS.md) · [📖 Glossary](GLOSSARY.md)</sub>
+
 The tests here are not coverage. Each suite exists because a specific failure
 either happened or would be invisible if it did — several of them were written
 after the thing they now catch had already shipped once.

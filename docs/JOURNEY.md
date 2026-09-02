@@ -1,5 +1,7 @@
 # JOURNEY.md — what this project actually did, step by step
 
+<sub>[🏠 Project README](../README.md) · [📚 Documentation index](README.md) · [🗺️ Diagrams](DIAGRAMS.md) · [📖 Glossary](GLOSSARY.md)</sub>
+
 The narrative the commit log and `DECISIONS.md` contain between them, in one
 place. No measured numbers here: the claim table in
 [../README.md](../README.md) holds those, and this page is about what happened

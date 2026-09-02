@@ -1,5 +1,7 @@
 # ARTIFACTS.md — every output file, and what is inside it
 
+<sub>[🏠 Project README](../README.md) · [📚 Documentation index](README.md) · [🗺️ Diagrams](DIAGRAMS.md) · [📖 Glossary](GLOSSARY.md)</sub>
+
 `results/` and `evalsets/` are the evidence. This page says what each file is,
 which stage wrote it, and which fields matter — so that following a number from
 the claim table to the thing that produced it takes one lookup rather than a

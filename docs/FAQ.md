@@ -1,5 +1,7 @@
 # FAQ.md
 
+<sub>[🏠 Project README](../README.md) · [📚 Documentation index](README.md) · [🗺️ Diagrams](DIAGRAMS.md) · [📖 Glossary](GLOSSARY.md)</sub>
+
 The questions a technical reviewer actually asks, each answered with the
 artifact that settles it. **No numbers are quoted here** — they live in
 `README.md`'s claim table and in `results/`, which is where they should be

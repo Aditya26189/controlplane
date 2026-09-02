@@ -1,5 +1,7 @@
 # GLOSSARY.md
 
+<sub>[🏠 Project README](../README.md) · [📚 Documentation index](README.md) · [🗺️ Diagrams](DIAGRAMS.md) · [📖 Glossary](GLOSSARY.md)</sub>
+
 Terms used precisely here and loosely almost everywhere else. Where a word can
 be inflated into a stronger claim than the evidence supports, the wrong reading
 is given too.
