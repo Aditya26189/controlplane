@@ -218,4 +218,4 @@ Audit at the Phase 12 gate, reported line by line:
 - [ ] no narrative documentation written during the build
 - [ ] no file over 10 MB, no real personal data, no secrets, no absolute local paths
 - [ ] any commit that moved a measured number records before and after
-- [ ] `main` still runs `scripts/run_all.py --smoke` end to end
+- [ ] `main` still passes `make smoke` and `make verify` end to end

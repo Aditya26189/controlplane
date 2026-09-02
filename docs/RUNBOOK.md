@@ -228,18 +228,20 @@ publishing anything.
 
 ---
 
-## Contract drift found during this documentation pass
+## Contract drift found during this documentation pass — now reconciled
 
 `CLAUDE.md` ("Definition of done"), `CONTRIBUTING.md` (pre-merge checklist) and
-`TASKS.md` (Phase 12 gate) all refer to **`scripts/run_all.py`**, which does not
-exist in this repository. The four `make` targets are the actual entry points,
-and `clean_clone_gate.py` is what exercises the clean-clone reproduction those
-three documents describe.
+`TASKS.md` (Phase 12 gate) all referred to **`scripts/run_all.py`**, which has
+never existed in this repository. The four `make` targets are the actual entry
+points, and `clean_clone_gate.py` is what exercises the clean-clone
+reproduction those three documents describe.
 
-This page documents what ships. Reconciling the three contract documents is a
-deliberate edit to a contract and is left to that decision rather than made
-quietly here — `CLAUDE.md` reserves contract reconciliation for the
-documentation phase, and this note is what that phase is supposed to surface.
+All three now name what ships. The drift is recorded here rather than silently
+corrected, because a contract that quietly changed is a contract nobody can
+trust to have meant something yesterday — and because the interesting part is
+not the name, it is that three binding documents agreed with each other and
+with nothing on disk. A cited path that no test resolves is a claim like any
+other.
 
 ---
 

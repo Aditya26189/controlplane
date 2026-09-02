@@ -236,7 +236,8 @@ nothing in them needs to be re-verified when a number moves.
 
 ## Definition of done
 
-`python scripts/run_all.py --config config.yaml` on a clean checkout produces:
+`make verify` on a clean checkout, with `scripts/clean_clone_gate.py` for the
+clone-and-run path, produces:
 
 - `results/RESULTS.md` with the warrant matrix, the tier ladder, drift/revocation traces, the computed price list, and κ.
 - A populated `README.md` whose every number traces to `results/`.

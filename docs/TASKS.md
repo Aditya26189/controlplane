@@ -145,7 +145,7 @@ Public repo, generated README, decisions log, architecture doc, demo video.
 
 **History review** — `git log --oneline --graph` reads as a legible account to someone who wasn't here. Twelve phase tags, atomic commits, every commit that moved a measured number recording before and after.
 
-**Gate:** clean-clone reproduction. Delete `results/`, run `run_all.py --smoke`, everything regenerates. Both audits reported.
+**Gate:** clean-clone reproduction, via `scripts/clean_clone_gate.py` — it clones into a temporary directory and runs the gates there, so "it works on my machine" cannot be the reason it passes. Both audits reported.
 
 ---
 
