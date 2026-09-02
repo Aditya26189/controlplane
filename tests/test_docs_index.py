@@ -92,9 +92,21 @@ def test_the_index_routes_by_need() -> None:
     Its value is the first table -- "you are X, read these in this order".
     A plain alphabetical list of filenames would pass every other test here
     while being useless to the reader it exists for.
+
+    The assertion is on the routing table's own column header rather than on a
+    heading string. The first version matched the exact heading and failed when
+    the heading was reworded, which is a test that guards the prose it happened
+    to be written against instead of the property it exists for -- and a test
+    that cries wolf on a cosmetic edit gets weakened by the next person to hit
+    it. The column header is what makes the table a router.
     """
     index_text = INDEX.read_text(encoding="utf-8")
-    assert "## By why you are here" in index_text, (
-        "docs/README.md lost its routing table. The index exists to answer "
-        "'what do I read first', not to list the directory."
+    assert "Read, in this order" in index_text, (
+        "docs/README.md lost its routing table -- no column reading 'Read, in "
+        "this order'. The index exists to answer 'what do I read first', not "
+        "to list the directory."
+    )
+    assert "→" in index_text, (
+        "the routing table no longer sequences its documents. Each row should "
+        "give an order to read in, not a single link."
     )
